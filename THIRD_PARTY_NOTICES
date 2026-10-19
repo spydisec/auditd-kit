@@ -1,0 +1,8 @@
+Third-party material in this repository
+
+plain-writing skill
+  Location: .claude/skills/plain-writing/
+  Source: https://github.com/docwriter-org/plain-writing-skill (commit f0d3630983ac7a82aa580f1c1509d72df739ee12)
+  Licence: MIT
+  Copyright (c) 2026 Shreya Shankar
+  The full licence text is in .claude/skills/plain-writing/LICENSE.
