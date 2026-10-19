@@ -187,6 +187,49 @@ EOF2
   [ "$count" -gt 0 ]
 }
 
+@test "medium uses only the agreed keys and covers the agreed paths and syscalls" {
+  [ "$(keys_of "$medium")" = 'T1053_Scheduled_Task_Job
+T1055_Process_Injection
+T1059_Command_and_Scripting_Interpreter
+T1098_Account_Manipulation
+T1543_Create_or_Modify_System_Process
+T1546_Event_Triggered_Execution
+T1574_Hijack_Execution_Flow
+mounts
+network_config' ]
+  for want in \
+    '-S execve,execveat' '-F path=/usr/bin/crontab -F perm=x' '-w /etc/crontab -p wa' \
+    '-w /etc/cron.d/ -p wa' '-w /var/spool/cron/ -p wa' '-w /etc/systemd/system/ -p wa' \
+    '-w /usr/lib/systemd/system/ -p wa' '-w /etc/ld.so.preload -p wa' '-w /etc/profile -p wa' \
+    '-w /etc/profile.d/ -p wa' '-w /root/.ssh/ -p wa' '-w /etc/hosts -p wa' \
+    '-w /etc/hostname -p wa' '-w /etc/resolv.conf -p wa' '-w /etc/netplan/ -p wa' \
+    '-w /etc/sysconfig/network-scripts/ -p wa' 'sethostname,setdomainname' \
+    '-S mount,umount2' '-S ptrace'; do
+    grep -qF -- "$want" "$medium" || {
+      echo "missing: $want" >&2
+      false
+    }
+  done
+}
+
+@test "medium exec rules filter on logged-in users and note the UID_MIN floor" {
+  n=0
+  while IFS= read -r line; do
+    n=$((n + 1))
+    case "$line" in
+      *' -F auid>=1000 -F auid!=unset '*) ;;
+      *)
+        echo "no auid filter: $line" >&2
+        false
+        ;;
+    esac
+  done <<EOF2
+$(rule_lines "$medium" | grep -F -- '-S execve')
+EOF2
+  [ "$n" -eq 2 ]
+  grep -q 'UID_MIN' "$medium"
+}
+
 @test "medium and heavy headers say they add log volume" {
   for f in "$medium" "$heavy"; do
     head -n 5 "$f" | grep -qi 'volume' || {

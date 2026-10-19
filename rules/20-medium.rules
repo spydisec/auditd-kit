@@ -1,3 +1,61 @@
 # Medium profile, for critical servers. It adds the commands that logged-in people run, and
 # changes to persistence, network, and mount settings. It adds noticeable log volume, so measure
 # it with stats.sh on a few hosts first (see docs/sizing-guide.md).
+
+# Commands: every program that a logged-in user starts. This is the largest source of volume in
+# this file. The 1000 floor matches UID_MIN on the supported systems. Edit it if your hosts differ.
+-a always,exit -F arch=b64 -S execve,execveat -F auid>=1000 -F auid!=unset -k T1059_Command_and_Scripting_Interpreter
+-a always,exit -F arch=b32 -S execve,execveat -F auid>=1000 -F auid!=unset -k T1059_Command_and_Scripting_Interpreter
+
+# Cron: changes to cron files and spool directories, and use of the crontab command.
+-w /etc/crontab -p wa -k T1053_Scheduled_Task_Job
+-w /etc/anacrontab -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.d/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.hourly/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.daily/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.weekly/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.monthly/ -p wa -k T1053_Scheduled_Task_Job
+-w /var/spool/cron/ -p wa -k T1053_Scheduled_Task_Job
+-a always,exit -F path=/usr/bin/crontab -F perm=x -k T1053_Scheduled_Task_Job
+
+# Systemd: changes to unit files.
+-w /etc/systemd/system/ -p wa -k T1543_Create_or_Modify_System_Process
+-w /usr/lib/systemd/system/ -p wa -k T1543_Create_or_Modify_System_Process
+
+# Preload: changes to the library preload file.
+-w /etc/ld.so.preload -p wa -k T1574_Hijack_Execution_Flow
+
+# Shell startup: changes to system-wide shell profile files.
+-w /etc/profile -p wa -k T1546_Event_Triggered_Execution
+-w /etc/profile.d/ -p wa -k T1546_Event_Triggered_Execution
+-w /etc/bashrc -p wa -k T1546_Event_Triggered_Execution
+-w /etc/bash.bashrc -p wa -k T1546_Event_Triggered_Execution
+
+# Root SSH: changes to root's SSH keys and settings.
+-w /root/.ssh/ -p wa -k T1098_Account_Manipulation
+
+# Network config: name and resolver files, the distro network config dirs, and hostname changes.
+-w /etc/hosts -p wa -k network_config
+-w /etc/hostname -p wa -k network_config
+-w /etc/resolv.conf -p wa -k network_config
+-w /etc/sysconfig/network-scripts/ -p wa -k network_config
+-w /etc/NetworkManager/ -p wa -k network_config
+-w /etc/netplan/ -p wa -k network_config
+-w /etc/network/ -p wa -k network_config
+-a always,exit -F arch=b64 -S sethostname,setdomainname -k network_config
+-a always,exit -F arch=b32 -S sethostname,setdomainname -k network_config
+
+# Mounts: mount and unmount calls by logged-in users.
+-a always,exit -F arch=b64 -S mount,umount2 -F auid>=1000 -F auid!=unset -k mounts
+-a always,exit -F arch=b32 -S mount,umount2 -F auid>=1000 -F auid!=unset -k mounts
+
+# Process injection: ptrace requests that attach to a process or write into its memory
+# (POKETEXT 0x4, POKEDATA 0x5, ATTACH 0x10, SEIZE 0x4206).
+-a always,exit -F arch=b64 -S ptrace -F a0=0x4 -k T1055_Process_Injection
+-a always,exit -F arch=b32 -S ptrace -F a0=0x4 -k T1055_Process_Injection
+-a always,exit -F arch=b64 -S ptrace -F a0=0x5 -k T1055_Process_Injection
+-a always,exit -F arch=b32 -S ptrace -F a0=0x5 -k T1055_Process_Injection
+-a always,exit -F arch=b64 -S ptrace -F a0=0x10 -k T1055_Process_Injection
+-a always,exit -F arch=b32 -S ptrace -F a0=0x10 -k T1055_Process_Injection
+-a always,exit -F arch=b64 -S ptrace -F a0=0x4206 -k T1055_Process_Injection
+-a always,exit -F arch=b32 -S ptrace -F a0=0x4206 -k T1055_Process_Injection
