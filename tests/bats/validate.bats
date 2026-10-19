@@ -4,34 +4,12 @@ load helpers
 
 repo=$(cd "$BATS_TEST_DIRNAME/../.." && pwd)
 lib="$repo/scripts/lib"
-fixtures="$repo/tests/fixtures/syscalls"
-
-# render_profile <profile> [os]: render a profile with the os syscall tables (default rocky9)
-# into $out.
-render_profile() {
-  akit_fixture_root
-  out="$BATS_TEST_TMPDIR/out-$1-${2:-rocky9}"
-  AKIT_SYSCALLS_B64="$fixtures/${2:-rocky9}-b64.txt" AKIT_SYSCALLS_B32="$fixtures/${2:-rocky9}-b32.txt" \
-    AKIT_ARCH=x86_64 sh "$lib/render.sh" --profile "$1" --size standard --immutable true \
-    --out-dir "$out" --report "$BATS_TEST_TMPDIR/report-$1.txt" >/dev/null
-}
 
 # rules_file <line>...: write the lines to $dir/50-test.rules.
 rules_file() {
   dir="$BATS_TEST_TMPDIR/rules"
   mkdir -p "$dir"
   printf '%s\n' "$@" >"$dir/50-test.rules"
-}
-
-@test "every rendered profile passes on every OS fixture" {
-  for profile in minimal medium heavy; do
-    for os in centos7 rocky8 rocky9 ubuntu2204 ubuntu2404; do
-      render_profile "$profile" "$os"
-      run sh "$lib/validate.sh" "$out"
-      [ "$status" -eq 0 ]
-      [ -z "$output" ]
-    done
-  done
 }
 
 @test "the profile sources pass with a backlog value filled in" {

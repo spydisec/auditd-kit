@@ -270,6 +270,7 @@ out_files() {
   [ "$status" -eq 0 ]
   [ -f "$out/50-test.rules" ]
   [ ! -e "$out/10-other.rules" ]
+  [ "$(head -n 1 "$out/50-test.rules")" = "# Rendered by auditd-kit from 50-test.rules. Do not edit." ]
 }
 
 @test "finalize file only when immutable is true" {
@@ -445,16 +446,19 @@ esac"
   [ "$status" -eq 1 ]
 }
 
-@test "every profile renders on every OS fixture with no unknown_syscall" {
+@test "every profile renders on every OS fixture with no unknown_syscall and passes validate" {
   render_setup
   for profile in minimal medium heavy; do
     for os in centos7 rocky8 rocky9 ubuntu2204 ubuntu2404; do
       rm -rf "$out" "$report"
       AKIT_SYSCALLS_B64="$fixtures/$os-b64.txt" AKIT_SYSCALLS_B32="$fixtures/$os-b32.txt" \
         render --profile "$profile" --immutable true
-      [ "$status" -eq 0 ]
+      [ "$status" -eq 0 ] || { echo "$profile/$os: $output"; false; }
       [[ "$output" == rule_count=* ]]
-      not grep -q unknown_syscall "$report"
+      not grep -q unknown_syscall "$report" || { echo "$profile/$os: unknown_syscall"; false; }
+      run sh "$lib/validate.sh" "$out"
+      [ "$status" -eq 0 ] || { echo "$profile/$os: validate: $output"; false; }
+      [ -z "$output" ]
     done
   done
 }

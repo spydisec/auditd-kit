@@ -46,33 +46,6 @@ else echo "$fs 4194304 2097152 2097152 50% $mnt"; fi'
   akit_stub python3 'echo "Python 3.9.18"'
 }
 
-# path_without <cmd>...: print a PATH holding the stubs and every tool on the current PATH except
-# the named commands, so a test can hide a real command.
-path_without() {
-  hide=$(mktemp -d "$BATS_TEST_TMPDIR/hide.XXXXXX")
-  old_ifs=$IFS
-  IFS=:
-  for d in $PATH; do
-    [ "$d" = "$AKIT_STUB_BIN" ] && continue
-    for f in "$d"/*; do
-      [ -x "$f" ] || continue
-      n=${f##*/}
-      skip_it=no
-      for x in "$@"; do [ "$n" = "$x" ] && skip_it=yes; done
-      [ "$skip_it" = yes ] && continue
-      [ -e "$hide/$n" ] || ln -s "$f" "$hide/$n"
-    done
-  done
-  IFS=$old_ifs
-  for f in "$AKIT_STUB_BIN"/*; do
-    n=${f##*/}
-    skip_it=no
-    for x in "$@"; do [ "$n" = "$x" ] && skip_it=yes; done
-    [ "$skip_it" = yes ] || ln -sf "$f" "$hide/$n"
-  done
-  echo "$hide"
-}
-
 setup() {
   stub_defaults
   unset LC_ALL
@@ -136,10 +109,12 @@ run_survey() {
   if [ -x /sbin/auditctl ] || [ -x /usr/sbin/auditctl ]; then
     skip "the survey adds sbin to PATH and would find the real auditctl"
   fi
-  PATH=$(path_without auditctl) run sh "$survey"
+  PATH=$(akit_path_without auditctl) run sh "$survey"
   [ "$status" -eq 0 ]
   [[ "$output" == *"auditd_installed=no"* ]]
   [[ "$output" == *"audit_rule_count=unknown"* ]]
+  [[ "$output" == *"os_id=rocky"* ]]
+  [[ "$output" == *"uid=1000"* ]]
 }
 
 @test "audit_enabled=2 when auditctl -s reports enabled 2" {
@@ -262,7 +237,7 @@ run_survey() {
   use_host rocky8
   rm "$AKIT_STUB_BIN/ss"
   akit_stub netstat 'printf "Active Internet connections (only servers)\nProto Recv-Q Send-Q Local Address Foreign Address State\ntcp 0 0 0.0.0.0:22 0.0.0.0:* LISTEN\ntcp 0 0 :::8080 :::* LISTEN\n"'
-  PATH=$(path_without ss) run sh "$survey"
+  PATH=$(akit_path_without ss) run sh "$survey"
   [[ "$output" == *"listening_ports=22,8080"* ]]
 }
 
@@ -287,7 +262,7 @@ run_survey() {
   rm "$AKIT_STUB_BIN/getenforce"
   mkdir -p "$AKIT_ROOT/sys/module/apparmor/parameters"
   echo Y >"$AKIT_ROOT/sys/module/apparmor/parameters/enabled"
-  PATH=$(path_without getenforce) run sh "$survey"
+  PATH=$(akit_path_without getenforce) run sh "$survey"
   [[ "$output" == *"mac=apparmor:enabled"* ]]
 }
 
@@ -368,7 +343,7 @@ run_survey() {
   mkdir -p "$AKIT_ROOT/usr/libexec"
   printf '#!/bin/sh\necho "Python 3.6.8"\n' >"$AKIT_ROOT/usr/libexec/platform-python"
   chmod +x "$AKIT_ROOT/usr/libexec/platform-python"
-  PATH=$(path_without python3 python python2) run sh "$survey"
+  PATH=$(akit_path_without python3 python python2) run sh "$survey"
   [[ "$output" == *"python=3.6.8"* ]]
 }
 
@@ -388,7 +363,7 @@ echo "/dev/vg-var 4194304 2097152 2097152 50% /var"'
   use_host rocky8
   rm "$AKIT_STUB_BIN/systemctl"
   akit_stub ps 'printf "init\nntpd\nbash\n"'
-  PATH=$(path_without systemctl) run sh "$survey"
+  PATH=$(akit_path_without systemctl) run sh "$survey"
   [[ "$output" == *"time_sync=ntpd"* ]]
 }
 

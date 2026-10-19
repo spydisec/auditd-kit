@@ -193,10 +193,21 @@ minimal_path() {
   rm "$AKIT_STUB_BIN/timeout"
   akit_stub getent 'exec sleep 30'
   start=$(date +%s)
-  run_survey --check azure
+  AKIT_AZURE_TIMEOUT=1 run_survey --check azure
   end=$(date +%s)
   [ $((end - start)) -lt 15 ]
   [ "$(key azure_dns_1)" = failed ]
+}
+
+@test "a bad AKIT_AZURE_TIMEOUT falls back to 5 seconds" {
+  with_ama
+  resolve_as 10.1.2.3 10.1.2.3 10.1.2.3
+  akit_stub timeout 'echo "$1" >>"'"$BATS_TEST_TMPDIR"'/limits"; shift; exec "$@"'
+  for v in abc 0 ''; do
+    AKIT_AZURE_TIMEOUT=$v run_survey --check azure
+    [ "$(key azure_dns_1)" = private ]
+  done
+  [ "$(sort -u "$BATS_TEST_TMPDIR/limits")" = 5 ]
 }
 
 @test "without timeout there are no network calls and the errors name it" {
