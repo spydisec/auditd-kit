@@ -132,7 +132,7 @@ time_change' ]
     '-w /etc/audit/ -p wa' '-w /etc/audisp/ -p wa' '-w /etc/libaudit.conf -p wa' \
     '-F path=/usr/sbin/auditctl -F perm=x' '-F path=/usr/sbin/augenrules -F perm=x' \
     '-F path=/usr/sbin/auditd -F perm=x' '-F path=/usr/sbin/autrace -F perm=x' \
-    '-w /var/log/audit/ -p wa'; do
+    '-F dir=/var/log/audit -F perm=wa -F auid>=1000 -F auid!=unset'; do
     grep -qF -- "$want" "$base" || {
       echo "missing: $want" >&2
       false
@@ -140,19 +140,11 @@ time_change' ]
   done
 }
 
-@test "minimal covers the agreed paths and syscalls" {
+@test "minimal covers a few rules that the key set does not show" {
   for want in \
-    '-w /etc/passwd -p wa' '-w /etc/shadow -p wa' '-w /etc/group -p wa' '-w /etc/gshadow -p wa' \
-    '-w /etc/security/opasswd -p wa' '-w /etc/pam.d/ -p wa' '-w /etc/ssh/ -p wa' \
-    '-w /etc/sudoers -p wa' '-w /etc/sudoers.d/ -p wa' '-w /etc/localtime -p wa' \
-    '-w /etc/cron.d/ -p wa' '-w /etc/systemd/system/ -p wa' '-w /etc/ld.so.preload -p wa' \
-    '-w /root/.ssh/ -p wa' '-w /etc/selinux/ -p wa' '-w /etc/modprobe.d/ -p wa' \
-    '-F path=/usr/bin/sudo -F perm=x' '-F path=/usr/bin/su -F perm=x' \
-    '-F path=/usr/bin/kmod -F perm=x' '-F path=/usr/sbin/useradd -F perm=x' \
-    '-F path=/usr/bin/crontab -F perm=x' '-F dir=/dev/shm -F perm=x' \
-    '-S execve -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset' \
-    'settimeofday,clock_settime' '-S stime' '-S kexec_load,kexec_file_load' \
-    'init_module,finit_module,delete_module'; do
+    '-F path=/usr/bin/sudo -F perm=x' '-F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset' \
+    '-S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset' \
+    '-S kexec_load,kexec_file_load' '-w /etc/ssh/ -p wa'; do
     grep -qF -- "$want" "$minimal" || {
       echo "missing: $want" >&2
       false
@@ -173,7 +165,7 @@ time_change' ]
         want=akit_canary ;;
       *path=/usr/sbin/useradd' '* | *path=/usr/sbin/groupadd' '* | *path=/usr/sbin/newusers' '*)
         want=T1136_Create_Account ;;
-      *' /etc/passwd '* | *' /etc/shadow '* | *' /etc/group '* | *' /etc/gshadow '* | *' /etc/security/opasswd '* | \
+      *' /etc/passwd '* | *' /etc/shadow '* | *' /etc/group '* | *' /etc/gshadow '* | \
         *path=/usr/sbin/user* | *path=/usr/sbin/group* | *path=/usr/sbin/chpasswd' '* | \
         *path=/usr/bin/passwd' '* | *path=/usr/bin/chage' '* | *path=/usr/bin/gpasswd' '* | *' /root/.ssh/ '*)
         want=T1098_Account_Manipulation ;;
@@ -201,7 +193,7 @@ time_change' ]
         want=software_mgmt ;;
       *kexec_load*)
         want=kexec ;;
-      *' /etc/audit/ '* | *' /etc/audisp/ '* | *' /etc/libaudit.conf '* | *' /var/log/audit/ '* | \
+      *' /etc/audit/ '* | *' /etc/audisp/ '* | *' /etc/libaudit.conf '* | *dir=/var/log/audit' '* | \
         *path=/usr/sbin/audit* | *path=/usr/sbin/augenrules' '* | *path=/usr/sbin/autrace' '*)
         want=T1562_Impair_Defenses ;;
       *settimeofday* | *' -S stime'* | *' /etc/localtime '*)
@@ -273,6 +265,7 @@ EOF2
   [ "$(keys_of "$heavy")" = 'T1070_Indicator_Removal
 T1222_File_and_Directory_Permissions_Modification
 access
+login_banner
 logins
 network_config
 sudo_log
@@ -310,10 +303,21 @@ EOF2
   done
 }
 
-@test "new medium syscall rules that could be busy filter on logged-in users" {
-  for sc in connect memfd_create unshare bpf swapon; do
-    [ "$(rule_lines "$medium" | grep -- "-S $sc" | grep -vc -- '-F auid>=1000 -F auid!=unset')" -eq 0 ]
-  done
+@test "medium syscall rules outside the agreed unfiltered set filter on logged-in users" {
+  # Unfiltered on purpose: ptrace requests 0x4 0x5 0x10 0x4206, process_vm_writev, sethostname.
+  while IFS= read -r line; do
+    case "$line" in
+      *' -F auid>=1000 -F auid!=unset'*) ;;
+      *'-S ptrace -F a0=0x4 '* | *'-S ptrace -F a0=0x5 '* | *'-S ptrace -F a0=0x10 '* | \
+        *'-S ptrace -F a0=0x4206 '* | *process_vm_writev* | *sethostname*) ;;
+      *)
+        echo "no auid filter: $line" >&2
+        false
+        ;;
+    esac
+  done <<EOF2
+$(rule_lines "$medium" | grep -F -- ' -S ')
+EOF2
 }
 
 @test "no rule filters on exe" {

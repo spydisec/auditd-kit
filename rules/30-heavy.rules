@@ -55,8 +55,8 @@
 # Banners, resolver, and sudo log: files that CIS and STIG ask to watch. The resolver file is
 # rewritten by DHCP and network managers on many hosts. The sudo log exists only if sudoers sets a
 # logfile.
--w /etc/issue -p wa -k network_config
--w /etc/issue.net -p wa -k network_config
+-w /etc/issue -p wa -k login_banner
+-w /etc/issue.net -p wa -k login_banner
 -w /etc/resolv.conf -p wa -k network_config
 -w /var/log/sudo.log -p wa -k sudo_log
 

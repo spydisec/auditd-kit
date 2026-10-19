@@ -29,9 +29,9 @@
 # 32-bit programs use the 32-bit ID calls.
 -a always,exit -F arch=b32 -S setuid32,setreuid32,setresuid32 -F euid=0 -F auid>=1000 -F auid!=unset -F success=1 -k T1548_Abuse_Elevation_Control_Mechanism
 
-# Root in a user's files: root changed a file under /home that another user owns, while a
-# logged-in user was behind the session.
--a always,exit -F dir=/home -F uid=0 -F auid>=1000 -F auid!=unset -C auid!=obj_uid -F perm=rwa -k power_abuse
+# Root in a user's files: root wrote to or changed a file under /home that another user owns,
+# while a logged-in user was behind the session.
+-a always,exit -F dir=/home -F uid=0 -F auid>=1000 -F auid!=unset -C auid!=obj_uid -F perm=wa -k power_abuse
 
 # Process injection: ptrace requests that attach to a process or write into its memory
 # (POKETEXT 0x4, POKEDATA 0x5, ATTACH 0x10, SEIZE 0x4206), and writes into another process's

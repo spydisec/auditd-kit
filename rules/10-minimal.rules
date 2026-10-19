@@ -1,14 +1,14 @@
 # Minimal profile, the default for every server. It logs changes to identity, login, privilege,
 # persistence, security settings, time, and kernel modules, and the commands that change them.
 # These events are rare, so the profile adds little log volume. Expect short bursts during
-# package updates and at first boot.
+# package updates and at first boot. The setuid-exec and package-tool rules log more on hosts that
+# automate with sudo (for example Ansible become) and during package installs.
 
-# Identity: changes to account databases.
+# Identity: changes to account databases. The /etc/security/ watch below covers opasswd.
 -w /etc/passwd -p wa -k T1098_Account_Manipulation
 -w /etc/shadow -p wa -k T1098_Account_Manipulation
 -w /etc/group -p wa -k T1098_Account_Manipulation
 -w /etc/gshadow -p wa -k T1098_Account_Manipulation
--w /etc/security/opasswd -p wa -k T1098_Account_Manipulation
 
 # Account tools: commands that create accounts, and commands that change or remove them.
 -a always,exit -F path=/usr/sbin/useradd -F perm=x -k T1136_Create_Account
@@ -39,8 +39,8 @@
 -w /etc/sudoers.d/ -p wa -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/sudo -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/su -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
--a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
--a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
+-a always,exit -F arch=b64 -S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
+-a always,exit -F arch=b32 -S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/pkexec -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/systemd-run -F perm=x -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
 
