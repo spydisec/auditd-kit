@@ -2,6 +2,7 @@
 # Report the state of this host and change nothing.
 #
 # Usage: survey.sh [--json] [--check azure]
+# AKIT_AZURE_TIMEOUT sets the Azure probe time limit in seconds (default 5).
 #
 # The survey always exits 0. A check that fails reports its keys as "unknown" and is named in
 # survey_errors. It does not use "set -e" or "set -u", because either one could stop the run.

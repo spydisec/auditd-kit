@@ -453,11 +453,11 @@ esac"
       rm -rf "$out" "$report"
       AKIT_SYSCALLS_B64="$fixtures/$os-b64.txt" AKIT_SYSCALLS_B32="$fixtures/$os-b32.txt" \
         render --profile "$profile" --immutable true
-      [ "$status" -eq 0 ]
+      [ "$status" -eq 0 ] || { echo "$profile/$os: $output"; false; }
       [[ "$output" == rule_count=* ]]
-      not grep -q unknown_syscall "$report"
+      not grep -q unknown_syscall "$report" || { echo "$profile/$os: unknown_syscall"; false; }
       run sh "$lib/validate.sh" "$out"
-      [ "$status" -eq 0 ]
+      [ "$status" -eq 0 ] || { echo "$profile/$os: validate: $output"; false; }
       [ -z "$output" ]
     done
   done

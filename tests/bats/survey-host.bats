@@ -113,6 +113,8 @@ run_survey() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"auditd_installed=no"* ]]
   [[ "$output" == *"audit_rule_count=unknown"* ]]
+  [[ "$output" == *"os_id=rocky"* ]]
+  [[ "$output" == *"uid=1000"* ]]
 }
 
 @test "audit_enabled=2 when auditctl -s reports enabled 2" {

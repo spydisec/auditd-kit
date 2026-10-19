@@ -9,6 +9,7 @@
 # azure_no_timeout in survey_errors. It always returns 0.
 
 AKIT_AZURE_TIMEOUT=${AKIT_AZURE_TIMEOUT:-5}
+case $AKIT_AZURE_TIMEOUT in '' | *[!0-9]* | 0) AKIT_AZURE_TIMEOUT=5 ;; esac
 survey_ama_conf=/etc/opt/microsoft/azuremonitoragent
 
 # survey_azure_field <name>: print the first value of a "name": "value" field in the AMA JSON files.
