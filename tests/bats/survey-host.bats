@@ -156,6 +156,48 @@ run_survey() {
   [[ "$output" == *"audit_rule_count=0"* ]]
 }
 
+@test "audit_failure comes from the failure line of auditctl -s" {
+  use_host rocky8
+  akit_stub auditctl 'case "$1" in
+  -v) echo "auditctl version 3.1.2" ;;
+  -l) echo "No rules" ;;
+  -s) printf "enabled 1\nfailure 2\npid 812\n" ;;
+  esac'
+  run_survey
+  [[ "$output" == *"audit_enabled=1"$'\n'"audit_failure=2"$'\n'* ]]
+  run_survey --json
+  [[ "$output" == *'"audit_enabled":"1","audit_failure":"2",'* ]]
+}
+
+@test "audit_failure reads the old AUDIT_STATUS format" {
+  use_host rocky8
+  akit_stub auditctl 'case "$1" in
+  -v) echo "auditctl version 2.8.5" ;;
+  -l) echo "No rules" ;;
+  -s) echo "AUDIT_STATUS: enabled=1 flag=1 pid=1 rate_limit=0 backlog_limit=320" ;;
+  esac'
+  run_survey
+  [[ "$output" == *"audit_failure=1"$'\n'* ]]
+}
+
+@test "audit_failure is unknown when it can't be read" {
+  use_host rocky8
+  akit_stub auditctl 'case "$1" in
+  -v) echo "auditctl version 3.1.2" ;;
+  -l) echo "No rules" ;;
+  -s) printf "enabled 1\npid 812\n" ;;
+  esac'
+  run_survey
+  [[ "$output" == *"audit_failure=unknown"$'\n'* ]]
+  akit_stub auditctl 'case "$1" in
+  -v) echo "auditctl version 3.1.2" ;;
+  *) exit 4 ;;
+  esac'
+  run_survey
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"audit_failure=unknown"$'\n'* ]]
+}
+
 @test "survey counts loaded rules and reads the old auditctl -s format" {
   use_host rocky8
   akit_stub auditctl 'case "$1" in
@@ -178,7 +220,7 @@ run_survey() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"audit_rule_count=unknown"* ]]
   [[ "$output" == *"audit_enabled=unknown"* ]]
-  [[ "$output" == *"survey_errors=audit_rule_count,audit_enabled"* ]]
+  [[ "$output" == *"survey_errors=audit_rule_count,audit_enabled,audit_failure"* ]]
 }
 
 @test "survey parses df under LANG=de_DE.UTF-8" {

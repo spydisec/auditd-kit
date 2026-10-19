@@ -5,8 +5,8 @@
 # Pass /etc/rsyslog.conf first and then the files in /etc/rsyslog.d. The program understands
 # legacy selector lines (@host, @@host:port, @(o)host, :omfwd:, :omrelp:), property filters,
 # RainerScript action() statements over several lines, if ... then / else filters, ruleset()
-# blocks, call, and comments. It ignores $IncludeConfig and include(), because the caller
-# decides which files to read.
+# blocks, call, and comments. The caller reads /etc/rsyslog.d/*.conf itself, so an
+# $IncludeConfig or include() of that path is skipped. An include of any other path is reported.
 #
 # A forward is an omfwd or omrelp output. Output, one record per line, each value listed once
 # in the order it was first seen:
@@ -14,6 +14,7 @@
 #   facility <name>            a facility that a file other than 40-auditd-kit.conf selects by
 #                              name
 #   catchall <line>            a forward that is not provably limited to specific facilities
+#   include <path>             an include of a path other than /etc/rsyslog.d/*.conf
 #   parse_error                the files ended inside a statement, a block, or a comment
 #
 # The catch-all test fails closed. A forward is not a catch-all only when it is inside a
@@ -462,11 +463,19 @@ function bind(v) {
   if (v != "") bound[v] = 1
 }
 
+function note_include(p,    i) {
+  if (p == "/etc/rsyslog.d/*.conf") return
+  for (i = 1; i <= ninc; i++) if (ilist[i] == p) return
+  ilist[++ninc] = p
+}
+
 function directive(d,    low, n, w) {
   sub(/[ \t]+#.*$/, "", d)
   low = tolower(d)
   n = split(d, w, /[ \t]+/)
-  if (low ~ /^\$ruleset[ \t]/) {
+  if (low ~ /^\$includeconfig([ \t]|$)/) {
+    note_include(w[2])
+  } else if (low ~ /^\$ruleset[ \t]/) {
     lrs = (w[2] == "RSYSLOG_DefaultRuleset") ? "" : w[2]
   } else if (low ~ /^\$[a-z]*bindruleset[ \t]/ || low ~ /^\$defaultruleset[ \t]/ || low ~ /^\$actionomrulesetrulesetname[ \t]/) {
     bind(w[2])
@@ -636,6 +645,7 @@ function stmt1(s,    low, c, w, p, name, r, p2) {
       return ""
     }
     parse_params(substr(s, p + 1, p2 - p - 1))
+    if (low ~ /^include/) note_include(P["file"])
     bind(P["ruleset"])
     bind(P["defaultruleset"])
     if (low ~ /^ruleset/) pend = "ruleset:" P["name"]
@@ -709,5 +719,6 @@ END {
   for (i = 1; i <= nt; i++) print "target " tlist[i]
   for (i = 1; i <= nf; i++) print "facility " flist[i]
   for (i = 1; i <= nc; i++) print "catchall " clist[i]
+  for (i = 1; i <= ninc; i++) print "include " ilist[i]
   if (perr) print "parse_error"
 }
