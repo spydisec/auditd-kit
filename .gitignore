@@ -1,8 +1,8 @@
 # Local design notes and specs. Decisions that should be public go in docs/adr/.
 docs/design/
 
-# Personal Claude Code settings
-.claude/settings.local.json
+# Claude Code files. The plain-writing skill under .claude/skills/ is already tracked, so it stays.
+.claude/
 
 # Ansible
 *.retry
