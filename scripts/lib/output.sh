@@ -8,15 +8,23 @@ AKIT_KV_RS=$(printf '\036')
 
 # akit_kv <key> <value>: add a pair.
 akit_kv() {
-  AKIT_KV_BUF="${AKIT_KV_BUF}$1=$2${AKIT_KV_RS}"
+  akit_kv_val=$2
+  while :; do
+    case "$akit_kv_val" in
+      *"$AKIT_KV_RS"*) akit_kv_val="${akit_kv_val%%"$AKIT_KV_RS"*}${akit_kv_val#*"$AKIT_KV_RS"}" ;;
+      *) break ;;
+    esac
+  done
+  AKIT_KV_BUF="${AKIT_KV_BUF}$1=${akit_kv_val}${AKIT_KV_RS}"
 }
 
 # akit_kv_flush <text|json>: print the collected pairs, then forget them.
 akit_kv_flush() {
-  printf '%s' "$AKIT_KV_BUF" | awk -v mode="$1" '
+  printf '%s' "$AKIT_KV_BUF" | LC_ALL=C awk -v mode="$1" '
     BEGIN {
       RS = "\036"
       for (i = 1; i < 32; i++) ctl[sprintf("%c", i)] = sprintf("\\u%04x", i)
+      for (i = 128; i < 256; i++) ctl[sprintf("%c", i)] = "?"
       ctl["\t"] = "\\t"
       ctl["\n"] = "\\n"
       ctl["\r"] = "\\r"

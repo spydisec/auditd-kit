@@ -6,13 +6,13 @@
 # The survey always exits 0. A check that fails reports its keys as "unknown" and is named in
 # survey_errors. It does not use "set -e" or "set -u", because either one could stop the run.
 
-survey_dir=$(cd "$(dirname "$0")" && pwd)
+survey_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 # shellcheck source=/dev/null
-. "$survey_dir/lib/common.sh"
+. "$survey_root/lib/common.sh"
 # shellcheck source=/dev/null
-. "$survey_dir/lib/output.sh"
+. "$survey_root/lib/output.sh"
 # shellcheck source=/dev/null
-. "$survey_dir/lib/survey-host.sh"
+. "$survey_root/lib/survey-host.sh"
 
 # Tools such as auditctl and ss live in sbin, which a normal user may not have on PATH.
 PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"

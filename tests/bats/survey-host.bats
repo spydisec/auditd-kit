@@ -122,15 +122,24 @@ run_survey() {
   done
 }
 
-@test "survey exits 0 when auditctl is missing" {
+@test "auditd_installed=no when auditctl is not on PATH" {
+  empty=$(mktemp -d "$BATS_TEST_TMPDIR/empty.XXXXXX")
+  PATH=$empty run /bin/sh -c '. "$1/common.sh"; . "$1/output.sh"; . "$1/survey-host.sh"
+    survey_check_auditd_installed; printf "%s|%s\n" "$survey_have_auditctl" "$AKIT_KV_BUF"' sh "$repo/scripts/lib"
+  [ "$status" -eq 0 ]
+  [[ "$output" == "no|auditd_installed=no"* ]]
+}
+
+@test "survey exits 0 and reports unknown auditd keys when auditctl is missing" {
   use_host rocky8
+  rm "$AKIT_STUB_BIN/auditctl"
   if [ -x /sbin/auditctl ] || [ -x /usr/sbin/auditctl ]; then
     skip "the survey adds sbin to PATH and would find the real auditctl"
   fi
-  rm "$AKIT_STUB_BIN/auditctl"
   PATH=$(path_without auditctl) run sh "$survey"
   [ "$status" -eq 0 ]
   [[ "$output" == *"auditd_installed=no"* ]]
+  [[ "$output" == *"audit_rule_count=unknown"* ]]
 }
 
 @test "audit_enabled=2 when auditctl -s reports enabled 2" {
@@ -284,6 +293,82 @@ run_survey() {
 @test "survey exits 0 on an unknown option" {
   use_host rocky8
   run_survey --bogus
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"os_id=rocky"* ]]
+}
+
+@test "listening ports parse ss output that has no State column" {
+  use_host rocky8
+  akit_stub ss 'printf "Recv-Q Send-Q Local Address:Port Peer Address:Port\n0 128 *:22 *:*\n0 128 :::8080 :::*\n"'
+  run_survey
+  [[ "$output" == *"listening_ports=22,8080"* ]]
+}
+
+@test "selinux disabled falls through to apparmor" {
+  use_host ubuntu2204
+  akit_stub getenforce 'echo Disabled'
+  mkdir -p "$AKIT_ROOT/sys/module/apparmor/parameters"
+  echo Y >"$AKIT_ROOT/sys/module/apparmor/parameters/enabled"
+  run_survey
+  [[ "$output" == *"mac=apparmor:enabled"* ]]
+}
+
+@test "selinux disabled is reported when there is no apparmor" {
+  use_host rocky8
+  akit_stub getenforce 'echo Disabled'
+  run_survey
+  [[ "$output" == *"mac=selinux:disabled"* ]]
+}
+
+@test "platform-python is used when no other python exists" {
+  use_host rocky8
+  rm "$AKIT_STUB_BIN/python3"
+  mkdir -p "$AKIT_ROOT/usr/libexec"
+  printf '#!/bin/sh\necho "Python 3.6.8"\n' >"$AKIT_ROOT/usr/libexec/platform-python"
+  chmod +x "$AKIT_ROOT/usr/libexec/platform-python"
+  PATH=$(path_without python3 python python2) run sh "$survey"
+  [[ "$output" == *"python=3.6.8"* ]]
+}
+
+@test "a failing df -Pi reports only the inode count as unknown" {
+  use_host rocky8
+  akit_stub df 'for a in "$@"; do case "$a" in -*i*) exit 1 ;; esac; done
+echo "Filesystem 1024-blocks Used Available Capacity Mounted on"
+echo "/dev/vg-var 4194304 2097152 2097152 50% /var"'
+  run_survey
+  [[ "$output" == *"audit_log_dir_fs=/dev/vg-var"* ]]
+  [[ "$output" == *"audit_log_free_mb=2048"* ]]
+  [[ "$output" == *"audit_log_free_inodes=unknown"* ]]
+  [[ "$output" == *"survey_errors=" ]]
+}
+
+@test "time_sync falls back to ps when systemctl is missing" {
+  use_host rocky8
+  rm "$AKIT_STUB_BIN/systemctl"
+  akit_stub ps 'printf "init\nntpd\nbash\n"'
+  PATH=$(path_without systemctl) run sh "$survey"
+  [[ "$output" == *"time_sync=ntpd"* ]]
+}
+
+@test "support_tier follows the OS and version" {
+  check_tier() {
+    use_host rocky9
+    printf 'ID=%s\nVERSION_ID="%s"\n' "$1" "$2" >"$AKIT_ROOT/etc/os-release"
+    run_survey
+    [[ "$output" == *"support_tier=$3"* ]]
+  }
+  check_tier almalinux 9.4 supported
+  check_tier ol 8.10 supported
+  check_tier rhel 10.0 unsupported
+  check_tier ubuntu 20.04 unsupported
+  check_tier ubuntu 24.04 supported
+}
+
+@test "survey works with CDPATH exported" {
+  use_host rocky8
+  mkdir "$BATS_TEST_TMPDIR/scripts"
+  cd "$repo"
+  CDPATH=$BATS_TEST_TMPDIR run sh scripts/survey.sh
   [ "$status" -eq 0 ]
   [[ "$output" == *"os_id=rocky"* ]]
 }

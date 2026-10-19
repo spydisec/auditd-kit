@@ -69,6 +69,12 @@ survey_check_python() {
       return 0
     fi
   done
+  survey_pp=$(akit_path /usr/libexec/platform-python)
+  if [ -x "$survey_pp" ]; then
+    survey_pyver=$("$survey_pp" --version 2>&1 | head -n 1 | sed 's/^Python //')
+    akit_kv python "${survey_pyver:-unknown}"
+    return 0
+  fi
   akit_kv python none
 }
 
@@ -157,11 +163,11 @@ survey_check_boot_audit_backlog_limit() {
 
 # Report the filesystem of /var/log/audit, or of the nearest parent that exists.
 survey_check_audit_log_dir() {
-  survey_dir=/var/log/audit
-  while [ "$survey_dir" != / ] && [ ! -d "$(akit_path "$survey_dir")" ]; do
-    survey_dir=$(dirname "$survey_dir")
+  survey_adir=/var/log/audit
+  while [ "$survey_adir" != / ] && [ ! -d "$(akit_path "$survey_adir")" ]; do
+    survey_adir=$(dirname "$survey_adir")
   done
-  survey_target=$(akit_path "$survey_dir")
+  survey_target=$(akit_path "$survey_adir")
   survey_out=$(df -Pk "$survey_target" 2>/dev/null) || return 1
   survey_line=$(printf '%s\n' "$survey_out" | awk 'NR == 2')
   survey_fs=$(printf '%s\n' "$survey_line" | awk '{print $1}')
@@ -171,8 +177,10 @@ survey_check_audit_log_dir() {
     '' | *[!0-9]*) return 1 ;;
   esac
   [ -n "$survey_fs" ] || return 1
-  survey_iout=$(df -Pi "$survey_target" 2>/dev/null) || return 1
-  survey_inodes=$(printf '%s\n' "$survey_iout" | awk 'NR == 2 {print $4}')
+  survey_inodes=unknown
+  if survey_iout=$(df -Pi "$survey_target" 2>/dev/null); then
+    survey_inodes=$(printf '%s\n' "$survey_iout" | awk 'NR == 2 {print $4}')
+  fi
   case "$survey_inodes" in
     '' | *[!0-9]*) survey_inodes=unknown ;;
   esac
@@ -209,22 +217,27 @@ survey_check_time_sync() {
 
 survey_check_mac() {
   survey_mac=none
+  survey_mode=
   survey_aa=$(akit_path /sys/module/apparmor/parameters/enabled)
   survey_se=$(akit_path /sys/fs/selinux/enforce)
   if command -v getenforce >/dev/null 2>&1; then
     survey_mode=$(getenforce 2>/dev/null | tr '[:upper:]' '[:lower:]') || return 1
     [ -n "$survey_mode" ] || return 1
-    survey_mac="selinux:$survey_mode"
   elif [ -r "$survey_se" ]; then
     case "$(head -n 1 "$survey_se")" in
-      1) survey_mac=selinux:enforcing ;;
-      *) survey_mac=selinux:permissive ;;
+      1) survey_mode=enforcing ;;
+      *) survey_mode=permissive ;;
     esac
+  fi
+  if [ -n "$survey_mode" ] && [ "$survey_mode" != disabled ]; then
+    survey_mac="selinux:$survey_mode"
   elif [ -r "$survey_aa" ]; then
     case "$(head -n 1 "$survey_aa")" in
       Y*) survey_mac=apparmor:enabled ;;
       *) survey_mac=apparmor:disabled ;;
     esac
+  elif [ -n "$survey_mode" ]; then
+    survey_mac="selinux:$survey_mode"
   fi
   akit_kv mac "$survey_mac"
 }
@@ -232,7 +245,7 @@ survey_check_mac() {
 survey_check_listening_ports() {
   if command -v ss >/dev/null 2>&1; then
     survey_raw=$(ss -ltn 2>/dev/null) || return 1
-    survey_raw=$(printf '%s\n' "$survey_raw" | awk 'NR > 1 {print $4}')
+    survey_raw=$(printf '%s\n' "$survey_raw" | awk 'NR > 1 { for (i = 1; i <= NF; i++) if ($i ~ /:[0-9]+$/) { print $i; break } }')
   elif command -v netstat >/dev/null 2>&1; then
     survey_raw=$(netstat -ltn 2>/dev/null) || return 1
     survey_raw=$(printf '%s\n' "$survey_raw" | awk '$1 ~ /^tcp/ {print $4}')

@@ -46,3 +46,15 @@ x"; akit_kv_flush json | python3 -c "import json,sys; print(json.load(sys.stdin)
   run sh -c '. "$1/output.sh"; akit_kv a "x=y"; akit_kv_flush json' sh "$lib"
   [[ "$output" == *'"a":"x=y"'* ]]
 }
+
+@test "json mode replaces bytes above 0x7f so the output stays valid" {
+  run sh -c '. "$1/output.sh"; akit_kv a "$(printf "caf\351 \303\251")"; akit_kv_flush json | python3 -m json.tool' sh "$lib"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"a": "caf? ??"'* ]]
+}
+
+@test "a value holding the record separator cannot add keys" {
+  run sh -c '. "$1/output.sh"; akit_kv a "x$(printf "\036")evil=1"; akit_kv_flush text' sh "$lib"
+  [ "$status" -eq 0 ]
+  [ "$output" = "a=xevil=1" ]
+}

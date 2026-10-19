@@ -15,7 +15,7 @@
 # "ausyscall <arch> --dump", and AKIT_ARCH replaces "uname -m".
 set -eu
 
-lib=$(cd "$(dirname "$0")" && pwd)
+lib=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 # shellcheck source=/dev/null
 . "$lib/common.sh"
 kit=$(cd "$lib/../.." && pwd)
