@@ -3,10 +3,12 @@
 # shellcheck disable=SC2154
 #
 # survey.sh runs survey_check_azure only for "--check azure". It reads the AMA config under
-# AKIT_ROOT and probes the network. Every probe runs under timeout(1). When timeout is missing,
+# AKIT_ROOT and probes the network. Every probe runs under timeout(1) and stops after
+# AKIT_AZURE_TIMEOUT seconds (default 5). When timeout is missing,
 # the check makes no network call, reports every dns and tcp key as unknown, and names
 # azure_no_timeout in survey_errors. It always returns 0.
 
+AKIT_AZURE_TIMEOUT=${AKIT_AZURE_TIMEOUT:-5}
 survey_ama_conf=/etc/opt/microsoft/azuremonitoragent
 
 # survey_azure_field <name>: print the first value of a "name": "value" field in the AMA JSON files.
@@ -41,7 +43,7 @@ survey_azure_private() {
 
 # survey_azure_dns <host>: print private, public, or failed. Public wins when any address is public.
 survey_azure_dns() {
-  survey_ad_all=$(timeout 5 getent hosts "$1" 2>/dev/null | awk 'NF {print $1}')
+  survey_ad_all=$(timeout "$AKIT_AZURE_TIMEOUT" getent hosts "$1" 2>/dev/null | awk 'NF {print $1}')
   if [ -z "$survey_ad_all" ]; then
     echo failed
     return 0
@@ -58,13 +60,13 @@ survey_azure_dns() {
 survey_azure_tcp() {
   if command -v bash >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
     # shellcheck disable=SC2016
-    if timeout 5 bash -c 'exec 3<>/dev/tcp/$1/443' _ "$1" >/dev/null 2>&1; then
+    if timeout "$AKIT_AZURE_TIMEOUT" bash -c 'exec 3<>/dev/tcp/$1/443' _ "$1" >/dev/null 2>&1; then
       echo open
     else
       echo closed
     fi
   elif command -v nc >/dev/null 2>&1; then
-    if nc -z -w 5 "$1" 443 >/dev/null 2>&1; then
+    if nc -z -w "$AKIT_AZURE_TIMEOUT" "$1" 443 >/dev/null 2>&1; then
       echo open
     else
       echo closed

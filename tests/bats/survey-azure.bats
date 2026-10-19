@@ -193,7 +193,7 @@ minimal_path() {
   rm "$AKIT_STUB_BIN/timeout"
   akit_stub getent 'exec sleep 30'
   start=$(date +%s)
-  run_survey --check azure
+  AKIT_AZURE_TIMEOUT=1 run_survey --check azure
   end=$(date +%s)
   [ $((end - start)) -lt 15 ]
   [ "$(key azure_dns_1)" = failed ]

@@ -445,7 +445,7 @@ esac"
   [ "$status" -eq 1 ]
 }
 
-@test "every profile renders on every OS fixture with no unknown_syscall" {
+@test "every profile renders on every OS fixture with no unknown_syscall and passes validate" {
   render_setup
   for profile in minimal medium heavy; do
     for os in centos7 rocky8 rocky9 ubuntu2204 ubuntu2404; do
@@ -455,6 +455,9 @@ esac"
       [ "$status" -eq 0 ]
       [[ "$output" == rule_count=* ]]
       not grep -q unknown_syscall "$report"
+      run sh "$lib/validate.sh" "$out"
+      [ "$status" -eq 0 ]
+      [ -z "$output" ]
     done
   done
 }
