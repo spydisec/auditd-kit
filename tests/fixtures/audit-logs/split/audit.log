@@ -1,0 +1,2 @@
+type=PATH msg=audit(1700000000.001:600): item=0 name="/usr/bin/ls" inode=1 mode=0100755
+type=SYSCALL msg=audit(1700000001.001:601): arch=c000003e syscall=42 success=yes exit=0 auid=1000 uid=0 pid=2 comm="y" exe="/usr/bin/curl" key="net"

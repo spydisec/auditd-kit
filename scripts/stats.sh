@@ -57,22 +57,33 @@ if [ ! -d "$dir" ] || [ ! -r "$dir" ] || [ ! -x "$dir" ]; then
   akit_die "$AKIT_EXIT_REFUSED" "stats: cannot read dir: $dir"
 fi
 
-set --
-for f in "$dir"/audit.log "$dir"/audit.log.[0-9]*; do
-  if [ -f "$f" ]; then
-    if [ ! -r "$f" ]; then
-      akit_die "$AKIT_EXIT_REFUSED" "stats: cannot read file: $f"
-    fi
-    set -- "$@" "$f"
-  fi
-done
-if [ $# -eq 0 ]; then
-  exit 0
-fi
-
 tmp=$(mktemp -d) || akit_die "$AKIT_EXIT_REFUSED" "stats: cannot create a temp dir"
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' INT TERM
+
+# Rotated logs are audit.log.<digits>; list them highest number (oldest) first.
+for f in "$dir"/audit.log.[0-9]*; do
+  [ -f "$f" ] || continue
+  n=${f##*/audit.log.}
+  case $n in
+    *[!0-9]*) continue ;;
+  esac
+  printf '%s %s\n' "$n" "$f"
+done | sort -rn -k1,1 >"$tmp/rotated"
+
+set --
+while read -r n f; do
+  set -- "$@" "$f"
+done <"$tmp/rotated"
+if [ -f "$dir/audit.log" ]; then
+  set -- "$@" "$dir/audit.log"
+fi
+if [ $# -eq 0 ]; then
+  exit 0
+fi
+for f in "$@"; do
+  [ -r "$f" ] || akit_die "$AKIT_EXIT_REFUSED" "stats: cannot read file: $f"
+done
 
 awk -v top="$top" -f "$lib/stats.awk" "$@" >"$tmp/out" \
   || akit_die "$AKIT_EXIT_REFUSED" "stats: awk failed"

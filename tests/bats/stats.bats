@@ -147,16 +147,80 @@ logs="$repo/tests/fixtures/audit-logs"
 }
 
 @test "stats.awk gives the same output under every awk on this machine" {
-  want=$(awk -f "$awk_prog" "$logs"/keys/audit.log* "$logs/midnight/audit.log" "$logs/basic/audit.log")
+  want=$(awk -f "$awk_prog" "$logs"/keys/audit.log* "$logs/midnight/audit.log" "$logs/basic/audit.log" "$logs/enriched/audit.log" "$logs/interleaved/audit.log")
   [ -n "$want" ]
   tried=0
   for a in gawk mawk "busybox awk"; do
     # shellcheck disable=SC2086
     command -v ${a%% *} >/dev/null 2>&1 || continue
     # shellcheck disable=SC2086
-    got=$($a -f "$awk_prog" "$logs"/keys/audit.log* "$logs/midnight/audit.log" "$logs/basic/audit.log")
+    got=$($a -f "$awk_prog" "$logs"/keys/audit.log* "$logs/midnight/audit.log" "$logs/basic/audit.log" "$logs/enriched/audit.log" "$logs/interleaved/audit.log")
     [ "$got" = "$want" ]
     tried=$((tried + 1))
   done
   [ "$tried" -ge 1 ]
+}
+
+@test "enriched logs give the same top lists as raw logs" {
+  run sh "$stats" --dir "$logs/enriched"
+  [ "$status" -eq 0 ]
+  enriched_top=$(printf '%s\n' "$output" | grep '^top_')
+  run sh "$stats" --dir "$logs/raw-twin"
+  raw_top=$(printf '%s\n' "$output" | grep '^top_')
+  [ "$enriched_top" = "$raw_top" ]
+  [[ "$enriched_top" == *"top_key (none) 1"* ]]
+  [[ "$enriched_top" == *"top_key key1 1"* ]]
+  [[ "$enriched_top" == *"top_key a 2"* ]]
+  [[ "$enriched_top" == *"top_auid unset 1"* ]]
+  [[ "$enriched_top" != *ARCH* ]]
+}
+
+@test "records of one event that interleave with another count once" {
+  run sh "$stats" --dir "$logs/interleaved"
+  [[ "$output" == *"events=2"* ]]
+  [ "$(wc -l <"$logs/interleaved/audit.log")" -eq 3 ]
+}
+
+@test "an event split across audit.log.1 and audit.log counts once" {
+  run sh "$stats" --dir "$logs/split"
+  [[ "$output" == *"events=2"* ]]
+  [[ "$output" == *"top_key exec 1"* ]]
+}
+
+@test "node= prefixed lines are counted" {
+  run sh "$stats" --dir "$logs/node"
+  [[ "$output" == *"events=2"* ]]
+  [[ "$output" == *"top_key exec 2"* ]]
+  [[ "$output" == *"top_exe /usr/bin/ls 2"* ]]
+}
+
+@test "rotated names that do not end in digits are skipped" {
+  run sh "$stats" --dir "$logs/extra-files"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"events=3"* ]]
+  [[ "$output" != *junk* ]]
+}
+
+@test "rotated logs are read in numeric order" {
+  dir="$BATS_TEST_TMPDIR/many"
+  mkdir "$dir"
+  for n in 2 10 1; do
+    : >"$dir/audit.log.$n"
+  done
+  : >"$dir/audit.log"
+  # Stand in for awk and print the file order it was given.
+  akit_stub awk 'for f in "$@"; do case $f in *audit.log*) echo "${f##*/}" ;; esac; done'
+  run sh "$stats" --dir "$dir"
+  [ "$output" = $'audit.log.10\naudit.log.2\naudit.log.1\naudit.log' ]
+}
+
+@test "30000 distinct names finish in a few seconds" {
+  awk 'BEGIN { for (i = 1; i <= 30000; i++)
+    printf "type=SYSCALL msg=audit(1700000000.001:%d): auid=%d exe=\"/opt/app%d\" key=\"k%d\"\n", i, i, i, i }' >"$BATS_TEST_TMPDIR/audit.log"
+  start=$(date +%s)
+  run sh "$stats" --dir "$BATS_TEST_TMPDIR"
+  end=$(date +%s)
+  [ "$status" -eq 0 ]
+  [ $((end - start)) -le 10 ]
+  [[ "$output" == *"events=30000"* ]]
 }
