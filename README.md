@@ -24,4 +24,4 @@ for how to propose a change and [SECURITY.md](SECURITY.md) for how to report a s
 
 ## Licence
 
-Apache-2.0. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
+Apache-2.0. See [LICENSE](LICENSE). Files copied from other projects keep their own licence file next to them. [AI-DECLARATION.md](AI-DECLARATION.md) says how AI tools are used to build auditd-kit.

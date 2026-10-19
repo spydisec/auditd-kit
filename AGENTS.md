@@ -20,6 +20,11 @@ Record a decision that other people need to know as an ADR in `docs/adr/`. See
 Use the `plain-writing` skill (`.claude/skills/plain-writing/SKILL.md`) for all prose, including
 docs, ADRs, comments, commit messages, and PR descriptions.
 
+Keep docs short. Write only what a reader needs to use or change auditd-kit, and don't pad a doc
+with summaries, restated context, or generic advice.
+
+Update `AI-DECLARATION.md` when the way AI tools are used on the project changes.
+
 ## Workflow
 
 - Work on a short-lived branch named `feat/`, `fix/`, `docs/`, `ci/`, or `chore/`.
