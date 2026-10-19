@@ -36,3 +36,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0007](0007-test-strategy.md) | Test strategy | Accepted |
 | [0008](0008-workflow-and-releases.md) | Trunk-based workflow and verifiable release bundles | Accepted |
 | [0009](0009-verify-with-a-canary-watch-rule.md) | Verify with a canary watch rule | Accepted |
+| [0010](0010-render-trims-unknown-syscalls.md) | Render trims unknown syscalls and strips control lines | Accepted |
