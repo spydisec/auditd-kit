@@ -8,11 +8,11 @@ Work on a short-lived branch whose name starts with `feat/`, `fix/`, `docs/`, `c
 pull request into `main`. Never push to `main` directly. Give the pull request a Conventional Commits title,
 e.g. `feat: add survey script`, because the title becomes the commit message when the pull request is squash
 merged. The `main` branch takes squash merges only, after the required checks pass. The ruleset that enforces
-this is stored in `.github/rulesets/main.json`, and it is applied once the repository is public.
+this is stored in `.github/rulesets/main.json`, and it is active on `main`.
 
 ## Checks to run before you push
 
-Run `sh tests/lint.sh` for the linters, and run `bats tests/bats` for the tests once that directory exists. The
+Run `sh tests/lint.sh` for the linters, and run `bats tests/bats` for the tests. The
 lint script needs shellcheck, shfmt, and yamllint on your path, and `tests/requirements.txt` lists the Python
 tools.
 
