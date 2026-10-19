@@ -73,7 +73,9 @@ BEGIN {
     load_syscalls(tmp "/b64", b64_calls)
     load_syscalls(tmp "/b32", b32_calls)
     load_lines(tmp "/missing", missing)
-    print "# Rendered by auditd-kit from " label ". Do not edit."
+    name = label
+    sub(/^.*\//, "", name)
+    print "# Rendered by auditd-kit from " name ". Do not edit."
   }
 }
 

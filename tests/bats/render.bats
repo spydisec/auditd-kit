@@ -270,6 +270,7 @@ out_files() {
   [ "$status" -eq 0 ]
   [ -f "$out/50-test.rules" ]
   [ ! -e "$out/10-other.rules" ]
+  [ "$(head -n 1 "$out/50-test.rules")" = "# Rendered by auditd-kit from 50-test.rules. Do not edit." ]
 }
 
 @test "finalize file only when immutable is true" {

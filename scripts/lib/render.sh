@@ -174,7 +174,7 @@ done >"$tmp/missing" || refuse "cannot check rule paths"
 
 # The base file only gets its backlog value, so the canary and the control lines always load.
 {
-  echo "# Rendered by auditd-kit from rules/00-base.rules. Do not edit."
+  echo "# Rendered by auditd-kit from 00-base.rules. Do not edit."
   sed "s/@AKIT_BACKLOG@/$backlog/" "$kit/rules/00-base.rules"
 } >"$tmp/out/00-auditd-kit-base.rules" || refuse "cannot render rules/00-base.rules"
 
@@ -182,7 +182,7 @@ all_sources render
 
 if [ "$immutable" = true ]; then
   {
-    echo "# Rendered by auditd-kit from rules/99-finalize.rules. Do not edit."
+    echo "# Rendered by auditd-kit from 99-finalize.rules. Do not edit."
     cat "$kit/rules/99-finalize.rules"
   } >"$tmp/out/99-auditd-kit-finalize.rules" || refuse "cannot render rules/99-finalize.rules"
 fi
