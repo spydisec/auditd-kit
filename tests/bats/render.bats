@@ -62,9 +62,9 @@ render_setup() {
   mkdir -p "$extra"
 }
 
-# render [args...]: run render.sh with the minimal profile and medium size unless args override.
+# render [args...]: run render.sh with the minimal profile and standard size unless args override.
 render() {
-  run sh "$lib/render.sh" --profile minimal --size medium --out-dir "$out" --report "$report" "$@"
+  run sh "$lib/render.sh" --profile minimal --size standard --out-dir "$out" --report "$report" "$@"
 }
 
 # extra_rules <line>...: write the lines to $extra/50-test.rules.
@@ -72,24 +72,55 @@ extra_rules() {
   printf '%s\n' "$@" >"$extra/50-test.rules"
 }
 
-@test "medium size puts -b 16384 in the init file" {
+# out_files: the names in the out dir on one line.
+out_files() {
+  (cd "$out" && echo *)
+}
+
+@test "standard size puts -b 16384 in the base file" {
   render_setup
   render
   [ "$status" -eq 0 ]
-  grep -qx -- '-b 16384' "$out/00-auditd-kit-init.rules"
-  not grep -q '@AKIT_BACKLOG@' "$out/00-auditd-kit-init.rules"
-  [ -f "$out/30-auditd-kit-minimal.rules" ]
+  grep -qx -- '-b 16384' "$out/00-auditd-kit-base.rules"
+  not grep -q '@AKIT_BACKLOG@' "$out/00-auditd-kit-base.rules"
+}
+
+@test "each profile writes its own file list" {
+  render_setup
+  render
+  [ "$status" -eq 0 ]
+  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules" ]
+  rm -rf "$out"
+  render --profile medium
+  [ "$status" -eq 0 ]
+  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules 20-auditd-kit-medium.rules" ]
+  rm -rf "$out"
+  extra_rules '-w /etc/x -p wa -k test_x'
+  render --profile heavy --immutable true --extra-dir "$extra"
+  [ "$status" -eq 0 ]
+  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules 20-auditd-kit-medium.rules 30-auditd-kit-heavy.rules 50-test.rules 99-auditd-kit-finalize.rules" ]
+}
+
+@test "the old profile and size names exit 1 and name the new value" {
+  render_setup
+  render --profile standard
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"profile standard is now heavy"* ]]
+  render --size medium
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"size medium is now standard"* ]]
+  [ ! -e "$out" ]
 }
 
 @test "small and large sizes use their preset backlog" {
   render_setup
   render --size small
   [ "$status" -eq 0 ]
-  grep -qx -- '-b 8192' "$out/00-auditd-kit-init.rules"
+  grep -qx -- '-b 8192' "$out/00-auditd-kit-base.rules"
   rm -rf "$out"
   render --size large
   [ "$status" -eq 0 ]
-  grep -qx -- '-b 32768' "$out/00-auditd-kit-init.rules"
+  grep -qx -- '-b 32768' "$out/00-auditd-kit-base.rules"
 }
 
 @test "watch whose parent dir is missing is dropped with missing_path" {
@@ -183,24 +214,40 @@ extra_rules() {
   unset AKIT_SYSCALLS_B32
   render
   [ "$status" -eq 0 ]
-  not grep -q 'arch=b32' "$out/30-auditd-kit-minimal.rules"
-  grep -q 'arch=b64' "$out/30-auditd-kit-minimal.rules"
-  grep -q "rules/minimal/30-minimal.rules:[0-9]*${tab}dropped${tab}no_b32${tab}aarch64\$" "$report"
+  not grep -q 'arch=b32' "$out/10-auditd-kit-minimal.rules"
+  grep -q 'arch=b64' "$out/10-auditd-kit-minimal.rules"
+  grep -q "rules/10-minimal.rules:[0-9]*${tab}dropped${tab}no_b32${tab}aarch64\$" "$report"
 }
 
-@test "control lines in standard and extra rules are stripped" {
+@test "control lines in overlay rules are stripped and base keeps its own" {
   render_setup
   extra_rules '-D' '-b 8192' '-e 2' '-f 2' '-a always,exit -F arch=b64 -S adjtimex -k test_keep'
-  render --profile standard --extra-dir "$extra"
+  render --profile heavy --extra-dir "$extra"
   [ "$status" -eq 0 ]
   grep -q test_keep "$out/50-test.rules"
-  not grep -Eq -- '^(-D|-b|-e|-f|-i|--backlog_wait_time|--loginuid-immutable)( |$)' \
-    "$out/50-test.rules" "$out/30-auditd-kit-standard.rules"
+  not grep -Eq -- '^(-D|-b|-e|-f|-i|--backlog_wait_time|--loginuid-immutable)( |$)' "$out/50-test.rules"
   for n in 1 2 3 4; do
     grep -q "50-test.rules:$n${tab}dropped${tab}control_line${tab}" "$report"
   done
-  grep -q "rules/standard/upstream/audit.rules:[0-9]*${tab}dropped${tab}control_line${tab}-i\$" "$report"
-  grep -qx -- '-D' "$out/00-auditd-kit-init.rules"
+  for line in '-D' '-b 16384' '-f 1' '--backlog_wait_time 60000'; do
+    grep -qx -- "$line" "$out/00-auditd-kit-base.rules"
+  done
+  [ ! -e "$out/99-auditd-kit-finalize.rules" ]
+}
+
+@test "control lines in the kit's profile files are kept" {
+  render_setup
+  # A copy of the kit, with a control line added to the medium profile file.
+  kit="$BATS_TEST_TMPDIR/kit"
+  mkdir -p "$kit/scripts"
+  cp -R "$repo/rules" "$repo/config" "$kit/"
+  cp -R "$lib" "$kit/scripts/lib"
+  echo '--loginuid-immutable' >>"$kit/rules/20-medium.rules"
+  run sh "$kit/scripts/lib/render.sh" --profile medium --size standard --out-dir "$out" \
+    --report "$report"
+  [ "$status" -eq 0 ]
+  grep -qx -- '--loginuid-immutable' "$out/20-auditd-kit-medium.rules"
+  not grep -q control_line "$report"
 }
 
 @test "an overlay -r line and a control flag with its value attached are stripped" {
@@ -246,7 +293,7 @@ extra_rules() {
   extra_rules '-a always,exit -F arch=b64 -S adjtimex -k test_keep' \
     '  -w /etc/indented -p wa -k test_indent' \
     "-a${tab}always,exit -F arch=b64 -S adjtimex -k test_tab"
-  render --profile standard --extra-dir "$extra"
+  render --profile heavy --extra-dir "$extra"
   [ "$status" -eq 0 ]
   grep -q test_indent "$out/50-test.rules"
   grep -q test_tab "$out/50-test.rules"
@@ -295,7 +342,7 @@ extra_rules() {
 @test "a report path that can't be written gives exit 1 and leaves no out dir" {
   render_setup
   touch "$BATS_TEST_TMPDIR/plainfile"
-  run sh "$lib/render.sh" --profile minimal --size medium --out-dir "$out" \
+  run sh "$lib/render.sh" --profile minimal --size standard --out-dir "$out" \
     --report "$BATS_TEST_TMPDIR/plainfile/report.txt"
   [ "$status" -eq 1 ]
   [ ! -e "$out" ]
@@ -344,7 +391,7 @@ extra_rules() {
   cd /
   render
   [ "$status" -eq 0 ]
-  [ -f "$out/30-auditd-kit-minimal.rules" ]
+  [ -f "$out/10-auditd-kit-minimal.rules" ]
 }
 
 @test "render reads ausyscall --dump output when no fixture is set" {
@@ -386,7 +433,7 @@ esac"
   [ "$status" -eq 1 ]
   render --bogus
   [ "$status" -eq 1 ]
-  run sh "$lib/render.sh" --profile minimal --size medium --report "$report"
+  run sh "$lib/render.sh" --profile minimal --size standard --report "$report"
   [ "$status" -eq 1 ]
 }
 
@@ -398,25 +445,16 @@ esac"
   [ "$status" -eq 1 ]
 }
 
-@test "render of minimal on every OS fixture has no unknown_syscall" {
+@test "every profile renders on every OS fixture with no unknown_syscall" {
   render_setup
-  for os in centos7 rocky8 rocky9 ubuntu2204 ubuntu2404; do
-    rm -rf "$out"
-    AKIT_SYSCALLS_B64="$fixtures/$os-b64.txt" AKIT_SYSCALLS_B32="$fixtures/$os-b32.txt" render
-    [ "$status" -eq 0 ]
-    not grep -q unknown_syscall "$report"
-  done
-}
-
-@test "render of standard on every OS fixture writes a report and exits 0" {
-  render_setup
-  for os in centos7 rocky8 rocky9 ubuntu2204 ubuntu2404; do
-    rm -rf "$out" "$report"
-    AKIT_SYSCALLS_B64="$fixtures/$os-b64.txt" AKIT_SYSCALLS_B32="$fixtures/$os-b32.txt" \
-      render --profile standard
-    [ "$status" -eq 0 ]
-    [ -s "$report" ]
-    [ -f "$out/30-auditd-kit-standard.rules" ]
-    [[ "$output" == rule_count=* ]]
+  for profile in minimal medium heavy; do
+    for os in centos7 rocky8 rocky9 ubuntu2204 ubuntu2404; do
+      rm -rf "$out" "$report"
+      AKIT_SYSCALLS_B64="$fixtures/$os-b64.txt" AKIT_SYSCALLS_B32="$fixtures/$os-b32.txt" \
+        render --profile "$profile" --immutable true
+      [ "$status" -eq 0 ]
+      [[ "$output" == rule_count=* ]]
+      not grep -q unknown_syscall "$report"
+    done
   done
 }

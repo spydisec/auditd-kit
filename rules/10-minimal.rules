@@ -1,3 +1,6 @@
+# Minimal profile, the default for every server. It logs changes to identity, login, sudo,
+# time, and kernel module settings. Those changes are rare, so it adds little log volume.
+
 # Identity: changes to account databases.
 -w /etc/passwd -p wa -k T1098_Account_Manipulation
 -w /etc/shadow -p wa -k T1098_Account_Manipulation
@@ -15,14 +18,6 @@
 -w /etc/sudoers.d/ -p wa -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/sudo -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/su -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
-
-# Audit tampering: changes to audit configuration and use of audit tools.
--w /etc/audit/ -p wa -k T1562_Impair_Defenses
--w /etc/audisp/ -p wa -k T1562_Impair_Defenses
--w /etc/libaudit.conf -p wa -k T1562_Impair_Defenses
--a always,exit -F path=/usr/sbin/auditctl -F perm=x -k T1562_Impair_Defenses
--a always,exit -F path=/usr/sbin/augenrules -F perm=x -k T1562_Impair_Defenses
--a always,exit -F path=/usr/sbin/auditd -F perm=x -k T1562_Impair_Defenses
 
 # Time: clock changes and timezone file changes.
 -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time_change

@@ -6,12 +6,13 @@ repo=$(cd "$BATS_TEST_DIRNAME/../.." && pwd)
 lib="$repo/scripts/lib"
 fixtures="$repo/tests/fixtures/syscalls"
 
-# render_profile <profile>: render a profile with an extra file into $out.
+# render_profile <profile> [os]: render a profile with the os syscall tables (default rocky9)
+# into $out.
 render_profile() {
   akit_fixture_root
-  out="$BATS_TEST_TMPDIR/out-$1"
-  AKIT_SYSCALLS_B64="$fixtures/rocky9-b64.txt" AKIT_SYSCALLS_B32="$fixtures/rocky9-b32.txt" \
-    AKIT_ARCH=x86_64 sh "$lib/render.sh" --profile "$1" --size medium --immutable true \
+  out="$BATS_TEST_TMPDIR/out-$1-${2:-rocky9}"
+  AKIT_SYSCALLS_B64="$fixtures/${2:-rocky9}-b64.txt" AKIT_SYSCALLS_B32="$fixtures/${2:-rocky9}-b32.txt" \
+    AKIT_ARCH=x86_64 sh "$lib/render.sh" --profile "$1" --size standard --immutable true \
     --out-dir "$out" --report "$BATS_TEST_TMPDIR/report-$1.txt" >/dev/null
 }
 
@@ -22,22 +23,24 @@ rules_file() {
   printf '%s\n' "$@" >"$dir/50-test.rules"
 }
 
-@test "rendered minimal output passes" {
-  render_profile minimal
-  run sh "$lib/validate.sh" "$out"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
+@test "every rendered profile passes on every OS fixture" {
+  for profile in minimal medium heavy; do
+    for os in centos7 rocky8 rocky9 ubuntu2204 ubuntu2404; do
+      render_profile "$profile" "$os"
+      run sh "$lib/validate.sh" "$out"
+      [ "$status" -eq 0 ]
+      [ -z "$output" ]
+    done
+  done
 }
 
-@test "rendered standard output passes" {
-  render_profile standard
-  run sh "$lib/validate.sh" "$out"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
-@test "the minimal profile source passes" {
-  run sh "$lib/validate.sh" "$repo/rules/minimal"
+@test "the profile sources pass with a backlog value filled in" {
+  src="$BATS_TEST_TMPDIR/src"
+  mkdir -p "$src"
+  for f in "$repo"/rules/*.rules; do
+    sed 's/@AKIT_BACKLOG@/8192/' "$f" >"$src/$(basename "$f")"
+  done
+  run sh "$lib/validate.sh" "$src"
   [ "$status" -eq 0 ]
 }
 

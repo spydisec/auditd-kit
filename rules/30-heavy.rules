@@ -1,0 +1,6 @@
+# Heavy profile, for hosts that must meet CIS or STIG audit checks. It adds failed file access and
+# file permission changes, and it adds the most log volume, so measure it with stats.sh on a few
+# hosts first (see docs/sizing-guide.md).
+#
+# Immutable mode (-e 2) is important for compliance, and you turn it on with akit_immutable=true.
+# Once -e 2 is loaded, the kernel refuses every later rule change until the host reboots.

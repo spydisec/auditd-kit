@@ -1,0 +1,4 @@
+# Lock the rules until reboot. Render keeps this file only when akit_immutable is true.
+# Immutable mode is important for compliance. Once -e 2 is loaded, every later rule change needs
+# a reboot.
+-e 2

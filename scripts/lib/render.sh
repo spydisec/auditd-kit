@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build this host's audit rules from the kit's rule files.
 #
-# Usage: render.sh --profile <minimal|standard> --size <small|medium|large>
+# Usage: render.sh --profile <minimal|medium|heavy> --size <small|standard|large>
 #          [--extra-dir DIR] [--immutable true|false] --out-dir DIR --report FILE
 #
 # Writes the rule files to the out dir, writes one report line for each dropped or trimmed
@@ -47,14 +47,18 @@ while [ $# -gt 0 ]; do
   shift 2
 done
 
+# Each profile loads the files of the profiles below it.
 case $profile in
-  minimal) profile_rules="rules/minimal/30-minimal.rules" ;;
-  standard) profile_rules="rules/standard/upstream/audit.rules" ;;
-  *) refuse "--profile must be minimal or standard" ;;
+  minimal) profile_rules="rules/10-minimal.rules" ;;
+  medium) profile_rules="rules/10-minimal.rules rules/20-medium.rules" ;;
+  heavy) profile_rules="rules/10-minimal.rules rules/20-medium.rules rules/30-heavy.rules" ;;
+  standard) refuse "--profile standard is now heavy" ;;
+  *) refuse "--profile must be minimal, medium, or heavy" ;;
 esac
 case $size in
-  small | medium | large) ;;
-  *) refuse "--size must be small, medium, or large" ;;
+  small | standard | large) ;;
+  medium) refuse "--size medium is now standard" ;;
+  *) refuse "--size must be small, standard, or large" ;;
 esac
 case $immutable in
   true | false) ;;
@@ -69,8 +73,9 @@ if [ -d "$out_dir" ] && [ -n "$(ls -A "$out_dir")" ]; then
   refuse "out dir is not empty: $out_dir"
 fi
 
-for f in rules/base/00-init.rules rules/base/99-finalize.rules "$profile_rules" \
-  "config/auditd/$size.conf"; do
+# The profile list is split on spaces on purpose.
+# shellcheck disable=SC2086
+for f in rules/00-base.rules rules/99-finalize.rules $profile_rules "config/auditd/$size.conf"; do
   [ -f "$kit/$f" ] || refuse "kit file not found: $kit/$f"
 done
 
@@ -130,26 +135,32 @@ AKIT_RENDER_TMP=$tmp
 AKIT_RENDER_ARCH=$arch
 export AKIT_RENDER_TMP AKIT_RENDER_ARCH AKIT_CONTROL_FLAGS
 
-# rules_file <mode> <file> <label> <output name>: run render.awk on one source file.
+# rules_file <mode> <strip> <file> <label> <output name>: run render.awk on one source file.
+# strip is 1 to drop control lines.
 rules_file() {
-  [ -r "$2" ] || refuse "cannot read rules file: $2"
+  [ -r "$3" ] || refuse "cannot read rules file: $3"
   if [ "$1" = paths ]; then
-    AKIT_RENDER_LABEL=$3 awk -v mode=paths -f "$lib/render.awk" "$2" >>"$tmp/paths" \
-      || refuse "cannot process rules file: $2"
+    AKIT_RENDER_LABEL=$4 awk -v mode=paths -f "$lib/render.awk" "$3" >>"$tmp/paths" \
+      || refuse "cannot process rules file: $3"
   else
-    AKIT_RENDER_LABEL=$3 awk -v mode=render -v strip=1 -v b32_ok="$b32_ok" \
-      -v selinux="$selinux" -f "$lib/render.awk" "$2" >"$tmp/out/$4" \
-      || refuse "cannot process rules file: $2"
+    AKIT_RENDER_LABEL=$4 awk -v mode=render -v strip="$2" -v b32_ok="$b32_ok" \
+      -v selinux="$selinux" -f "$lib/render.awk" "$3" >"$tmp/out/$5" \
+      || refuse "cannot process rules file: $3"
   fi
 }
 
-# all_sources <mode>: the profile file, then each 50-*.rules file in the extra dir.
+# all_sources <mode>: the profile files, then each 50-*.rules file in the extra dir. Control
+# lines are stripped from the extra files only. rules/10-minimal.rules is written as
+# 10-auditd-kit-minimal.rules.
 all_sources() {
-  rules_file "$1" "$kit/$profile_rules" "$profile_rules" "30-auditd-kit-$profile.rules"
+  for f in $profile_rules; do
+    name=$(basename "$f")
+    rules_file "$1" 0 "$kit/$f" "$f" "${name%%-*}-auditd-kit-${name#*-}"
+  done
   if [ -n "$extra_dir" ]; then
     for f in "$extra_dir"/50-*.rules; do
       [ -f "$f" ] || continue
-      rules_file "$1" "$f" "$f" "$(basename "$f")"
+      rules_file "$1" 1 "$f" "$f" "$(basename "$f")"
     done
   fi
 }
@@ -161,18 +172,19 @@ sort -u "$tmp/paths" | while IFS= read -r p; do
   [ -e "$(akit_path "$p")" ] || printf '%s\n' "$p"
 done >"$tmp/missing" || refuse "cannot check rule paths"
 
+# The base file only gets its backlog value, so the canary and the control lines always load.
 {
-  echo "# Rendered by auditd-kit from rules/base/00-init.rules. Do not edit."
-  sed "s/@AKIT_BACKLOG@/$backlog/" "$kit/rules/base/00-init.rules"
-} >"$tmp/out/00-auditd-kit-init.rules" || refuse "cannot render rules/base/00-init.rules"
+  echo "# Rendered by auditd-kit from rules/00-base.rules. Do not edit."
+  sed "s/@AKIT_BACKLOG@/$backlog/" "$kit/rules/00-base.rules"
+} >"$tmp/out/00-auditd-kit-base.rules" || refuse "cannot render rules/00-base.rules"
 
 all_sources render
 
 if [ "$immutable" = true ]; then
   {
-    echo "# Rendered by auditd-kit from rules/base/99-finalize.rules. Do not edit."
-    cat "$kit/rules/base/99-finalize.rules"
-  } >"$tmp/out/99-auditd-kit-finalize.rules" || refuse "cannot render rules/base/99-finalize.rules"
+    echo "# Rendered by auditd-kit from rules/99-finalize.rules. Do not edit."
+    cat "$kit/rules/99-finalize.rules"
+  } >"$tmp/out/99-auditd-kit-finalize.rules" || refuse "cannot render rules/99-finalize.rules"
 fi
 
 count=$(awk '/^[ \t]*-[aAw][ \t]/ { n++ } END { print n + 0 }' "$tmp/out"/*.rules) \
