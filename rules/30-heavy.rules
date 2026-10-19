@@ -4,3 +4,49 @@
 #
 # Immutable mode (-e 2) is important for compliance, and you turn it on with akit_immutable=true.
 # Once -e 2 is loaded, the kernel refuses every later rule change until the host reboots.
+
+# Failed access: a logged-in user tried to open or truncate a file and was refused.
+-a always,exit -F arch=b64 -S open,openat,creat,truncate,ftruncate,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
+-a always,exit -F arch=b32 -S open,openat,creat,truncate,ftruncate,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
+-a always,exit -F arch=b64 -S open,openat,creat,truncate,ftruncate,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
+-a always,exit -F arch=b32 -S open,openat,creat,truncate,ftruncate,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
+# 32-bit programs use the 64-bit-offset truncate calls.
+-a always,exit -F arch=b32 -S truncate64,ftruncate64 -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
+-a always,exit -F arch=b32 -S truncate64,ftruncate64 -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
+
+# Permissions: a logged-in user changed a file's mode, owner, or extended attributes.
+-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
+-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
+-a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
+-a always,exit -F arch=b32 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
+# 32-bit programs use the 32-bit owner calls.
+-a always,exit -F arch=b32 -S chown32,fchown32,lchown32 -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
+-a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
+-a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
+
+# Deletion: a logged-in user deleted or renamed a file or directory.
+-a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat,renameat2,rmdir -F auid>=1000 -F auid!=unset -k T1070_Indicator_Removal
+-a always,exit -F arch=b32 -S unlink,unlinkat,rename,renameat,renameat2,rmdir -F auid>=1000 -F auid!=unset -k T1070_Indicator_Removal
+
+# Login records: changes to the files that record logins and failed logins.
+-w /var/log/lastlog -p wa -k logins
+-w /var/run/faillock/ -p wa -k logins
+-w /var/log/wtmp -p wa -k logins
+-w /var/log/btmp -p wa -k logins
+-w /var/run/utmp -p wa -k logins
+
+# MAC policy: changes to SELinux or AppArmor settings.
+-w /etc/selinux/ -p wa -k T1562_Impair_Defenses
+-w /etc/apparmor/ -p wa -k T1562_Impair_Defenses
+-w /etc/apparmor.d/ -p wa -k T1562_Impair_Defenses
+
+# Privileged commands: CIS and STIG also ask for one rule per setuid or setgid program. The list
+# differs per host, so add them as overlay rules. This command prints one rule per program:
+#   find / -xdev -type f -perm /6000 2>/dev/null | while read -r p; do
+#     echo "-a always,exit -F path=$p -F perm=x -F auid>=1000 -F auid!=unset -k privileged"
+#   done
+
+# Every command by every process, including services and cron jobs. Caution: on a busy host this
+# can produce a very large volume of logs. Measure it on one host before you turn it on.
+# -a always,exit -F arch=b64 -S execve,execveat -k T1059_Command_and_Scripting_Interpreter
+# -a always,exit -F arch=b32 -S execve,execveat -k T1059_Command_and_Scripting_Interpreter

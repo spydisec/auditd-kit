@@ -476,3 +476,11 @@ esac"
   [ "$(grep -c "${tab}missing_binary${tab}" "$report")" -eq 1 ]
   grep -q "20-medium.rules:[0-9]*${tab}dropped${tab}missing_binary${tab}/usr/bin/crontab\$" "$report"
 }
+
+@test "heavy never renders the commented all-process execve rule" {
+  render_setup
+  render --profile heavy
+  [ "$status" -eq 0 ]
+  grep -q -- '-S execve,execveat -F auid>=1000' "$out/20-auditd-kit-medium.rules"
+  [ "$(awk '!/^[[:space:]]*#/ && /-S execve/ && !/auid>=1000/' "$out"/*.rules | wc -l)" -eq 0 ]
+}
