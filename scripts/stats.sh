@@ -1,12 +1,13 @@
 #!/bin/sh
 # Report how much audit data a host writes each day, and what writes it.
 #
-# Usage: stats.sh [--dir DIR] [--top N] [--format text|csv]
+# Usage: stats.sh [--dir DIR] [--top N] [--since EPOCH] [--format text|csv]
 #
 # Reads audit.log and the rotated audit.log.N files in DIR (default /var/log/audit). Text
 # output has one "day=YYYY-MM-DD bytes=<n> events=<n>" line per UTC day, then top_key, top_exe,
 # and top_auid lines. CSV output has one host,day,bytes,events row per day and no header. The
-# host is AKIT_HOSTNAME when set, else the host name.
+# host is AKIT_HOSTNAME when set, else the host name. --since skips events older than the epoch
+# seconds (default 0).
 #
 # A missing or empty DIR prints nothing and exits 0. A bad argument or an unreadable DIR or
 # log file exits 1.
@@ -18,16 +19,18 @@ lib=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)/lib
 
 dir=
 top=10
+since=0
 format=text
 while [ $# -gt 0 ]; do
   case $1 in
-    --dir | --top | --format) ;;
+    --dir | --top | --since | --format) ;;
     *) akit_die "$AKIT_EXIT_REFUSED" "stats: unknown argument: $1" ;;
   esac
   [ $# -ge 2 ] || akit_die "$AKIT_EXIT_REFUSED" "stats: $1 needs a value"
   case $1 in
     --dir) dir=$2 ;;
     --top) top=$2 ;;
+    --since) since=$2 ;;
     --format) format=$2 ;;
   esac
   shift 2
@@ -35,6 +38,9 @@ done
 
 case $top in
   '' | *[!0-9]*) akit_die "$AKIT_EXIT_REFUSED" "stats: --top must be a whole number" ;;
+esac
+case $since in
+  '' | *[!0-9]*) akit_die "$AKIT_EXIT_REFUSED" "stats: --since must be a whole number" ;;
 esac
 case $format in
   text | csv) ;;
@@ -85,7 +91,7 @@ for f in "$@"; do
   [ -r "$f" ] || akit_die "$AKIT_EXIT_REFUSED" "stats: cannot read file: $f"
 done
 
-awk -v top="$top" -f "$lib/stats.awk" "$@" >"$tmp/out" \
+awk -v top="$top" -v since="$since" -f "$lib/stats.awk" "$@" >"$tmp/out" \
   || akit_die "$AKIT_EXIT_REFUSED" "stats: awk failed"
 
 if [ "$format" = text ]; then

@@ -224,3 +224,15 @@ logs="$repo/tests/fixtures/audit-logs"
   [ $((end - start)) -le 10 ]
   [[ "$output" == *"events=30000"* ]]
 }
+
+@test "stats.sh --since skips older events and rejects a bad value" {
+  run sh "$stats" --dir "$logs/midnight" --since 1700006401
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"day=2023-11-14"* ]]
+  [[ "$output" == *"day=2023-11-15"* ]]
+  run sh "$stats" --dir "$logs/midnight" --since 1800000000
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"day="* ]]
+  run sh "$stats" --dir "$logs/midnight" --since soon
+  [ "$status" -eq 1 ]
+}

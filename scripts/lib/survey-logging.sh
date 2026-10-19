@@ -112,6 +112,8 @@ survey_check_hardening() {
   akit_kv hardening_rule_files "${survey_hf:-none}"
 }
 
+# Only a distro audit.rules that holds nothing but control lines gets the :control suffix, and
+# its control lines are not reported. Every other foreign file is listed plainly.
 survey_check_rules_d() {
   survey_df=
   survey_cl=
@@ -121,16 +123,16 @@ survey_check_rules_d() {
     survey_body=$(survey_rules_body "$survey_n") || return 1
     survey_ctl=$(printf '%s\n' "$survey_body" | awk '
       NF == 0 {next}
-      $1 ~ /^(-D|-b|-f|-e|-i|--backlog_wait_time|--loginuid-immutable|-r)$/ {next}
+      $0 ~ /^(-D|-b|-f|-e|-i|-r|--backlog_wait_time|--loginuid-immutable)/ {next}
       {bad = 1}
       END {print (bad ? "no" : "yes")}')
-    if [ "$survey_ctl" = yes ]; then
+    if [ "$survey_n" = audit.rules ] && [ "$survey_ctl" = yes ]; then
       survey_df="${survey_df:+$survey_df,}$survey_n:control"
-    else
-      survey_df="${survey_df:+$survey_df,}$survey_n"
+      continue
     fi
+    survey_df="${survey_df:+$survey_df,}$survey_n"
     survey_cl_new=$(printf '%s\n' "$survey_body" | awk -v f="$survey_n" '
-      $1 == "-e" || $1 == "-D" {gsub(/[ \t]+/, " "); printf "%s%s:%s", (n++ ? "," : ""), f, $0}')
+      $0 ~ /^-(e|D)/ {gsub(/[ \t]+/, " "); printf "%s%s:%s", (n++ ? "," : ""), f, $0}')
     if [ -n "$survey_cl_new" ]; then
       survey_cl="${survey_cl:+$survey_cl,}$survey_cl_new"
     fi
@@ -144,7 +146,7 @@ survey_check_syslog_daemon() {
   survey_sv=none
   if [ -e "$(akit_path /etc/rsyslog.conf)" ] || [ -e "$(akit_path /usr/sbin/rsyslogd)" ] || [ -e "$(akit_path /sbin/rsyslogd)" ]; then
     survey_sd=rsyslog
-    survey_sv=$(rsyslogd -v 2>/dev/null | awk 'NR == 1 {print $2; exit}')
+    survey_sv=$(rsyslogd -v 2>/dev/null | awk 'NR == 1 {print $2; exit}' | sed 's/,$//')
   elif [ -e "$(akit_path /etc/syslog-ng/syslog-ng.conf)" ] || [ -e "$(akit_path /usr/sbin/syslog-ng)" ] || [ -e "$(akit_path /sbin/syslog-ng)" ]; then
     survey_sd=syslog-ng
     survey_sv=$(syslog-ng --version 2>/dev/null | awk '/^Installer-Version:/ {print $2; found = 1; exit} NR == 1 {first = $2} END {if (!found) print first}')
@@ -160,27 +162,15 @@ survey_check_syslog_daemon() {
 }
 
 survey_check_syslog_forwarding() {
-  survey_rsfiles=
   survey_rsmain=$(akit_path /etc/rsyslog.conf)
-  [ -f "$survey_rsmain" ] && survey_rsfiles=$survey_rsmain
   survey_rsd=$(akit_path /etc/rsyslog.d)
-  if [ -d "$survey_rsd" ]; then
-    for survey_f in "$survey_rsd"/*.conf; do
-      [ -f "$survey_f" ] || continue
-      survey_rsfiles="${survey_rsfiles:+$survey_rsfiles
-}$survey_f"
-    done
-  fi
+  set --
+  [ -f "$survey_rsmain" ] && set -- "$survey_rsmain"
+  for survey_f in "$survey_rsd"/*.conf; do
+    [ -f "$survey_f" ] && set -- "$@" "$survey_f"
+  done
   survey_rsout=
-  if [ -n "$survey_rsfiles" ]; then
-    set --
-    survey_old_ifs=$IFS
-    IFS='
-'
-    for survey_f in $survey_rsfiles; do
-      set -- "$@" "$survey_f"
-    done
-    IFS=$survey_old_ifs
+  if [ $# -gt 0 ]; then
     survey_rsout=$(awk -f "$survey_root/lib/rsyslog.awk" "$@" 2>/dev/null) || return 1
   fi
   survey_tg=$(printf '%s\n' "$survey_rsout" | sed -n 's/^target //p' | survey_join)
@@ -188,6 +178,9 @@ survey_check_syslog_forwarding() {
   survey_cl=$(printf '%s\n' "$survey_rsout" | sed -n 's/^catchall //p' | survey_join ' | ')
   survey_ca=no
   [ "$survey_cl" != none ] && survey_ca=yes
+  if printf '%s\n' "$survey_rsout" | grep -x 'parse_error' >/dev/null 2>&1; then
+    survey_ca=unknown
+  fi
   akit_kv syslog_forward_targets "$survey_tg"
   akit_kv syslog_facilities_used "$survey_fu"
   akit_kv syslog_catchall "$survey_ca"
@@ -206,13 +199,19 @@ survey_check_syslog_dropins() {
   akit_kv syslog_dropins "${survey_di:-none}"
 }
 
+# On auditd 3.x the plugin needs the audisp-syslog binary, so a leftover config file does not
+# count. On RHEL 7 the syslog plugin is built in, and its config names builtin_syslog.
 survey_check_syslog_plugin_installed() {
   survey_pi=no
-  for survey_p in /sbin/audisp-syslog /usr/sbin/audisp-syslog /etc/audit/plugins.d/syslog.conf /etc/audisp/plugins.d/syslog.conf; do
+  for survey_p in /sbin/audisp-syslog /usr/sbin/audisp-syslog; do
     if [ -e "$(akit_path "$survey_p")" ]; then
       survey_pi=yes
     fi
   done
+  survey_bi=$(akit_path /etc/audisp/plugins.d/syslog.conf)
+  if [ -r "$survey_bi" ] && grep -E '^[[:space:]]*path[[:space:]]*=[[:space:]]*builtin_syslog' "$survey_bi" >/dev/null 2>&1; then
+    survey_pi=yes
+  fi
   akit_kv syslog_plugin_installed "$survey_pi"
 }
 
@@ -225,31 +224,8 @@ survey_check_audit_volume() {
     case "$survey_now" in
       '' | *[!0-9]*) return 1 ;;
     esac
-    survey_since=$((survey_now - 86400))
-    # Rotated logs are audit.log.<digits>; list them highest number (oldest) first.
-    survey_rot=$(
-      for survey_f in "$survey_vdir"/audit.log.[0-9]*; do
-        [ -f "$survey_f" ] || continue
-        survey_num=${survey_f##*/audit.log.}
-        case "$survey_num" in
-          *[!0-9]*) continue ;;
-        esac
-        printf '%s %s\n' "$survey_num" "$survey_f"
-      done | sort -rn -k1,1
-    )
-    set --
-    while read -r survey_num survey_f; do
-      [ -n "$survey_f" ] && set -- "$@" "$survey_f"
-    done <<EOF
-$survey_rot
-EOF
-    if [ -f "$survey_vdir/audit.log" ]; then
-      set -- "$@" "$survey_vdir/audit.log"
-    fi
-    if [ $# -gt 0 ]; then
-      survey_vout=$(awk -v since="$survey_since" -v top=10 -f "$survey_root/lib/stats.awk" "$@" 2>/dev/null) || return 1
-      survey_vtop=$(printf '%s\n' "$survey_vout" | awk '$1 == "top_key" {printf "%s%s:%s", (n++ ? "," : ""), $2, $3}')
-    fi
+    survey_vout=$(sh "$survey_root/stats.sh" --dir "$survey_vdir" --top 10 --since "$((survey_now - 86400))" 2>/dev/null) || return 1
+    survey_vtop=$(printf '%s\n' "$survey_vout" | awk '$1 == "top_key" {printf "%s%s:%s", (n++ ? "," : ""), $2, $3}')
   fi
   akit_kv audit_volume_top_keys "$survey_vtop"
 }
