@@ -78,6 +78,7 @@ rules_file() {
     '-f 1' \
     '-e 2' \
     '-i' \
+    '-r 100' \
     '--backlog_wait_time 60000' \
     '--loginuid-immutable' \
     '-a always,exclude -F msgtype=CRYPTO_KEY_USER' \

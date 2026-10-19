@@ -34,7 +34,8 @@ lib="$repo/scripts/lib"
 @test "LC_ALL is C after sourcing and exit codes are defined" {
   run env LC_ALL=de_DE.UTF-8 sh -c '. "$1/common.sh" && echo "$LC_ALL $AKIT_EXIT_OK $AKIT_EXIT_REFUSED $AKIT_EXIT_FAILED $AKIT_EXIT_ROLLBACK_FAILED"' sh "$lib"
   [ "$status" -eq 0 ]
-  [ "$output" = "C 0 1 2 3" ]
+  # Some shells warn on stderr that they can't set the locale, so check only the last line.
+  [ "${lines[${#lines[@]} - 1]}" = "C 0 1 2 3" ]
 }
 
 # Render tests use a fixture root, the Rocky 9 syscall tables, and x86_64 unless a test says
@@ -202,6 +203,18 @@ extra_rules() {
   grep -qx -- '-D' "$out/00-auditd-kit-init.rules"
 }
 
+@test "an overlay -r line and a control flag with its value attached are stripped" {
+  render_setup
+  extra_rules '-r 100' '-f2' '--backlog_wait_time=0' '-a always,exit -F arch=b64 -S adjtimex -k test_keep'
+  render --extra-dir "$extra"
+  [ "$status" -eq 0 ]
+  grep -q test_keep "$out/50-test.rules"
+  grep -q "50-test.rules:1${tab}dropped${tab}control_line${tab}-r 100\$" "$report"
+  grep -q "50-test.rules:2${tab}dropped${tab}control_line${tab}-f2\$" "$report"
+  grep -q "50-test.rules:3${tab}dropped${tab}control_line${tab}--backlog_wait_time=0\$" "$report"
+  not grep -Eq -- '^(-r|-f2|--backlog_wait_time)' "$out/50-test.rules"
+}
+
 @test "only 50-*.rules files are taken from the extra dir" {
   render_setup
   extra_rules '-a always,exit -F arch=b64 -S adjtimex -k test_keep'
@@ -286,6 +299,22 @@ extra_rules() {
     --report "$BATS_TEST_TMPDIR/plainfile/report.txt"
   [ "$status" -eq 1 ]
   [ ! -e "$out" ]
+}
+
+@test "a failed rules copy leaves an earlier report as it was" {
+  render_setup
+  if [ "$(id -u)" -eq 0 ]; then
+    skip "root can write to any dir"
+  fi
+  mkdir -p "$out"
+  chmod 555 "$out"
+  echo old >"$report"
+  render
+  chmod 755 "$out"
+  [ "$status" -eq 1 ]
+  [ "$(cat "$report")" = old ]
+  [ ! -e "$report.tmp" ]
+  [ -z "$(ls -A "$out")" ]
 }
 
 @test "an empty syscall table is refused" {

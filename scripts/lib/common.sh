@@ -12,6 +12,12 @@ AKIT_EXIT_FAILED=2
 AKIT_EXIT_ROLLBACK_FAILED=3
 export AKIT_EXIT_OK AKIT_EXIT_REFUSED AKIT_EXIT_FAILED AKIT_EXIT_ROLLBACK_FAILED
 
+# The auditctl options that set the audit system itself instead of adding a rule. A line that
+# starts with one of them is a control line. Only rules/base sets them. Exported so that awk
+# programs can read the list from ENVIRON.
+AKIT_CONTROL_FLAGS='-D -b -f -e -r -i --backlog_wait_time --loginuid-immutable'
+export AKIT_CONTROL_FLAGS
+
 # akit_path <abs-path>: print the path under AKIT_ROOT.
 akit_path() {
   printf '%s%s\n' "$AKIT_ROOT" "$1"

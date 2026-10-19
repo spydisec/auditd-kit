@@ -125,9 +125,10 @@ else
 fi
 
 # The awk program reads paths and labels from the environment, so backslashes stay as they are.
+# It also reads AKIT_CONTROL_FLAGS, which common.sh sets.
 AKIT_RENDER_TMP=$tmp
 AKIT_RENDER_ARCH=$arch
-export AKIT_RENDER_TMP AKIT_RENDER_ARCH
+export AKIT_RENDER_TMP AKIT_RENDER_ARCH AKIT_CONTROL_FLAGS
 
 # rules_file <mode> <file> <label> <output name>: run render.awk on one source file.
 rules_file() {
@@ -177,24 +178,31 @@ fi
 count=$(awk '/^[ \t]*-[aAw][ \t]/ { n++ } END { print n + 0 }' "$tmp/out"/*.rules) \
   || refuse "cannot count rendered rules"
 
-# Write the report first, then the rules. If the rules can't be written, remove both.
-if ! { mkdir -p "$(dirname "$report")" && cp "$tmp/report" "$report"; }; then
-  refuse "cannot write report: $report"
-fi
+# Write the report next to its final path, copy the rules, and only then move the report into
+# place. If a step fails, remove what this run wrote, so an earlier report stays as it was.
+report_tmp="$report.tmp"
 if [ -d "$out_dir" ]; then
   out_existed=1
 else
   out_existed=0
 fi
-if ! { mkdir -p "$out_dir" && cp "$tmp/out"/*.rules "$out_dir"/; }; then
-  rm -f "$report"
+undo() {
+  rm -f "$report_tmp"
   # The out dir was empty or missing before, so every file in it is ours.
   if [ "$out_existed" -eq 1 ]; then
     rm -f "$out_dir"/*.rules
   else
     rm -rf "$out_dir"
   fi
-  refuse "cannot write rules to: $out_dir"
+  refuse "$1"
+}
+if ! { mkdir -p "$(dirname "$report")" && cp "$tmp/report" "$report_tmp"; }; then
+  rm -f "$report_tmp"
+  refuse "cannot write report: $report"
 fi
+if ! { mkdir -p "$out_dir" && cp "$tmp/out"/*.rules "$out_dir"/; }; then
+  undo "cannot write rules to: $out_dir"
+fi
+mv -f "$report_tmp" "$report" || undo "cannot write report: $report"
 
 echo "rule_count=$count"
