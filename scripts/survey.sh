@@ -13,6 +13,8 @@ survey_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 . "$survey_root/lib/output.sh"
 # shellcheck source=/dev/null
 . "$survey_root/lib/survey-host.sh"
+# shellcheck source=/dev/null
+. "$survey_root/lib/survey-logging.sh"
 
 # Tools such as auditctl and ss live in sbin, which a normal user may not have on PATH.
 PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
@@ -80,6 +82,14 @@ survey_check interactive_users interactive_users
 survey_check container_runtime container_runtime
 survey_check akit_state_version akit_state_version
 survey_check akit_state_profile akit_state_profile
+survey_check agents agents
+survey_check hardening hardening_loginuid_immutable hardening_rule_files
+survey_check rules_d rules_d_files rules_d_control_lines
+survey_check syslog_daemon syslog_daemon syslog_version
+survey_check syslog_forwarding syslog_forward_targets syslog_facilities_used syslog_catchall syslog_catchall_lines
+survey_check syslog_dropins syslog_dropins
+survey_check syslog_plugin_installed syslog_plugin_installed
+survey_check audit_volume audit_volume_top_keys
 
 akit_kv survey_errors "$survey_errors"
 akit_kv_flush "$survey_format"
