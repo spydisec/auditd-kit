@@ -15,6 +15,8 @@ survey_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 . "$survey_root/lib/survey-host.sh"
 # shellcheck source=/dev/null
 . "$survey_root/lib/survey-logging.sh"
+# shellcheck source=/dev/null
+. "$survey_root/lib/survey-azure.sh"
 
 # Tools such as auditctl and ss live in sbin, which a normal user may not have on PATH.
 PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
@@ -90,6 +92,13 @@ survey_check syslog_forwarding syslog_forward_targets syslog_facilities_used sys
 survey_check syslog_dropins syslog_dropins
 survey_check syslog_plugin_installed syslog_plugin_installed
 survey_check audit_volume audit_volume_top_keys
+
+for survey_name in $survey_extra; do
+  case "$survey_name" in
+    azure) survey_check azure azure_ama azure_oms azure_proxy ;;
+    *) survey_add_error "check:$survey_name" ;;
+  esac
+done
 
 akit_kv survey_errors "$survey_errors"
 akit_kv_flush "$survey_format"
