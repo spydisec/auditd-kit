@@ -5,14 +5,14 @@ Date: 2026-10-19
 
 ## Context
 
-A rule that names a syscall the kernel doesn't know fails to load. The Neo23x0 rules list several
-syscalls in one rule, and the syscall tables differ between the audit versions we support, so
-dropping each rule that names one unknown syscall would lose coverage on older hosts.
+A rule that names a syscall the kernel doesn't know fails to load. A rule can list several
+syscalls, and the syscall tables differ between the audit versions we support, so dropping each
+rule that names one unknown syscall would lose coverage on older hosts.
 
-Control lines such as `-D`, `-b`, `-f`, and `-e` in the standard profile or in extra rules would
-override the settings in `rules/base/`, and a `-e 2` would lock the rules. The standard profile
-also has `-i`, which tells auditctl to ignore errors. Without `-i`, one rule that fails stops the
-whole load, so render must drop every rule that can't load on the host.
+Control lines such as `-D`, `-b`, `-f`, and `-e` in overlay rules would override the settings in
+`rules/00-base.rules`, and a `-e 2` would lock the rules. The rules load without `-i`, which tells
+auditctl to ignore errors, so one rule that fails stops the whole load. For that reason render must
+drop every rule that can't load on the host.
 
 The b32 rules use i386 syscall names. On aarch64 the kernel accepts `arch=b32` as 32-bit ARM,
 where those names don't match.
@@ -23,8 +23,8 @@ where those names don't match.
 syscalls are left. It checks names against `ausyscall <arch> --dump` for b64 rules and
 `ausyscall i386 --dump` for b32 rules.
 
-Render strips the control lines `-D`, `-b`, `-f`, `-e`, `-i`, `--backlog_wait_time`, and
-`--loginuid-immutable` from every file outside `rules/base/`.
+Render strips the control lines `-D`, `-b`, `-f`, `-e`, `-r`, `-i`, `--backlog_wait_time`, and
+`--loginuid-immutable` from overlay files. It doesn't strip them from the kit's own rule files.
 
 Render keeps b32 rules on x86_64 only. On other architectures it drops them with the reason
 `no_b32`.
@@ -37,10 +37,6 @@ Render also drops these rules, each with its reason in the report:
 - A `-F path=` or `-F exe=` rule whose file is missing (`missing_binary`).
 - A rule with an SELinux field, such as `-F subj_type=`, when `/sys/fs/selinux/enforce` doesn't
   exist (`no_selinux`). Without a loaded policy these rules can't load.
-
-`rules/standard/upstream/audit.rules` stays an unmodified copy, because its SHA-256 is pinned in
-`rules/standard/UPSTREAM.md`. Its comments that refer to `-i` no longer describe the rendered
-rules.
 
 ## Consequences
 

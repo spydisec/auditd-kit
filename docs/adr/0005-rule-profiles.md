@@ -1,6 +1,6 @@
 # 0005. Rule profiles and upstream rule sources
 
-Status: Accepted
+Status: Superseded by 0011
 Date: 2026-10-19
 
 ## Context

@@ -203,3 +203,17 @@ EOF2
     grep -qi 'reboot' "$f"
   done
 }
+
+@test "README names the profiles, the overlay rules, and the credits" {
+  readme="$rules/README.md"
+  # The backticks are Markdown, not command substitution.
+  # shellcheck disable=SC2016
+  for want in '`minimal` (default)' '`medium`' '`heavy`' 'akit_extra_rules_dir' '50-*.rules' \
+    'control lines' 'https://github.com/Neo23x0/auditd' \
+    'https://github.com/certeu/ansible-auditd-laurel' 'https://attack.mitre.org' 'Laurel'; do
+    grep -qF -- "$want" "$readme" || {
+      echo "missing: $want" >&2
+      false
+    }
+  done
+}
