@@ -1,0 +1,2 @@
+# Lock the rules until reboot. Render keeps this file only when akit_immutable is true.
+-e 2
