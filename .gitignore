@@ -1,0 +1,8 @@
+# Local design notes and specs. Decisions that should be public go in docs/adr/.
+docs/design/
+
+# Personal Claude Code settings
+.claude/settings.local.json
+
+# Ansible
+*.retry
