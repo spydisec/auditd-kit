@@ -1,31 +1,115 @@
-# Minimal profile, the default for every server. It logs changes to identity, login, sudo,
-# time, and kernel module settings. Those changes are rare, so it adds little log volume.
+# Minimal profile, the default for every server. It logs changes to identity, login, privilege,
+# persistence, security settings, time, and kernel modules, and the commands that change them.
+# These events are rare, so the profile adds little log volume. Expect short bursts during
+# package updates and at first boot. The setuid-exec and package-tool rules log more on hosts that
+# automate with sudo (for example Ansible become) and during package installs.
 
-# Identity: changes to account databases.
+# Identity: changes to account databases. The /etc/security/ watch below covers opasswd.
 -w /etc/passwd -p wa -k T1098_Account_Manipulation
 -w /etc/shadow -p wa -k T1098_Account_Manipulation
 -w /etc/group -p wa -k T1098_Account_Manipulation
 -w /etc/gshadow -p wa -k T1098_Account_Manipulation
--w /etc/security/opasswd -p wa -k T1098_Account_Manipulation
 
-# Authentication: changes to PAM and sshd configuration.
+# Account tools: commands that create accounts, and commands that change or remove them.
+-a always,exit -F path=/usr/sbin/useradd -F perm=x -k T1136_Create_Account
+-a always,exit -F path=/usr/sbin/groupadd -F perm=x -k T1136_Create_Account
+-a always,exit -F path=/usr/sbin/newusers -F perm=x -k T1136_Create_Account
+-a always,exit -F path=/usr/sbin/usermod -F perm=x -k T1098_Account_Manipulation
+-a always,exit -F path=/usr/sbin/userdel -F perm=x -k T1098_Account_Manipulation
+-a always,exit -F path=/usr/sbin/groupmod -F perm=x -k T1098_Account_Manipulation
+-a always,exit -F path=/usr/sbin/groupdel -F perm=x -k T1098_Account_Manipulation
+-a always,exit -F path=/usr/sbin/chpasswd -F perm=x -k T1098_Account_Manipulation
+-a always,exit -F path=/usr/bin/passwd -F perm=x -k T1098_Account_Manipulation
+-a always,exit -F path=/usr/bin/chage -F perm=x -k T1098_Account_Manipulation
+-a always,exit -F path=/usr/bin/gpasswd -F perm=x -k T1098_Account_Manipulation
+
+# Authentication: changes to PAM, login, name service, and SSH settings. The ssh watch also
+# covers the host keys, which are written once at first boot.
 -w /etc/pam.d/ -p wa -k T1556_Modify_Authentication_Process
--w /etc/ssh/sshd_config -p wa -k T1556_Modify_Authentication_Process
--w /etc/ssh/sshd_config.d/ -p wa -k T1556_Modify_Authentication_Process
+-w /etc/pam.conf -p wa -k T1556_Modify_Authentication_Process
+-w /etc/nsswitch.conf -p wa -k T1556_Modify_Authentication_Process
+-w /etc/security/ -p wa -k T1556_Modify_Authentication_Process
+-w /etc/login.defs -p wa -k T1556_Modify_Authentication_Process
+-w /etc/ssh/ -p wa -k T1556_Modify_Authentication_Process
 
-# Sudo: changes to sudoers and use of sudo and su.
+# Privilege: changes to sudoers, use of sudo and su, and any program that a logged-in user starts
+# and that runs with root's effective ID, such as a setuid binary. The last two rules name tools
+# that users run to get a root or service context.
 -w /etc/sudoers -p wa -k T1548_Abuse_Elevation_Control_Mechanism
 -w /etc/sudoers.d/ -p wa -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/sudo -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/su -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
+-a always,exit -F arch=b64 -S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
+-a always,exit -F arch=b32 -S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
+-a always,exit -F path=/usr/bin/pkexec -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
+-a always,exit -F path=/usr/bin/systemd-run -F perm=x -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
 
-# Time: clock changes and timezone file changes.
--a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time_change
--a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time_change
+# Scheduled jobs: changes to cron and at files, and use of crontab and at.
+-w /etc/crontab -p wa -k T1053_Scheduled_Task_Job
+-w /etc/anacrontab -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.d/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.hourly/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.daily/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.weekly/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.monthly/ -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.allow -p wa -k T1053_Scheduled_Task_Job
+-w /etc/cron.deny -p wa -k T1053_Scheduled_Task_Job
+-w /etc/at.allow -p wa -k T1053_Scheduled_Task_Job
+-w /etc/at.deny -p wa -k T1053_Scheduled_Task_Job
+-w /var/spool/cron/ -p wa -k T1053_Scheduled_Task_Job
+-a always,exit -F path=/usr/bin/crontab -F perm=x -k T1053_Scheduled_Task_Job
+-a always,exit -F path=/usr/bin/at -F perm=x -k T1053_Scheduled_Task_Job
+
+# Persistence: new or changed systemd units in the admin directory, the library preload file and
+# library search paths, and root's SSH keys.
+-w /etc/systemd/system/ -p wa -k T1543_Create_or_Modify_System_Process
+-w /etc/ld.so.preload -p wa -k T1574_Hijack_Execution_Flow
+-w /etc/ld.so.conf -p wa -k T1574_Hijack_Execution_Flow
+-w /etc/ld.so.conf.d/ -p wa -k T1574_Hijack_Execution_Flow
+-w /root/.ssh/ -p wa -k T1098_Account_Manipulation
+
+# Staging: a program started from shared memory.
+-a always,exit -F dir=/dev/shm -F perm=x -k exec_from_shm
+
+# Security tools: MAC policy changes, and firewall, SELinux, and package tools run by a logged-in
+# user. The iptables path is the real binary on RHEL 7 only. Elsewhere it is a link to the nft
+# wrapper, so that wrapper is listed too.
+-w /etc/selinux/ -p wa -k T1562_Impair_Defenses
+-w /etc/apparmor/ -p wa -k T1562_Impair_Defenses
+-w /etc/apparmor.d/ -p wa -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/nft -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/xtables-nft-multi -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/iptables -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/bin/firewall-cmd -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/ufw -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/setenforce -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
+
+# Software installs: package tools run by a logged-in user. A path that is missing on a host is
+# dropped at render time.
+-a always,exit -F path=/usr/bin/dnf-3 -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
+-a always,exit -F path=/usr/bin/yum -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
+-a always,exit -F path=/usr/bin/rpm -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
+-a always,exit -F path=/usr/bin/apt -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
+-a always,exit -F path=/usr/bin/apt-get -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
+-a always,exit -F path=/usr/bin/dpkg -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
+-a always,exit -F path=/usr/bin/snap -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
+
+# Time: clock changes and timezone file changes. The adjtimex call is in the heavy profile,
+# because time daemons call it all the time.
+-a always,exit -F arch=b64 -S settimeofday,clock_settime -k time_change
+-a always,exit -F arch=b32 -S settimeofday,clock_settime -k time_change
 -a always,exit -F arch=b32 -S stime -k time_change
 -w /etc/localtime -p wa -k time_change
 
-# Kernel modules: loading and unloading modules, and use of kmod (insmod, rmmod, and modprobe are symlinks to it).
+# Kernel modules: loading and unloading modules, changes to module settings, and use of kmod
+# (insmod, rmmod, and modprobe are symlinks to it). The kmod rule skips the module requests that
+# the kernel makes by itself, because the syscall rules already log the real loads.
 -a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k T1547_Boot_or_Logon_Autostart_Execution
 -a always,exit -F arch=b32 -S init_module,finit_module,delete_module -k T1547_Boot_or_Logon_Autostart_Execution
--a always,exit -F path=/usr/bin/kmod -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution
+-a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset -k T1547_Boot_or_Logon_Autostart_Execution
+-w /etc/modprobe.d/ -p wa -k T1547_Boot_or_Logon_Autostart_Execution
+-w /etc/modules-load.d/ -p wa -k T1547_Boot_or_Logon_Autostart_Execution
+-w /etc/modules -p wa -k T1547_Boot_or_Logon_Autostart_Execution
+
+# Kexec: loading another kernel into a running host. The call has no 32-bit form.
+-a always,exit -F arch=b64 -S kexec_load,kexec_file_load -k kexec

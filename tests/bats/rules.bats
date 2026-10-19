@@ -82,7 +82,7 @@ EOF2
 
 @test "every b64 syscall rule has a b32 twin in the same file" {
   # Syscalls that exist on b64 only. A b64 rule that names one of these needs no b32 twin.
-  b64_only=''
+  b64_only='kexec_load'
   count=0
   for f in "$base" "$minimal" "$medium" "$heavy"; do
     while IFS= read -r line; do
@@ -112,10 +112,18 @@ EOF2
 @test "base and minimal use only the agreed keys" {
   [ "$(keys_of "$base")" = 'T1562_Impair_Defenses
 akit_canary' ]
-  [ "$(keys_of "$minimal")" = 'T1098_Account_Manipulation
+  [ "$(keys_of "$minimal")" = 'T1053_Scheduled_Task_Job
+T1098_Account_Manipulation
+T1136_Create_Account
+T1543_Create_or_Modify_System_Process
 T1547_Boot_or_Logon_Autostart_Execution
 T1548_Abuse_Elevation_Control_Mechanism
 T1556_Modify_Authentication_Process
+T1562_Impair_Defenses
+T1574_Hijack_Execution_Flow
+exec_from_shm
+kexec
+software_mgmt
 time_change' ]
 }
 
@@ -123,7 +131,8 @@ time_change' ]
   for want in \
     '-w /etc/audit/ -p wa' '-w /etc/audisp/ -p wa' '-w /etc/libaudit.conf -p wa' \
     '-F path=/usr/sbin/auditctl -F perm=x' '-F path=/usr/sbin/augenrules -F perm=x' \
-    '-F path=/usr/sbin/auditd -F perm=x'; do
+    '-F path=/usr/sbin/auditd -F perm=x' '-F path=/usr/sbin/autrace -F perm=x' \
+    '-F dir=/var/log/audit -F perm=wa -F auid>=1000 -F auid!=unset'; do
     grep -qF -- "$want" "$base" || {
       echo "missing: $want" >&2
       false
@@ -131,21 +140,18 @@ time_change' ]
   done
 }
 
-@test "minimal covers the agreed paths and syscalls" {
+@test "minimal covers a few rules that the key set does not show" {
   for want in \
-    '-w /etc/passwd -p wa' '-w /etc/shadow -p wa' '-w /etc/group -p wa' '-w /etc/gshadow -p wa' \
-    '-w /etc/security/opasswd -p wa' '-w /etc/pam.d/ -p wa' '-w /etc/ssh/sshd_config -p wa' \
-    '-w /etc/ssh/sshd_config.d/ -p wa' '-w /etc/sudoers -p wa' '-w /etc/sudoers.d/ -p wa' \
-    '-w /etc/localtime -p wa' \
-    '-F path=/usr/bin/sudo -F perm=x' '-F path=/usr/bin/su -F perm=x' \
-    '-F path=/usr/bin/kmod -F perm=x' \
-    'adjtimex,settimeofday,clock_settime' '-S stime' \
-    'init_module,finit_module,delete_module'; do
+    '-F path=/usr/bin/sudo -F perm=x' '-F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset' \
+    '-S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset' \
+    '-S kexec_load,kexec_file_load' '-w /etc/ssh/ -p wa'; do
     grep -qF -- "$want" "$minimal" || {
       echo "missing: $want" >&2
       false
     }
   done
+  # adjtimex is polled by time daemons, so it lives in heavy.
+  [ "$(rule_lines "$minimal" | grep -c adjtimex)" -eq 0 ]
 }
 
 @test "each rule in base and minimal carries the key of its area" {
@@ -157,17 +163,42 @@ time_change' ]
       -D | -b* | -f* | --backlog_wait_time*) continue ;;
       *' /etc/auditd-kit/canary '*)
         want=akit_canary ;;
-      *' /etc/passwd '* | *' /etc/shadow '* | *' /etc/group '* | *' /etc/gshadow '* | *' /etc/security/opasswd '*)
+      *path=/usr/sbin/useradd' '* | *path=/usr/sbin/groupadd' '* | *path=/usr/sbin/newusers' '*)
+        want=T1136_Create_Account ;;
+      *' /etc/passwd '* | *' /etc/shadow '* | *' /etc/group '* | *' /etc/gshadow '* | \
+        *path=/usr/sbin/user* | *path=/usr/sbin/group* | *path=/usr/sbin/chpasswd' '* | \
+        *path=/usr/bin/passwd' '* | *path=/usr/bin/chage' '* | *path=/usr/bin/gpasswd' '* | *' /root/.ssh/ '*)
         want=T1098_Account_Manipulation ;;
-      *' /etc/pam.d/ '* | *' /etc/ssh/sshd_config '* | *' /etc/ssh/sshd_config.d/ '*)
+      *' /etc/pam.d/ '* | *' /etc/pam.conf '* | *' /etc/nsswitch.conf '* | *' /etc/security/ '* | \
+        *' /etc/login.defs '* | *' /etc/ssh/ '*)
         want=T1556_Modify_Authentication_Process ;;
-      *' /etc/sudoers '* | *' /etc/sudoers.d/ '* | *path=/usr/bin/sudo' '* | *path=/usr/bin/su' '*)
+      *' /etc/sudoers '* | *' /etc/sudoers.d/ '* | *path=/usr/bin/sudo' '* | *path=/usr/bin/su' '* | \
+        *'-C uid!=euid'* | *path=/usr/bin/pkexec' '* | *path=/usr/bin/systemd-run' '*)
         want=T1548_Abuse_Elevation_Control_Mechanism ;;
-      *' /etc/audit/ '* | *' /etc/audisp/ '* | *' /etc/libaudit.conf '* | *path=/usr/sbin/audit* | *path=/usr/sbin/augenrules' '*)
+      *' /etc/cron'* | *' /etc/anacrontab '* | *' /etc/at.'* | *' /var/spool/cron/ '* | \
+        *path=/usr/bin/crontab' '* | *path=/usr/bin/at' '*)
+        want=T1053_Scheduled_Task_Job ;;
+      *' /etc/systemd/system/ '*)
+        want=T1543_Create_or_Modify_System_Process ;;
+      *' /etc/ld.so.'*)
+        want=T1574_Hijack_Execution_Flow ;;
+      *dir=/dev/shm' '*)
+        want=exec_from_shm ;;
+      *path=/usr/sbin/nft' '* | *path=/usr/sbin/xtables-nft-multi' '* | *path=/usr/sbin/iptables' '* | \
+        *path=/usr/bin/firewall-cmd' '* | *path=/usr/sbin/ufw' '* | *path=/usr/sbin/setenforce' '* | \
+        *' /etc/selinux/ '* | *' /etc/apparmor/ '* | *' /etc/apparmor.d/ '*)
         want=T1562_Impair_Defenses ;;
-      *adjtimex* | *stime* | *' /etc/localtime '*)
+      *path=/usr/bin/dnf-3' '* | *path=/usr/bin/yum' '* | *path=/usr/bin/rpm' '* | \
+        *path=/usr/bin/apt' '* | *path=/usr/bin/apt-get' '* | *path=/usr/bin/dpkg' '* | *path=/usr/bin/snap' '*)
+        want=software_mgmt ;;
+      *kexec_load*)
+        want=kexec ;;
+      *' /etc/audit/ '* | *' /etc/audisp/ '* | *' /etc/libaudit.conf '* | *dir=/var/log/audit' '* | \
+        *path=/usr/sbin/audit* | *path=/usr/sbin/augenrules' '* | *path=/usr/sbin/autrace' '*)
+        want=T1562_Impair_Defenses ;;
+      *settimeofday* | *' -S stime'* | *' /etc/localtime '*)
         want=time_change ;;
-      *init_module* | *path=/usr/bin/kmod' '*)
+      *init_module* | *path=/usr/bin/kmod' '* | *' /etc/modprobe.d/ '* | *' /etc/modules-load.d/ '* | *' /etc/modules '*)
         want=T1547_Boot_or_Logon_Autostart_Execution ;;
       *)
         echo "no area for: $line" >&2
@@ -188,15 +219,28 @@ EOF2
 }
 
 @test "medium uses only the agreed keys" {
-  [ "$(keys_of "$medium")" = 'T1053_Scheduled_Task_Job
+  [ "$(keys_of "$medium")" = 'T1037_Boot_or_Logon_Initialization_Scripts
+T1040_Network_Sniffing
 T1055_Process_Injection
 T1059_Command_and_Scripting_Interpreter
-T1098_Account_Manipulation
 T1543_Create_or_Modify_System_Process
 T1546_Event_Triggered_Execution
-T1574_Hijack_Execution_Flow
+T1548_Abuse_Elevation_Control_Mechanism
+T1556_Modify_Authentication_Process
+T1562_Impair_Defenses
+T1611_Escape_to_Host
+T1620_Reflective_Code_Loading
+bpf
+containers
+exec_from_tmp
+fstab
 mounts
-network_config' ]
+network_config
+network_connect
+power_abuse
+software_mgmt
+swap
+sysctl' ]
 }
 
 @test "medium exec rules filter on logged-in users and note the UID_MIN floor" {
@@ -220,11 +264,16 @@ EOF2
 @test "heavy uses only the agreed keys, the setuid recipe, and the commented execve rule" {
   [ "$(keys_of "$heavy")" = 'T1070_Indicator_Removal
 T1222_File_and_Directory_Permissions_Modification
-T1562_Impair_Defenses
 access
-logins' ]
+login_banner
+logins
+network_config
+sudo_log
+time_change' ]
   grep -qF -- 'find /' "$heavy"
   grep -qF -- '# -a always,exit -F arch=b64 -S execve,execveat -k' "$heavy"
+  grep -qF -- '# -a always,exit -F arch=b64 -S execve,execveat -F auid=unset' "$heavy"
+  grep -qF -- '# -a always,exit -F arch=b64 -S connect -F a2=16 -k' "$heavy"
 }
 
 @test "heavy syscall rules filter on logged-in users" {
@@ -245,11 +294,34 @@ EOF2
 }
 
 @test "32-bit-only syscalls appear only on b32 rules" {
-  for call in chown32 fchown32 lchown32 truncate64 ftruncate64; do
-    pat="[ ,]${call}[ ,]"
-    [ "$(rule_lines "$heavy" | grep -c -- "$pat")" -gt 0 ]
-    [ "$(rule_lines "$heavy" | grep -- "$pat" | grep -vc -- 'arch=b32')" -eq 0 ]
+  for pair in heavy:chown32 heavy:fchown32 heavy:lchown32 heavy:truncate64 heavy:ftruncate64 \
+    medium:setuid32 medium:setreuid32 medium:setresuid32; do
+    case "${pair%%:*}" in heavy) f=$heavy ;; *) f=$medium ;; esac
+    pat="[ ,]${pair#*:}[ ,]"
+    [ "$(rule_lines "$f" | grep -c -- "$pat")" -gt 0 ]
+    [ "$(rule_lines "$f" | grep -- "$pat" | grep -vc -- 'arch=b32')" -eq 0 ]
   done
+}
+
+@test "medium syscall rules outside the agreed unfiltered set filter on logged-in users" {
+  # Unfiltered on purpose: ptrace requests 0x4 0x5 0x10 0x4206, process_vm_writev, sethostname.
+  while IFS= read -r line; do
+    case "$line" in
+      *' -F auid>=1000 -F auid!=unset'*) ;;
+      *'-S ptrace -F a0=0x4 '* | *'-S ptrace -F a0=0x5 '* | *'-S ptrace -F a0=0x10 '* | \
+        *'-S ptrace -F a0=0x4206 '* | *process_vm_writev* | *sethostname*) ;;
+      *)
+        echo "no auid filter: $line" >&2
+        false
+        ;;
+    esac
+  done <<EOF2
+$(rule_lines "$medium" | grep -F -- ' -S ')
+EOF2
+}
+
+@test "no rule filters on exe" {
+  [ "$(rule_lines "$base" "$minimal" "$medium" "$heavy" | grep -c -- 'exe=')" -eq 0 ]
 }
 
 @test "medium and heavy headers say they add log volume" {

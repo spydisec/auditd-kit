@@ -16,10 +16,15 @@
 # Canary: verify writes to this file and looks for the akit_canary key.
 -w /etc/auditd-kit/canary -p wa -k akit_canary
 
-# Audit tampering: changes to audit configuration and use of audit tools.
+# Audit tampering: changes to audit configuration and use of audit tools. autrace is a tracing
+# tool that has no routine use on a server.
 -w /etc/audit/ -p wa -k T1562_Impair_Defenses
 -w /etc/audisp/ -p wa -k T1562_Impair_Defenses
 -w /etc/libaudit.conf -p wa -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/auditctl -F perm=x -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/augenrules -F perm=x -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/auditd -F perm=x -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/autrace -F perm=x -k T1562_Impair_Defenses
+
+# Audit logs: a logged-in user changed the log files. The filter keeps auditd's own writes out.
+-a always,exit -F dir=/var/log/audit -F perm=wa -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses

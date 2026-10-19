@@ -463,7 +463,7 @@ esac"
   done
 }
 
-@test "medium drops only the crontab rule when the crontab binary is missing" {
+@test "a missing binary drops only its own rule and keeps the others" {
   render_setup
   mkdir -p "$AKIT_ROOT/usr/bin" "$AKIT_ROOT/usr/sbin" "$AKIT_ROOT/etc"
   for b in bin/sudo bin/su bin/kmod sbin/auditctl sbin/augenrules sbin/auditd; do
@@ -472,9 +472,8 @@ esac"
   render --profile medium
   [ "$status" -eq 0 ]
   grep -qx -- '-a always,exit -F path=/usr/bin/sudo -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism' "$out/10-auditd-kit-minimal.rules"
-  not grep -q "path=/usr/bin/crontab" "$out/20-auditd-kit-medium.rules"
-  [ "$(grep -c "${tab}missing_binary${tab}" "$report")" -eq 1 ]
-  grep -q "20-medium.rules:[0-9]*${tab}dropped${tab}missing_binary${tab}/usr/bin/crontab\$" "$report"
+  not grep -q "path=/usr/bin/crontab" "$out/10-auditd-kit-minimal.rules"
+  grep -q "10-minimal.rules:[0-9]*${tab}dropped${tab}missing_binary${tab}/usr/bin/crontab\$" "$report"
 }
 
 @test "heavy never renders the commented all-process execve rule" {
