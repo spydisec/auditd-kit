@@ -28,6 +28,7 @@ check_preset() {
     grep -qx 'space_left_action = SYSLOG' "$file"
     grep -qx 'admin_space_left_action = SUSPEND' "$file"
     grep -qx 'disk_full_action = SUSPEND' "$file"
+    grep -qx 'disk_error_action = SUSPEND' "$file"
     grep -qx 'name_format = hostname' "$file"
   done
 }

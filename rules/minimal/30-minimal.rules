@@ -15,18 +15,14 @@
 -w /etc/sudoers.d/ -p wa -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/sudo -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/su -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
--a always,exit -F path=/bin/su -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
 
 # Audit tampering: changes to audit configuration and use of audit tools.
 -w /etc/audit/ -p wa -k T1562_Impair_Defenses
 -w /etc/audisp/ -p wa -k T1562_Impair_Defenses
 -w /etc/libaudit.conf -p wa -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/auditctl -F perm=x -k T1562_Impair_Defenses
--a always,exit -F path=/sbin/auditctl -F perm=x -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/augenrules -F perm=x -k T1562_Impair_Defenses
--a always,exit -F path=/sbin/augenrules -F perm=x -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/auditd -F perm=x -k T1562_Impair_Defenses
--a always,exit -F path=/sbin/auditd -F perm=x -k T1562_Impair_Defenses
 
 # Time: clock changes and timezone file changes.
 -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time_change
@@ -34,14 +30,7 @@
 -a always,exit -F arch=b32 -S stime -k time_change
 -w /etc/localtime -p wa -k time_change
 
-# Kernel modules: loading and unloading modules, and use of the module tools.
+# Kernel modules: loading and unloading modules, and use of kmod (insmod, rmmod, and modprobe are symlinks to it).
 -a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k T1547_Boot_or_Logon_Autostart_Execution
 -a always,exit -F arch=b32 -S init_module,finit_module,delete_module -k T1547_Boot_or_Logon_Autostart_Execution
--a always,exit -F path=/usr/sbin/insmod -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution
--a always,exit -F path=/sbin/insmod -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution
--a always,exit -F path=/usr/sbin/rmmod -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution
--a always,exit -F path=/sbin/rmmod -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution
--a always,exit -F path=/usr/sbin/modprobe -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution
--a always,exit -F path=/sbin/modprobe -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution
 -a always,exit -F path=/usr/bin/kmod -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution
--a always,exit -F path=/bin/kmod -F perm=x -k T1547_Boot_or_Logon_Autostart_Execution

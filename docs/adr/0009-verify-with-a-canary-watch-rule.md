@@ -23,6 +23,6 @@ Install creates `/etc/auditd-kit/canary`. Verify writes to that file and looks f
 
 ## Consequences
 
-Every host carries one extra watch rule. The canary file must exist before render runs, because
-some auditd versions refuse to load a watch on a path that is missing. Verify works the same in the
-minimal and standard profiles and in immutable mode, and it never changes rules.
+Every host carries one extra watch rule. The directory `/etc/auditd-kit/` must exist before the
+rules load, and install creates it along with the canary file. Verify works the same in the minimal
+and standard profiles and in immutable mode, and it never changes rules.

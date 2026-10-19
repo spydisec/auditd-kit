@@ -7,7 +7,7 @@
 # On failure, log to syslog. Never panic the host.
 -f 1
 
-# Wait up to 60 seconds for room in the backlog instead of dropping events.
+# Wait when the backlog is full instead of dropping events. 60000 jiffies is the kernel default.
 --backlog_wait_time 60000
 
 # Canary: verify writes to this file and looks for the akit_canary key.

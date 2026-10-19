@@ -39,6 +39,7 @@ line_of() {
 @test "every minimal rule has a key" {
   count=0
   while IFS= read -r line; do
+    [ -n "$line" ] || continue
     count=$((count + 1))
     case "$line" in
       *' -k '* | *'-F key='*) ;;
@@ -58,6 +59,7 @@ EOF2
   b64_only=''
   count=0
   while IFS= read -r line; do
+    [ -n "$line" ] || continue
     count=$((count + 1))
     twin=$(printf '%s\n' "$line" | sed 's/arch=b64/arch=b32/')
     if grep -qxF -- "$twin" "$minimal"; then
@@ -86,7 +88,7 @@ T1548_Abuse_Elevation_Control_Mechanism
 T1556_Modify_Authentication_Process
 T1562_Impair_Defenses
 time_change'
-  actual=$(rule_lines "$minimal" | sed -n 's/.*-k \([^ ]*\).*/\1/p' | sort -u)
+  actual=$(rule_lines "$minimal" | sed -n 's/.*\(-k \|-F key=\)\([^ ]*\).*/\2/p' | sort -u)
   [ "$actual" = "$expected" ]
 }
 
@@ -98,10 +100,8 @@ time_change'
     '-w /etc/audit/ -p wa' '-w /etc/audisp/ -p wa' '-w /etc/libaudit.conf -p wa' \
     '-w /etc/localtime -p wa' \
     '-F path=/usr/bin/sudo -F perm=x' '-F path=/usr/bin/su -F perm=x' \
-    '-F path=/usr/sbin/auditctl -F perm=x' '-F path=/sbin/auditctl -F perm=x' \
-    '-F path=/usr/sbin/augenrules -F perm=x' '-F path=/usr/sbin/auditd -F perm=x' \
-    '-F path=/sbin/modprobe -F perm=x' '-F path=/usr/sbin/modprobe -F perm=x' \
-    '-F path=/usr/bin/kmod -F perm=x' \
+    '-F path=/usr/sbin/auditctl -F perm=x' '-F path=/usr/sbin/augenrules -F perm=x' \
+    '-F path=/usr/sbin/auditd -F perm=x' '-F path=/usr/bin/kmod -F perm=x' \
     'adjtimex,settimeofday,clock_settime' '-S stime' \
     'init_module,finit_module,delete_module'; do
     grep -qF -- "$want" "$minimal" || {
@@ -109,6 +109,42 @@ time_change'
       false
     }
   done
+}
+
+@test "each rule carries the key of its area" {
+  count=0
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    count=$((count + 1))
+    case "$line" in
+      *' /etc/passwd '* | *' /etc/shadow '* | *' /etc/group '* | *' /etc/gshadow '* | *' /etc/security/opasswd '*)
+        want=T1098_Account_Manipulation ;;
+      *' /etc/pam.d/ '* | *' /etc/ssh/sshd_config '* | *' /etc/ssh/sshd_config.d/ '*)
+        want=T1556_Modify_Authentication_Process ;;
+      *' /etc/sudoers '* | *' /etc/sudoers.d/ '* | *path=/usr/bin/sudo' '* | *path=/usr/bin/su' '*)
+        want=T1548_Abuse_Elevation_Control_Mechanism ;;
+      *' /etc/audit/ '* | *' /etc/audisp/ '* | *' /etc/libaudit.conf '* | *path=/usr/sbin/audit* | *path=/usr/sbin/augenrules' '*)
+        want=T1562_Impair_Defenses ;;
+      *adjtimex* | *stime* | *' /etc/localtime '*)
+        want=time_change ;;
+      *init_module* | *path=/usr/bin/kmod' '*)
+        want=T1547_Boot_or_Logon_Autostart_Execution ;;
+      *)
+        echo "no area for: $line" >&2
+        false
+        ;;
+    esac
+    case "$line" in
+      *" -k $want") ;;
+      *)
+        echo "wrong key (want $want): $line" >&2
+        false
+        ;;
+    esac
+  done <<EOF2
+$(rule_lines "$minimal")
+EOF2
+  [ "$count" -gt 0 ]
 }
 
 @test "local README says overlay rules are 50-*.rules with no control lines" {
