@@ -1,0 +1,6 @@
+yamllint
+ansible-lint
+shellcheck-py
+shfmt-py
+zizmor
+semgrep
