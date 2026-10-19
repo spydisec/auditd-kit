@@ -1,0 +1,37 @@
+# Architecture decision records
+
+Each file records one decision, why we made it, and what follows from it. Files are numbered in
+order and never renumbered. To change a decision, write a new ADR and set the old one's status to
+`Superseded by NNNN`.
+
+Use this template:
+
+```markdown
+# NNNN. Title in sentence case
+
+Status: Proposed | Accepted | Superseded by NNNN
+Date: YYYY-MM-DD
+
+## Context
+
+The problem and the facts that shaped the decision.
+
+## Decision
+
+What we decided.
+
+## Consequences
+
+What becomes easier, what becomes harder, and what we have to do next.
+```
+
+| ADR | Title | Status |
+|---|---|---|
+| [0001](0001-supported-operating-systems.md) | Supported operating systems for v1 | Accepted |
+| [0002](0002-plain-files-with-script-and-ansible-paths.md) | Plain files with a script path and an Ansible path | Accepted |
+| [0003](0003-survey-before-change.md) | Run a read-only survey before any change | Accepted |
+| [0004](0004-local-logs-by-default.md) | Keep logs local by default and forward through one added file | Accepted |
+| [0005](0005-rule-profiles.md) | Rule profiles and upstream rule sources | Accepted |
+| [0006](0006-never-halt-the-host.md) | Never halt the host when the audit disk fills | Accepted |
+| [0007](0007-test-strategy.md) | Test strategy | Accepted |
+| [0008](0008-workflow-and-releases.md) | Trunk-based workflow and verifiable release bundles | Accepted |
