@@ -5,8 +5,7 @@
 # These follow the rules in survey-host.sh: one survey_check_<name> function per check, keys
 # through akit_kv, a non-zero return when the host cannot be read, files read under AKIT_ROOT.
 # survey.sh must set survey_root before it calls the checks, because two of them run the awk
-# programs in lib/. A list with no entries is reported as "none", except audit_volume_top_keys,
-# which is empty.
+# programs in lib/. A list with no entries is reported as "none".
 
 survey_rules_dir=/etc/audit/rules.d
 
@@ -113,7 +112,9 @@ survey_check_hardening() {
 }
 
 # Only a distro audit.rules that holds nothing but control lines gets the :control suffix, and
-# its control lines are not reported. Every other foreign file is listed plainly.
+# its control lines are not reported. Every other foreign file is listed plainly, with each of
+# its control lines (the flags in AKIT_CONTROL_FLAGS, with or without a space before the value).
+# augenrules keeps the last -f and -b it reads, so a kept file can override ours.
 survey_check_rules_d() {
   survey_df=
   survey_cl=
@@ -121,18 +122,35 @@ survey_check_rules_d() {
   for survey_n in $survey_list; do
     survey_is_akit_rule "$survey_n" && continue
     survey_body=$(survey_rules_body "$survey_n") || return 1
-    survey_ctl=$(printf '%s\n' "$survey_body" | awk '
+    # The first output line is "yes" when the file holds only control lines. The second line
+    # lists the control lines.
+    survey_ctl_out=$(printf '%s\n' "$survey_body" | awk -v f="$survey_n" '
+      function is_control(word,    n, c, i) {
+        n = split(ENVIRON["AKIT_CONTROL_FLAGS"], c, " ")
+        for (i = 1; i <= n; i++) {
+          if (word == c[i]) return 1
+          if (c[i] ~ /^--/) {
+            if (index(word, c[i] "=") == 1) return 1
+          } else if (index(word, c[i]) == 1) return 1
+        }
+        return 0
+      }
       NF == 0 {next}
-      $0 ~ /^(-D|-b|-f|-e|-i|-r|--backlog_wait_time|--loginuid-immutable)/ {next}
+      is_control($1) {
+        gsub(/[ \t]+/, " ")
+        sub(/ $/, "")
+        lines = lines (n++ ? "," : "") f ":" $0
+        next
+      }
       {bad = 1}
-      END {print (bad ? "no" : "yes")}')
+      END {print (bad ? "no" : "yes"); print lines}')
+    survey_ctl=$(printf '%s\n' "$survey_ctl_out" | sed -n 1p)
     if [ "$survey_n" = audit.rules ] && [ "$survey_ctl" = yes ]; then
       survey_df="${survey_df:+$survey_df,}$survey_n:control"
       continue
     fi
     survey_df="${survey_df:+$survey_df,}$survey_n"
-    survey_cl_new=$(printf '%s\n' "$survey_body" | awk -v f="$survey_n" '
-      $0 ~ /^-(e|D)/ {gsub(/[ \t]+/, " "); printf "%s%s:%s", (n++ ? "," : ""), f, $0}')
+    survey_cl_new=$(printf '%s\n' "$survey_ctl_out" | sed -n 2p)
     if [ -n "$survey_cl_new" ]; then
       survey_cl="${survey_cl:+$survey_cl,}$survey_cl_new"
     fi
@@ -178,7 +196,8 @@ survey_check_syslog_forwarding() {
   survey_cl=$(printf '%s\n' "$survey_rsout" | sed -n 's/^catchall //p' | survey_join ' | ')
   survey_ca=no
   [ "$survey_cl" != none ] && survey_ca=yes
-  if printf '%s\n' "$survey_rsout" | grep -x 'parse_error' >/dev/null 2>&1; then
+  # The survey can't see the forwards in a file it doesn't read, so another include fails closed.
+  if printf '%s\n' "$survey_rsout" | grep -E '^(parse_error$|include )' >/dev/null 2>&1; then
     survey_ca=unknown
   fi
   akit_kv syslog_forward_targets "$survey_tg"
@@ -227,5 +246,5 @@ survey_check_audit_volume() {
     survey_vout=$(sh "$survey_root/stats.sh" --dir "$survey_vdir" --top 10 --since "$((survey_now - 86400))" 2>/dev/null) || return 1
     survey_vtop=$(printf '%s\n' "$survey_vout" | awk '$1 == "top_key" {printf "%s%s:%s", (n++ ? "," : ""), $2, $3}')
   fi
-  akit_kv audit_volume_top_keys "$survey_vtop"
+  akit_kv audit_volume_top_keys "${survey_vtop:-none}"
 }

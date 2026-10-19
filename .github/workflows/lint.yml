@@ -47,3 +47,44 @@ jobs:
           file-install: false
       - name: Bats
         run: bats tests/bats
+
+  # The suite again with sh as bash in POSIX mode, as on RHEL, and with mawk as awk, as on Ubuntu.
+  bats-portability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: bats-core/bats-action@77d6fb60505b4d0d1d73e48bd035b55074bbfb43  # 4.0.0
+        with:
+          bats-version: 1.11.1
+          support-install: false
+          assert-install: false
+          detik-install: false
+          file-install: false
+      - name: Install mawk
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mawk
+      # Tests stub bash, so the shims call bash and mawk by their full paths.
+      - name: Bats with sh as bash --posix
+        run: |
+          shim="$RUNNER_TEMP/posix-sh"
+          mkdir -p "$shim"
+          printf '#!/bin/sh\nexec %s --posix "$@"\n' "$(command -v bash)" >"$shim/sh"
+          chmod +x "$shim/sh"
+          export PATH="$shim:$PATH"
+          [ -n "$(sh -c 'echo "${BASH_VERSION:-}"')" ]
+          bats tests/bats
+      - name: Bats with mawk as awk
+        run: |
+          shim="$RUNNER_TEMP/mawk"
+          mkdir -p "$shim"
+          printf '#!/bin/sh\nexec %s "$@"\n' "$(command -v mawk)" >"$shim/awk"
+          chmod +x "$shim/awk"
+          export PATH="$shim:$PATH"
+          awk -W version 2>&1 | grep -q mawk
+          bats tests/bats

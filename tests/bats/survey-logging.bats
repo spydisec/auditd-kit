@@ -212,6 +212,30 @@ file=0000000000000000000000000000000000000000000000000000000000000000 /etc/audit
   [ "$(key rules_d_files)" = "05-reset.rules,98-nospace.rules,99-finalize.rules" ]
 }
 
+@test "every control line in a foreign rules file is listed, with or without a space" {
+  put /etc/audit/rules.d/10-site.rules '-w /etc/hosts -p wa -k hosts
+-f 2
+-b8192
+-r 100
+-i
+--backlog_wait_time 0
+--loginuid-immutable
+-f0'
+  run_survey
+  [ "$(key rules_d_control_lines)" = "10-site.rules:-f 2,10-site.rules:-b8192,10-site.rules:-r 100,10-site.rules:-i,10-site.rules:--backlog_wait_time 0,10-site.rules:--loginuid-immutable,10-site.rules:-f0" ]
+}
+
+@test "a control-only audit.rules with -r keeps :control and lists no control lines" {
+  put /etc/audit/rules.d/audit.rules '-D
+-b 8192
+-f 1
+-r 0
+--backlog_wait_time 60000'
+  run_survey
+  [ "$(key rules_d_files)" = "audit.rules:control" ]
+  [ "$(key rules_d_control_lines)" = none ]
+}
+
 @test "a control-only file with another name is listed plainly and reported" {
   put /etc/audit/rules.d/99-finalize.rules '-e 2'
   run_survey
@@ -315,13 +339,13 @@ path = /sbin/audisp-syslog'
   expected=$(sh "$repo/scripts/stats.sh" --dir "$logs/keys" --top 10 | awk '$1 == "top_key" {printf "%s%s:%s", (n++ ? "," : ""), $2, $3}')
   [ "$all" = "$expected" ]
   AKIT_NOW=1800000000 run_survey
-  [ -z "$(key audit_volume_top_keys)" ]
+  [ "$(key audit_volume_top_keys)" = none ]
   [ "$(key survey_errors)" = "" ]
 }
 
-@test "audit_volume_top_keys is empty without logs" {
+@test "audit_volume_top_keys is none without logs" {
   run_survey
-  grep -q '^audit_volume_top_keys=$' <<<"$output"
+  grep -q '^audit_volume_top_keys=none$' <<<"$output"
 }
 
 @test "the new keys follow the existing ones in order, in text and JSON" {
@@ -332,7 +356,31 @@ path = /sbin/audisp-syslog'
   [ "$order" = "akit_state_profile agents hardening_loginuid_immutable hardening_rule_files rules_d_files rules_d_control_lines syslog_daemon syslog_version syslog_forward_targets syslog_facilities_used syslog_catchall syslog_catchall_lines syslog_dropins syslog_plugin_installed audit_volume_top_keys survey_errors " ]
   run_survey --json
   [[ "$output" == *'"akit_state_profile":"","agents":"none",'* ]]
-  [[ "$output" == *'"audit_volume_top_keys":"","survey_errors":""}' ]]
+  [[ "$output" == *'"audit_volume_top_keys":"none","survey_errors":""}' ]]
+}
+
+@test "the standard rsyslog.d include is read as before" {
+  put /etc/rsyslog.conf '$IncludeConfig /etc/rsyslog.d/*.conf
+include(file="/etc/rsyslog.d/*.conf" mode="optional")
+kern.* /dev/console'
+  run_survey
+  [ "$(key syslog_catchall)" = no ]
+}
+
+@test "an \$IncludeConfig outside rsyslog.d makes syslog_catchall unknown" {
+  put /etc/rsyslog.conf '$IncludeConfig /etc/rsyslog.conf.d/*.conf
+kern.* /dev/console'
+  run_survey
+  [ "$status" -eq 0 ]
+  [ "$(key syslog_catchall)" = unknown ]
+}
+
+@test "an include(file=...) outside rsyslog.d makes syslog_catchall unknown" {
+  put /etc/rsyslog.conf 'include(file="/opt/site/rsyslog/*.conf" mode="optional")
+kern.* /dev/console'
+  run_survey
+  [ "$status" -eq 0 ]
+  [ "$(key syslog_catchall)" = unknown ]
 }
 
 @test "a failing logging check reports its keys as unknown and exits 0" {

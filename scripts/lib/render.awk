@@ -5,8 +5,9 @@
 #
 # Variables (-v): mode, strip (1 to drop control lines), b32_ok (1 when b32 rules can load),
 # selinux (1 when SELinux has a loaded policy).
-# Environment: AKIT_RENDER_LABEL (source name for the report), AKIT_RENDER_ARCH, and
-# AKIT_RENDER_TMP, the dir that holds the b64, b32, missing, and report files.
+# Environment: AKIT_RENDER_LABEL (source name for the report), AKIT_RENDER_ARCH,
+# AKIT_RENDER_TMP, the dir that holds the b64, b32, missing, and report files, and
+# AKIT_CONTROL_FLAGS from common.sh.
 
 function load_syscalls(file, set, line, n, f) {
   # Accept one name per line, or the "<number> <name>" lines of ausyscall --dump.
@@ -36,9 +37,19 @@ function parent(p) {
   return p
 }
 
-function is_control(word) {
-  return word == "-D" || word == "-b" || word == "-f" || word == "-e" || word == "-i" ||
-    word == "--backlog_wait_time" || word == "--loginuid-immutable"
+# A control flag alone, or with its value attached, as in -f2 or --backlog_wait_time=0.
+function is_control(word,    n, f, i) {
+  n = split(ENVIRON["AKIT_CONTROL_FLAGS"], f, " ")
+  for (i = 1; i <= n; i++) {
+    if (word == f[i])
+      return 1
+    if (f[i] ~ /^--/) {
+      if (index(word, f[i] "=") == 1)
+        return 1
+    } else if (index(word, f[i]) == 1)
+      return 1
+  }
+  return 0
 }
 
 function act(action, reason, detail) {

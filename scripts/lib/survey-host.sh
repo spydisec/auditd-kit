@@ -142,6 +142,23 @@ survey_check_audit_enabled() {
   esac
 }
 
+# On auditd 2.x and 3.x the failure line is "failure N". Older AUDIT_STATUS output calls it flag=N.
+survey_check_audit_failure() {
+  if [ "$survey_have_auditctl" != yes ]; then
+    akit_kv audit_failure unknown
+    return 0
+  fi
+  survey_out=$(auditctl -s 2>/dev/null) || return 1
+  survey_fail=$(printf '%s\n' "$survey_out" | awk '{
+    gsub(/=/, " ")
+    for (i = 1; i < NF; i++) if ($i == "failure" || $i == "flag") { print $(i + 1); exit }
+  }')
+  case "$survey_fail" in
+    0 | 1 | 2) akit_kv audit_failure "$survey_fail" ;;
+    *) akit_kv audit_failure unknown ;;
+  esac
+}
+
 # survey_cmdline_value <name>: print the value of a kernel parameter, or "unset".
 survey_cmdline_value() {
   survey_cmdline=$(akit_path /proc/cmdline)

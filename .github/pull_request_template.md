@@ -4,7 +4,7 @@ What this change does and why.
 
 ## Changes
 
-- 
+-
 
 ## Testing
 

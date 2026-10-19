@@ -13,7 +13,8 @@ reboot.
 ## Decision
 
 The default `auditd.conf` presets set `admin_space_left_action` and `disk_full_action` to `SUSPEND`.
-auditd then stops writing local logs, and the host keeps running. Failures go to syslog (`-f 1`),
+auditd then stops writing local logs, and the host keeps running. The presets also set
+`disk_error_action = SUSPEND`, so a disk error doesn't halt the host either. Failures go to syslog (`-f 1`),
 not to a kernel panic. Immutable mode is off by default and is turned on with `akit_immutable`.
 auditd-kit doesn't change kernel boot parameters.
 

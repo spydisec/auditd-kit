@@ -74,6 +74,7 @@ survey_check auditd_installed auditd_installed
 survey_check auditd_version auditd_version
 survey_check audit_rule_count audit_rule_count
 survey_check audit_enabled audit_enabled
+survey_check audit_failure audit_failure
 survey_check boot_audit boot_audit
 survey_check boot_audit_backlog_limit boot_audit_backlog_limit
 survey_check audit_log_dir audit_log_dir_fs audit_log_dir_mount audit_log_free_mb audit_log_free_inodes
