@@ -526,6 +526,69 @@ auth.*;\
   [ "$(key syslog_catchall_lines)" = "*.*;mail.none @@192.0.2.1" ]
 }
 
+# conf_case <expected-targets> <expected-catchall> <conf>: survey a one-file rsyslog config.
+conf_case() {
+  put /etc/rsyslog.conf "$3"
+  run_survey
+  [ "$(key syslog_forward_targets)" = "$1" ]
+  [ "$(key syslog_catchall)" = "$2" ]
+}
+
+@test "selector items apply left to right, so a later item can select local6 again" {
+  conf_case 198.51.100.17:514/tcp yes '*.none;local6.* @@198.51.100.17'
+  conf_case 192.0.2.14:514/tcp yes 'local6.none;local6.info @@192.0.2.14'
+  conf_case 198.51.100.18:514/tcp yes 'auth.*;*.none;local6.info @@198.51.100.18'
+  conf_case 192.0.2.1:514/tcp no 'local6.*;local6.none @@192.0.2.1'
+  conf_case 192.0.2.1:514/tcp no 'auth.*;*.none;mail.* @@192.0.2.1'
+}
+
+@test "set, foreach, and if blocks on one line still reach the action" {
+  conf_case 192.0.2.11:514/udp yes 'set $.x = "a"; action(type="omfwd" target="192.0.2.11")'
+  conf_case 192.0.2.5:514/udp yes 'foreach ($.i in $!arr) do { action(type="omfwd" target="192.0.2.5") }'
+  conf_case 198.51.100.21:514/udp yes 'foreach ($.i in $!a) do {
+  set $.y = $.i; action(type="omfwd" target="198.51.100.21")
+}'
+  conf_case 192.0.2.12:514/udp yes "if \$msg contains 'z' then { set \$!a = \"1\"; action(type=\"omfwd\" target=\"192.0.2.12\") }"
+  conf_case 192.0.2.4:514/udp yes 'foreach ($.i in $!a) do
+  action(type="omfwd" target="192.0.2.4")'
+}
+
+@test "call_indirect makes every ruleset used" {
+  conf_case 192.0.2.13:514/udp yes 'ruleset(name="fw13") {
+  action(type="omfwd" target="192.0.2.13")
+}
+set $.rs = "fw13";
+call_indirect $.rs;'
+}
+
+@test "a legacy omruleset binding makes its ruleset used" {
+  conf_case 192.0.2.20:514/tcp yes '$RuleSet fwd18
+*.* @@192.0.2.20
+$RuleSet RSYSLOG_DefaultRuleset
+$ActionOmrulesetRulesetName fwd18
+*.* :omruleset:'
+}
+
+@test "the word then inside a string does not end the if filter" {
+  conf_case 192.0.2.15:514/tcp yes 'if $msg contains " then " then @@192.0.2.15'
+}
+
+@test "a then on the next line and a multi-line template parse cleanly" {
+  conf_case 192.0.2.18:514/udp yes "if \$programname == 'x'
+  then {
+  action(type=\"omfwd\" target=\"192.0.2.18\")
+}"
+  conf_case none no 'template(name="t" type="list") {
+  property(name="msg"
+    controlcharacters="escape")
+  constant(value="\n")
+}'
+}
+
+@test "a backtick target is recorded as its backtick text" {
+  conf_case '`echo x`:514/udp' yes 'action(type="omfwd" target=`echo x` port="514")'
+}
+
 @test "survey still changes nothing" {
   put /etc/rsyslog.conf '*.* @@192.0.2.1'
   put /etc/audit/rules.d/99.rules '-e 2'

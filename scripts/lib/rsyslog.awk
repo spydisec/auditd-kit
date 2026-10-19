@@ -26,7 +26,7 @@
 BEGIN {
   nfac = split("kern user mail daemon auth syslog lpr news uucp cron authpriv ftp ntp security console local0 local1 local2 local3 local4 local5 local6 local7", fl, " ")
   for (i = 1; i <= nfac; i++) known[fl[i]] = 1
-  nkw = split("action if ruleset module input template include main_queue global call set foreach parser lookup_table timezone unset reload_lookup_table ratelimit", kl, " ")
+  nkw = split("action if ruleset module input template include main_queue global call set foreach parser lookup_table timezone unset reload_lookup_table ratelimit property constant", kl, " ")
   for (i = 1; i <= nkw; i++) kw[kl[i]] = 1
 }
 
@@ -62,7 +62,7 @@ function clean(s,    out, i, n, c, d, q) {
       }
       continue
     }
-    if (c == "\"" || c == "'") {
+    if (c == "\"" || c == "'" || c == "`") {
       q = c
       out = out c
     } else if (d == "/*" && (i == 1 || substr(s, i - 1, 1) ~ /[ \t]/)) {
@@ -87,7 +87,7 @@ function match_paren(s, i,    n, c, d, q) {
     if (q != "") {
       if (c == "\\") i++
       else if (c == q) q = ""
-    } else if (c == "\"" || c == "'") q = c
+    } else if (c == "\"" || c == "'" || c == "`") q = c
     else if (c == "(") d++
     else if (c == ")") {
       d--
@@ -106,7 +106,7 @@ function depth(s,    i, n, c, d, q) {
     if (q != "") {
       if (c == "\\") i++
       else if (c == q) q = ""
-    } else if (c == "\"" || c == "'") q = c
+    } else if (c == "\"" || c == "'" || c == "`") q = c
     else if (c == "(") d++
     else if (c == ")") d--
   }
@@ -120,6 +120,48 @@ function needs_buffer(s,    low, w) {
   if (match(low, /^[a-z_]+/)) {
     w = substr(low, 1, RLENGTH)
     if (w in kw) return 1
+  }
+  return 0
+}
+
+# find_then(s): index of the character before the "then" keyword outside quotes, or 0.
+function find_then(s,    i, n, c, q) {
+  n = length(s)
+  q = ""
+  for (i = 1; i <= n; i++) {
+    c = substr(s, i, 1)
+    if (q != "") {
+      if (c == "\\") i++
+      else if (c == q) q = ""
+    } else if (c == "\"" || c == "'" || c == "`") q = c
+    else if (c ~ /[ \t)]/ && tolower(substr(s, i + 1, 4)) == "then" && substr(s, i + 5, 1) ~ /^([ \t{]|)$/) return i
+  }
+  return 0
+}
+
+# if_incomplete(s): an if or else if statement whose "then" is on a later line.
+function if_incomplete(s) {
+  s = trim(s)
+  sub(/^\}[ \t]*/, "", s)
+  if (tolower(substr(s, 1, 4)) == "else" && substr(s, 5, 1) ~ /[ \t]/) s = trim(substr(s, 5))
+  if (tolower(s) !~ /^if[ \t(]/) return 0
+  return find_then(s) == 0
+}
+
+# semi_end(s): index of the first ; outside quotes and parentheses, or 0.
+function semi_end(s,    i, n, c, q, d) {
+  n = length(s)
+  q = ""
+  d = 0
+  for (i = 1; i <= n; i++) {
+    c = substr(s, i, 1)
+    if (q != "") {
+      if (c == "\\") i++
+      else if (c == q) q = ""
+    } else if (c == "\"" || c == "'" || c == "`") q = c
+    else if (c == "(") d++
+    else if (c == ")") d--
+    else if (c == ";" && d == 0) return i
   }
   return 0
 }
@@ -175,12 +217,10 @@ function use_sel(sel,    items, ni, k, it, p, lev, fa, nfa, m) {
 
 # safe_sel(sel): 1 when the selector names only specific facilities, none of them local0 to
 # local7 unless excluded with .none, and no *.
-function safe_sel(sel,    items, ni, k, it, p, lev, fa, nfa, m, npos, pos, ex, exall, f) {
+function safe_sel(sel,    items, ni, k, it, p, lev, fa, nfa, m, f, j, st) {
   gsub(/[ \t]/, "", sel)
   if (sel == "") return 0
-  split("", ex)
-  split("", pos)
-  exall = 0
+  split("", st)
   npos = 0
   ni = split(sel, items, ";")
   for (k = 1; k <= ni; k++) {
@@ -191,24 +231,21 @@ function safe_sel(sel,    items, ni, k, it, p, lev, fa, nfa, m, npos, pos, ex, e
     sub(/^[!=]+/, "", lev)
     if (lev == "") return 0
     nfa = split(tolower(substr(it, 1, p - 1)), fa, ",")
-    if (lev == "none") {
-      for (m = 1; m <= nfa; m++) {
-        if (fa[m] == "*") exall = 1
-        else ex[fa[m]] = 1
+    for (m = 1; m <= nfa; m++) {
+      f = fa[m]
+      if (f == "*") {
+        if (lev != "none") return 0
+        for (j = 0; j < 8; j++) st["local" j] = 0
+      } else if (!(f in known)) {
+        return 0
+      } else if (f ~ /^local[0-7]$/) {
+        st[f] = (lev == "none") ? 0 : 1
       }
-    } else {
-      pos[++npos] = tolower(substr(it, 1, p - 1))
+      if (lev != "none") npos++
     }
   }
   if (npos == 0) return 0
-  for (k = 1; k <= npos; k++) {
-    nfa = split(pos[k], fa, ",")
-    for (m = 1; m <= nfa; m++) {
-      f = fa[m]
-      if (f == "*" || !(f in known)) return 0
-      if (f ~ /^local[0-7]$/ && !exall && !(f in ex)) return 0
-    }
-  }
+  for (j = 0; j < 8; j++) if (st["local" j]) return 0
   return 1
 }
 
@@ -315,7 +352,16 @@ function parse_params(body,    s, i, n, c, key, val, qc) {
     while (i <= n && substr(s, i, 1) ~ /[ \t]/) i++
     val = ""
     qc = substr(s, i, 1)
-    if (qc == "\"" || qc == "'") {
+    if (qc == "`") {
+      val = "`"
+      i++
+      while (i <= n && substr(s, i, 1) != qc) {
+        val = val substr(s, i, 1)
+        i++
+      }
+      val = val "`"
+      i++
+    } else if (qc == "\"" || qc == "'") {
       i++
       while (i <= n && substr(s, i, 1) != qc) {
         if (substr(s, i, 1) == "\\") i++
@@ -342,6 +388,7 @@ function action_stmt(s, extra_safe, seltext,    i, j, type, tgt, port, proto, te
     return ""
   }
   parse_params(substr(s, i + 1, j - i - 1))
+  bind(P["ruleset"])
   note_ctx(extra_safe)
   type = tolower(P["type"])
   if ((type == "omfwd" || type == "omrelp") && P["target"] != "") {
@@ -350,7 +397,7 @@ function action_stmt(s, extra_safe, seltext,    i, j, type, tgt, port, proto, te
     if (port == "") port = 514
     proto = (type == "omrelp") ? "relp" : tolower(P["protocol"])
     if (proto == "") proto = "udp"
-    if (index(tgt, ":") > 0 && substr(tgt, 1, 1) != "[") tgt = "[" tgt "]"
+    if (index(tgt, ":") > 0 && substr(tgt, 1, 1) != "[" && substr(tgt, 1, 1) != "`") tgt = "[" tgt "]"
     text = substr(s, 1, j)
     gsub(/[ \t]+/, " ", text)
     forward(tgt ":" port "/" proto, seltext text)
@@ -421,7 +468,7 @@ function directive(d,    low, n, w) {
   n = split(d, w, /[ \t]+/)
   if (low ~ /^\$ruleset[ \t]/) {
     lrs = (w[2] == "RSYSLOG_DefaultRuleset") ? "" : w[2]
-  } else if (low ~ /^\$[a-z]*bindruleset[ \t]/ || low ~ /^\$defaultruleset[ \t]/) {
+  } else if (low ~ /^\$[a-z]*bindruleset[ \t]/ || low ~ /^\$defaultruleset[ \t]/ || low ~ /^\$actionomrulesetrulesetname[ \t]/) {
     bind(w[2])
   }
 }
@@ -445,7 +492,7 @@ function handle_else(r,    rest, t) {
 
 function handle_if(s, iselse,    low, p, expr, rest, entry, t) {
   low = tolower(s)
-  p = match(low, /[ \t)]then([ \t{]|$)/)
+  p = find_then(s)
   if (!p) {
     perr = 1
     return ""
@@ -515,7 +562,7 @@ function stmt1(s,    low, c, w, p, name, r, p2) {
   if (s == "") return ""
   c = substr(s, 1, 1)
   if (pend != "" && c != "{") {
-    if (pend == "else" || substr(pend, 1, 3) == "if:") {
+    if (pend == "else" || pend == "foreach" || substr(pend, 1, 3) == "if:") {
       p = pend
       pend = ""
       push(p)
@@ -526,6 +573,7 @@ function stmt1(s,    low, c, w, p, name, r, p2) {
     pend = ""
   }
   low = tolower(s)
+  if (c == ";") return substr(s, 2)
   if (c == "{") {
     push(pend != "" ? pend : "block")
     pend = ""
@@ -540,19 +588,45 @@ function stmt1(s,    low, c, w, p, name, r, p2) {
   if (low ~ /^if[ \t(]/) return handle_if(s, 0)
   if (low ~ /^else([ \t{]|$)/) return handle_else(s)
   if (low ~ /^action[ \t]*\(/) return action_stmt(s, 0, "")
+  if (low ~ /^call_indirect([ \t;]|$)/) {
+    call_ind = 1
+    p = semi_end(s)
+    return p ? substr(s, p + 1) : ""
+  }
   if (low ~ /^call[ \t]/) {
     r = trim(substr(s, 5))
     name = r
-    sub(/[ \t}].*$/, "", name)
+    sub(/[ \t};].*$/, "", name)
     bind(name)
     return trim(substr(r, length(name) + 1))
   }
-  if (low ~ /^(stop|continue)([ \t}]|$)/) {
+  if (low ~ /^(stop|continue)([ \t};]|$)/) {
     return trim(substr(s, (substr(low, 1, 4) == "stop" ? 5 : 9)))
   }
-  if (low ~ /^(set|unset|reload_lookup_table|foreach)([ \t(]|$)/) {
-    if (s ~ /\{[ \t]*$/) push("block")
-    return ""
+  if (low ~ /^foreach[ \t]*\(/) {
+    p = match_paren(s, index(s, "("))
+    if (p == 0) {
+      perr = 1
+      return ""
+    }
+    r = trim(substr(s, p + 1))
+    if (tolower(r) ~ /^do([ \t{]|$)/) r = trim(substr(r, 3))
+    if (substr(r, 1, 1) == "{") {
+      push("foreach")
+      return substr(r, 2)
+    }
+    if (r == "") {
+      pend = "foreach"
+      return ""
+    }
+    push("foreach")
+    r = stmt1(r)
+    pop()
+    return r
+  }
+  if (low ~ /^(set|unset|reload_lookup_table)([ \t(]|$)/) {
+    p = semi_end(s)
+    return p ? substr(s, p + 1) : ""
   }
   if (low ~ /^(module|input|template|global|main_queue|parser|lookup_table|timezone|include|ratelimit|ruleset|property|constant)[ \t]*\(/) {
     p = index(s, "(")
@@ -621,7 +695,7 @@ FNR == 1 {
     cont = 1
     next
   }
-  if (needs_buffer(buf) && depth(buf) > 0) next
+  if ((needs_buffer(buf) && depth(buf) > 0) || if_incomplete(buf)) next
   stmt = buf
   buf = ""
   handle(stmt)
@@ -630,7 +704,7 @@ FNR == 1 {
 END {
   finish_file()
   for (i = 1; i <= nfw; i++) {
-    if (!fsafe[i] && !fown[i] && (frs[i] == "" || (frs[i] in bound))) add_catch(ftext[i])
+    if (!fsafe[i] && !fown[i] && (frs[i] == "" || call_ind || (frs[i] in bound))) add_catch(ftext[i])
   }
   for (i = 1; i <= nt; i++) print "target " tlist[i]
   for (i = 1; i <= nf; i++) print "facility " flist[i]
