@@ -46,6 +46,8 @@ function rule_ok(n, t, i, flag, val) {
   return 1
 }
 
+# Some valid auditctl forms are rejected on purpose because the kit does not use them:
+# "-w PATH -F key=X", "-c", and "-r".
 function watch_ok(n, t, i) {
   if (n < 2 || t[2] !~ /^\//)
     return 0

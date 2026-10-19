@@ -229,12 +229,85 @@ extra_rules() {
 
 @test "rule_count matches the -a and -w lines written" {
   render_setup
-  extra_rules '-a always,exit -F arch=b64 -S adjtimex -k test_keep'
+  mkdir -p "$AKIT_ROOT/etc"
+  extra_rules '-a always,exit -F arch=b64 -S adjtimex -k test_keep' \
+    '  -w /etc/indented -p wa -k test_indent' \
+    "-a${tab}always,exit -F arch=b64 -S adjtimex -k test_tab"
   render --profile standard --extra-dir "$extra"
   [ "$status" -eq 0 ]
-  n=$(cat "$out"/*.rules | grep -Ec -- '^-[aAw] ')
+  grep -q test_indent "$out/50-test.rules"
+  grep -q test_tab "$out/50-test.rules"
+  n=$(cat "$out"/*.rules | grep -Ec -- '^[[:space:]]*-[aAw][[:space:]]')
   [ "$n" -gt 0 ]
   [ "$output" = "rule_count=$n" ]
+}
+
+@test "SELinux rules are dropped with no_selinux when no policy is loaded" {
+  render_setup
+  extra_rules \
+    '-a never,user -F subj_type=crond_t' \
+    '-a always,exit -F arch=b64 -S adjtimex -F obj_uid=0 -k test_objuid'
+  render --extra-dir "$extra"
+  [ "$status" -eq 0 ]
+  not grep -q crond_t "$out/50-test.rules"
+  grep -q test_objuid "$out/50-test.rules"
+  grep -q "50-test.rules:1${tab}dropped${tab}no_selinux${tab}subj_type=crond_t\$" "$report"
+}
+
+@test "SELinux rules are kept when a policy is loaded" {
+  render_setup
+  mkdir -p "$AKIT_ROOT/sys/fs/selinux"
+  touch "$AKIT_ROOT/sys/fs/selinux/enforce"
+  extra_rules '-a never,user -F subj_type=crond_t'
+  render --extra-dir "$extra"
+  [ "$status" -eq 0 ]
+  grep -qx -- '-a never,user -F subj_type=crond_t' "$out/50-test.rules"
+  not grep -q no_selinux "$report"
+}
+
+@test "an unreadable extra file gives exit 1 and leaves no out dir and no report" {
+  render_setup
+  if [ "$(id -u)" -eq 0 ]; then
+    skip "root can read any file"
+  fi
+  extra_rules '-a always,exit -F arch=b64 -S adjtimex -k test_keep'
+  chmod 000 "$extra/50-test.rules"
+  render --extra-dir "$extra"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *50-test.rules* ]]
+  [ ! -e "$out" ]
+  [ ! -e "$report" ]
+}
+
+@test "a report path that can't be written gives exit 1 and leaves no out dir" {
+  render_setup
+  touch "$BATS_TEST_TMPDIR/plainfile"
+  run sh "$lib/render.sh" --profile minimal --size medium --out-dir "$out" \
+    --report "$BATS_TEST_TMPDIR/plainfile/report.txt"
+  [ "$status" -eq 1 ]
+  [ ! -e "$out" ]
+}
+
+@test "an empty syscall table is refused" {
+  render_setup
+  : >"$BATS_TEST_TMPDIR/empty.txt"
+  AKIT_SYSCALLS_B64="$BATS_TEST_TMPDIR/empty.txt" render
+  [ "$status" -eq 1 ]
+  [ ! -e "$out" ]
+  AKIT_SYSCALLS_B32="$BATS_TEST_TMPDIR/empty.txt" render
+  [ "$status" -eq 1 ]
+  AKIT_ARCH=aarch64 AKIT_SYSCALLS_B32="$BATS_TEST_TMPDIR/empty.txt" render
+  [ "$status" -eq 0 ]
+}
+
+@test "a backslash in the extra dir path is reported as it is" {
+  render_setup
+  bs_extra="$BATS_TEST_TMPDIR/ex\\tra"
+  mkdir -p "$bs_extra"
+  echo '-a always,exit -F arch=b64 -S adjtimex,fakecall -k test_comma' >"$bs_extra/50-test.rules"
+  render --extra-dir "$bs_extra"
+  [ "$status" -eq 0 ]
+  grep -qF "$bs_extra/50-test.rules:1${tab}trimmed" "$report"
 }
 
 @test "render works from any directory" {

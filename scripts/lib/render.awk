@@ -3,8 +3,10 @@
 # mode=paths prints each host path a rule depends on, one per line, so render.sh can test them.
 # mode=render prints the rendered file on stdout and appends actions to the report file.
 #
-# Variables: mode, label (source name for the report), strip (1 to drop control lines),
-# b32_ok (1 when b32 rules can load), arch, b64_file, b32_file, missing_file, report.
+# Variables (-v): mode, strip (1 to drop control lines), b32_ok (1 when b32 rules can load),
+# selinux (1 when SELinux has a loaded policy).
+# Environment: AKIT_RENDER_LABEL (source name for the report), AKIT_RENDER_ARCH, and
+# AKIT_RENDER_TMP, the dir that holds the b64, b32, missing, and report files.
 
 function load_syscalls(file, set, line, n, f) {
   # Accept one name per line, or the "<number> <name>" lines of ausyscall --dump.
@@ -52,10 +54,14 @@ function known_syscall(name, b32) {
 }
 
 BEGIN {
+  label = ENVIRON["AKIT_RENDER_LABEL"]
+  arch = ENVIRON["AKIT_RENDER_ARCH"]
+  tmp = ENVIRON["AKIT_RENDER_TMP"]
+  report = tmp "/report"
   if (mode == "render") {
-    load_syscalls(b64_file, b64_calls)
-    load_syscalls(b32_file, b32_calls)
-    load_lines(missing_file, missing)
+    load_syscalls(tmp "/b64", b64_calls)
+    load_syscalls(tmp "/b32", b32_calls)
+    load_lines(tmp "/missing", missing)
     print "# Rendered by auditd-kit from " label ". Do not edit."
   }
 }
@@ -84,6 +90,7 @@ BEGIN {
   watch = ""
   dir = ""
   binary = ""
+  selinux_field = ""
   for (i = 1; i < n; i++) {
     if (t[i] == "-w")
       watch = t[i + 1]
@@ -96,6 +103,8 @@ BEGIN {
         dir = value
       else if (field ~ /^(path|exe)=/)
         binary = value
+      else if (field ~ /^(subj_(user|role|type|sen|clr)|obj_(user|role|type|lev_low|lev_high))[!<>=&]/)
+        selinux_field = field
     }
   }
 
@@ -111,6 +120,10 @@ BEGIN {
 
   if (rule_arch == "b32" && !b32_ok) {
     act("dropped", "no_b32", arch)
+    next
+  }
+  if (selinux_field != "" && !selinux) {
+    act("dropped", "no_selinux", selinux_field)
     next
   }
   if (watch != "" && (parent(watch) in missing)) {
