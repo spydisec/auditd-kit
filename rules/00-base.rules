@@ -1,3 +1,5 @@
+# Base rules for every profile. Render fills in the backlog value and keeps the control lines.
+
 # Delete all existing rules before loading ours.
 -D
 
@@ -13,3 +15,11 @@
 
 # Canary: verify writes to this file and looks for the akit_canary key.
 -w /etc/auditd-kit/canary -p wa -k akit_canary
+
+# Audit tampering: changes to audit configuration and use of audit tools.
+-w /etc/audit/ -p wa -k T1562_Impair_Defenses
+-w /etc/audisp/ -p wa -k T1562_Impair_Defenses
+-w /etc/libaudit.conf -p wa -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/auditctl -F perm=x -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/augenrules -F perm=x -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/auditd -F perm=x -k T1562_Impair_Defenses

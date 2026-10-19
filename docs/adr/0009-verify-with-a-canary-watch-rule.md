@@ -11,7 +11,7 @@ changes, so verify can't add a rule when it runs.
 
 ## Decision
 
-The canary rule is part of `rules/base/00-init.rules`, so every profile loads it, and it is in place
+The canary rule is part of `rules/00-base.rules`, so every profile loads it, and it is in place
 before any immutable lock:
 
 ```
@@ -24,5 +24,5 @@ Install creates `/etc/auditd-kit/canary`. Verify writes to that file and looks f
 ## Consequences
 
 Every host carries one extra watch rule. The directory `/etc/auditd-kit/` must exist before the
-rules load, and install creates it along with the canary file. Verify works the same in the minimal
-and standard profiles and in immutable mode, and it never changes rules.
+rules load, and install creates it along with the canary file. Verify works the same in every
+profile and in immutable mode, and it never changes rules.

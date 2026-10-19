@@ -31,9 +31,10 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0002](0002-plain-files-with-script-and-ansible-paths.md) | Plain files with a script path and an Ansible path | Accepted |
 | [0003](0003-survey-before-change.md) | Run a read-only survey before any change | Accepted |
 | [0004](0004-local-logs-by-default.md) | Keep logs local by default and forward through one added file | Accepted |
-| [0005](0005-rule-profiles.md) | Rule profiles and upstream rule sources | Accepted |
+| [0005](0005-rule-profiles.md) | Rule profiles and upstream rule sources | Superseded by 0011 |
 | [0006](0006-never-halt-the-host.md) | Never halt the host when the audit disk fills | Accepted |
 | [0007](0007-test-strategy.md) | Test strategy | Accepted |
 | [0008](0008-workflow-and-releases.md) | Trunk-based workflow and verifiable release bundles | Accepted |
 | [0009](0009-verify-with-a-canary-watch-rule.md) | Verify with a canary watch rule | Accepted |
 | [0010](0010-render-trims-unknown-syscalls.md) | Render trims unknown syscalls and strips control lines | Accepted |
+| [0011](0011-our-own-layered-rule-profiles.md) | Our own layered rule profiles | Accepted |

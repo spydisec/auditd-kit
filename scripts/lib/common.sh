@@ -13,8 +13,8 @@ AKIT_EXIT_ROLLBACK_FAILED=3
 export AKIT_EXIT_OK AKIT_EXIT_REFUSED AKIT_EXIT_FAILED AKIT_EXIT_ROLLBACK_FAILED
 
 # The auditctl options that set the audit system itself instead of adding a rule. A line that
-# starts with one of them is a control line. Only rules/base sets them. Exported so that awk
-# programs can read the list from ENVIRON.
+# starts with one of them is a control line. Only rules/00-base.rules sets them. Exported so
+# that awk programs can read the list from ENVIRON.
 AKIT_CONTROL_FLAGS='-D -b -f -e -r -i --backlog_wait_time --loginuid-immutable'
 export AKIT_CONTROL_FLAGS
 

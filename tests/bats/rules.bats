@@ -1,13 +1,16 @@
 #!/usr/bin/env bats
 
 repo=$(cd "$BATS_TEST_DIRNAME/../.." && pwd)
-init="$repo/rules/base/00-init.rules"
-finalize="$repo/rules/base/99-finalize.rules"
-minimal="$repo/rules/minimal/30-minimal.rules"
+rules="$repo/rules"
+base="$rules/00-base.rules"
+minimal="$rules/10-minimal.rules"
+medium="$rules/20-medium.rules"
+heavy="$rules/30-heavy.rules"
+finalize="$rules/99-finalize.rules"
 
 # Lines that are not blank and not comments.
 rule_lines() {
-  grep -Ev '^[[:space:]]*(#|$)' "$1"
+  grep -Ev '^[[:space:]]*(#|$)' "$@"
 }
 
 # Line number of the first line that equals $2 exactly in file $1.
@@ -15,7 +18,18 @@ line_of() {
   grep -nxF -- "$2" "$1" | head -n 1 | cut -d: -f1
 }
 
-@test "base init sets -D, backlog placeholder, -f 1, backlog_wait_time, canary" {
+# keys_of <file>...: the sorted set of rule keys in the files.
+keys_of() {
+  rule_lines "$@" | sed -n 's/.*\(-k \|-F key=\)\([^ ]*\).*/\2/p' | LC_ALL=C sort -u
+}
+
+@test "the old rule dirs are gone" {
+  for d in base minimal standard local; do
+    [ ! -e "$rules/$d" ]
+  done
+}
+
+@test "base sets -D, backlog placeholder, -f 1, backlog_wait_time, canary" {
   prev=0
   for line in \
     '-D' \
@@ -23,7 +37,7 @@ line_of() {
     '-f 1' \
     '--backlog_wait_time 60000' \
     '-w /etc/auditd-kit/canary -p wa -k akit_canary'; do
-    n=$(line_of "$init" "$line")
+    n=$(line_of "$base" "$line")
     [ -n "$n" ]
     [ "$n" -gt "$prev" ]
     prev=$n
@@ -36,7 +50,19 @@ line_of() {
   [ "$output" = "-e 2" ]
 }
 
-@test "every minimal rule has a key" {
+@test "only base sets control lines" {
+  run grep -El -- '^[[:space:]]*(-D|-b|-f|-e|-r|-i|--backlog_wait_time|--loginuid-immutable)([[:space:]=]|$)' \
+    "$base" "$minimal" "$medium" "$heavy"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$base" ]
+}
+
+@test "no rule file sets -f 2" {
+  run grep -E '^[[:space:]]*-f[[:space:]]+2([[:space:]]|$)' "$rules"/*.rules
+  [ "$status" -eq 1 ]
+}
+
+@test "every profile rule has a key" {
   count=0
   while IFS= read -r line; do
     [ -n "$line" ] || continue
@@ -49,47 +75,60 @@ line_of() {
         ;;
     esac
   done <<EOF2
-$(grep -E '^[[:space:]]*-[aw][[:space:]]' "$minimal")
+$(grep -hE '^[[:space:]]*-[aw][[:space:]]' "$base" "$minimal" "$medium" "$heavy")
 EOF2
   [ "$count" -gt 0 ]
 }
 
-@test "every b64 syscall rule in minimal has a b32 twin" {
+@test "every b64 syscall rule has a b32 twin in the same file" {
   # Syscalls that exist on b64 only. A b64 rule that names one of these needs no b32 twin.
   b64_only=''
   count=0
-  while IFS= read -r line; do
-    [ -n "$line" ] || continue
-    count=$((count + 1))
-    twin=$(printf '%s\n' "$line" | sed 's/arch=b64/arch=b32/')
-    if grep -qxF -- "$twin" "$minimal"; then
-      continue
-    fi
-    skip=no
-    for sc in $b64_only; do
-      case "$line" in
-        *"$sc"*) skip=yes ;;
-      esac
-    done
-    if [ "$skip" = no ]; then
-      echo "no b32 twin: $line" >&2
-      false
-    fi
-  done <<EOF2
-$(grep -E '^-a .*arch=b64' "$minimal")
+  for f in "$base" "$minimal" "$medium" "$heavy"; do
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      count=$((count + 1))
+      twin=$(printf '%s\n' "$line" | sed 's/arch=b64/arch=b32/')
+      if grep -qxF -- "$twin" "$f"; then
+        continue
+      fi
+      skip=no
+      for sc in $b64_only; do
+        case "$line" in
+          *"$sc"*) skip=yes ;;
+        esac
+      done
+      if [ "$skip" = no ]; then
+        echo "no b32 twin in $f: $line" >&2
+        false
+      fi
+    done <<EOF2
+$(grep -E '^-a .*arch=b64' "$f")
 EOF2
+  done
   [ "$count" -gt 0 ]
 }
 
-@test "minimal uses only the agreed keys" {
-  expected='T1098_Account_Manipulation
+@test "base and minimal use only the agreed keys" {
+  [ "$(keys_of "$base")" = 'T1562_Impair_Defenses
+akit_canary' ]
+  [ "$(keys_of "$minimal")" = 'T1098_Account_Manipulation
 T1547_Boot_or_Logon_Autostart_Execution
 T1548_Abuse_Elevation_Control_Mechanism
 T1556_Modify_Authentication_Process
-T1562_Impair_Defenses
-time_change'
-  actual=$(rule_lines "$minimal" | sed -n 's/.*\(-k \|-F key=\)\([^ ]*\).*/\2/p' | sort -u)
-  [ "$actual" = "$expected" ]
+time_change' ]
+}
+
+@test "base covers audit tampering" {
+  for want in \
+    '-w /etc/audit/ -p wa' '-w /etc/audisp/ -p wa' '-w /etc/libaudit.conf -p wa' \
+    '-F path=/usr/sbin/auditctl -F perm=x' '-F path=/usr/sbin/augenrules -F perm=x' \
+    '-F path=/usr/sbin/auditd -F perm=x'; do
+    grep -qF -- "$want" "$base" || {
+      echo "missing: $want" >&2
+      false
+    }
+  done
 }
 
 @test "minimal covers the agreed paths and syscalls" {
@@ -97,11 +136,9 @@ time_change'
     '-w /etc/passwd -p wa' '-w /etc/shadow -p wa' '-w /etc/group -p wa' '-w /etc/gshadow -p wa' \
     '-w /etc/security/opasswd -p wa' '-w /etc/pam.d/ -p wa' '-w /etc/ssh/sshd_config -p wa' \
     '-w /etc/ssh/sshd_config.d/ -p wa' '-w /etc/sudoers -p wa' '-w /etc/sudoers.d/ -p wa' \
-    '-w /etc/audit/ -p wa' '-w /etc/audisp/ -p wa' '-w /etc/libaudit.conf -p wa' \
     '-w /etc/localtime -p wa' \
     '-F path=/usr/bin/sudo -F perm=x' '-F path=/usr/bin/su -F perm=x' \
-    '-F path=/usr/sbin/auditctl -F perm=x' '-F path=/usr/sbin/augenrules -F perm=x' \
-    '-F path=/usr/sbin/auditd -F perm=x' '-F path=/usr/bin/kmod -F perm=x' \
+    '-F path=/usr/bin/kmod -F perm=x' \
     'adjtimex,settimeofday,clock_settime' '-S stime' \
     'init_module,finit_module,delete_module'; do
     grep -qF -- "$want" "$minimal" || {
@@ -111,12 +148,15 @@ time_change'
   done
 }
 
-@test "each rule carries the key of its area" {
+@test "each rule in base and minimal carries the key of its area" {
   count=0
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     count=$((count + 1))
     case "$line" in
+      -D | -b* | -f* | --backlog_wait_time*) continue ;;
+      *' /etc/auditd-kit/canary '*)
+        want=akit_canary ;;
       *' /etc/passwd '* | *' /etc/shadow '* | *' /etc/group '* | *' /etc/gshadow '* | *' /etc/security/opasswd '*)
         want=T1098_Account_Manipulation ;;
       *' /etc/pam.d/ '* | *' /etc/ssh/sshd_config '* | *' /etc/ssh/sshd_config.d/ '*)
@@ -142,12 +182,38 @@ time_change'
         ;;
     esac
   done <<EOF2
-$(rule_lines "$minimal")
+$(rule_lines "$base" "$minimal" | sed 's/^[^:]*://')
 EOF2
   [ "$count" -gt 0 ]
 }
 
-@test "local README says overlay rules are 50-*.rules with no control lines" {
-  grep -q '50-\*\.rules' "$repo/rules/local/README.md"
-  grep -qi 'control lines' "$repo/rules/local/README.md"
+@test "medium and heavy headers say they add log volume" {
+  for f in "$medium" "$heavy"; do
+    head -n 5 "$f" | grep -qi 'volume' || {
+      echo "no volume note: $f" >&2
+      false
+    }
+  done
+}
+
+@test "heavy and finalize say immutable mode needs a reboot for rule changes" {
+  for f in "$heavy" "$finalize"; do
+    grep -q -- '-e 2' "$f"
+    grep -qi 'compliance' "$f"
+    grep -qi 'reboot' "$f"
+  done
+}
+
+@test "README names the profiles, the overlay rules, and the credits" {
+  readme="$rules/README.md"
+  # The backticks are Markdown, not command substitution.
+  # shellcheck disable=SC2016
+  for want in '`minimal` (default)' '`medium`' '`heavy`' 'akit_extra_rules_dir' '50-*.rules' \
+    'control lines' 'https://github.com/Neo23x0/auditd' \
+    'https://github.com/certeu/ansible-auditd-laurel' 'https://attack.mitre.org' 'Laurel'; do
+    grep -qF -- "$want" "$readme" || {
+      echo "missing: $want" >&2
+      false
+    }
+  done
 }

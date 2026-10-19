@@ -1,0 +1,3 @@
+# Medium profile, for critical servers. It adds the commands that logged-in people run, and
+# changes to persistence, network, and mount settings. It adds noticeable log volume, so measure
+# it with stats.sh on a few hosts first (see docs/sizing-guide.md).

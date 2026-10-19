@@ -13,8 +13,12 @@ check_preset() {
   check_preset small 50 5 8192
 }
 
-@test "medium preset is 100 MB x 8 with backlog 16384" {
-  check_preset medium 100 8 16384
+@test "standard preset is 100 MB x 8 with backlog 16384" {
+  check_preset standard 100 8 16384
+}
+
+@test "the old medium preset name is gone" {
+  [ ! -e "$repo/config/auditd/medium.conf" ]
 }
 
 @test "large preset is 200 MB x 10 with backlog 32768" {
@@ -22,7 +26,7 @@ check_preset() {
 }
 
 @test "every preset sets the never-halt actions" {
-  for size in small medium large; do
+  for size in small standard large; do
     file="$repo/config/auditd/$size.conf"
     grep -qx 'max_log_file_action = ROTATE' "$file"
     grep -qx 'space_left_action = SYSLOG' "$file"
@@ -35,10 +39,5 @@ check_preset() {
 
 @test "no auditd.conf action can halt the host or drop it to single-user mode" {
   run grep -rEi '^[[:space:]]*[a-z_]*_action[[:space:]]*=[[:space:]]*(HALT|SINGLE)' "$repo/config"
-  [ "$status" -eq 1 ]
-}
-
-@test "no base or minimal rule file sets -f 2" {
-  run grep -rE '^[[:space:]]*-f[[:space:]]+2([[:space:]]|$)' "$repo/rules/base" "$repo/rules/minimal"
   [ "$status" -eq 1 ]
 }
