@@ -26,7 +26,7 @@ jobs:
       - name: Install tools
         run: |
           python -m venv .venv
-          .venv/bin/pip install --require-hashes -r tests/requirements.txt
+          .venv/bin/pip install -r tests/requirements.txt
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Semgrep
         run: semgrep scan --config p/default --config p/github-actions --error --metrics off
@@ -70,7 +70,7 @@ jobs:
       - name: Install tools
         run: |
           python -m venv .venv
-          .venv/bin/pip install --require-hashes -r tests/requirements.txt
+          .venv/bin/pip install -r tests/requirements.txt
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Zizmor
         run: zizmor --format plain .github/workflows

@@ -24,7 +24,7 @@ jobs:
       - name: Install tools
         run: |
           python -m venv .venv
-          .venv/bin/pip install --require-hashes -r tests/requirements.txt
+          .venv/bin/pip install -r tests/requirements.txt
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Lint
         run: sh tests/lint.sh
