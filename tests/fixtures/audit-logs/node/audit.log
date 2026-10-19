@@ -1,0 +1,3 @@
+node=web1.example.com type=SYSCALL msg=audit(1700000000.001:700): arch=c000003e syscall=59 success=yes exit=0 auid=1000 uid=0 pid=1 comm="x" exe="/usr/bin/ls" key="exec"
+node=web1.example.com type=PATH msg=audit(1700000000.001:700): item=0 name="/usr/bin/ls" inode=1 mode=0100755
+node=web1.example.com type=SYSCALL msg=audit(1700000001.001:701): arch=c000003e syscall=59 success=yes exit=0 auid=1000 uid=0 pid=2 comm="x" exe="/usr/bin/ls" key="exec"

@@ -1,0 +1,7 @@
+type=SYSCALL msg=audit(1700000000.001:100): arch=c000003e syscall=59 success=yes exit=0 auid=1000 uid=1000 pid=2001 comm="ls" exe="/usr/bin/ls" key="exec"
+type=EXECVE msg=audit(1700000000.001:100): argc=2 a0="ls" a1="/tmp"
+type=PATH msg=audit(1700000000.001:100): item=0 name="/usr/bin/ls" inode=1001 mode=0100755
+type=SYSCALL msg=audit(1700000010.002:101): arch=c000003e syscall=59 success=yes exit=0 auid=1000 uid=1000 pid=2002 comm="cat" exe="/usr/bin/cat" key="exec"
+type=PATH msg=audit(1700000010.002:101): item=0 name="/usr/bin/cat" inode=1002 mode=0100755
+type=SYSCALL msg=audit(1700000020.003:102): arch=c000003e syscall=42 success=yes exit=0 auid=0 uid=0 pid=2003 comm="curl" exe="/usr/bin/curl" key="net"
+type=SOCKADDR msg=audit(1700000020.003:102): saddr=02001F90C0000201

@@ -1,0 +1,4 @@
+type=SYSCALL msg=audit(1700006399.999:200): arch=c000003e syscall=59 success=yes exit=0 auid=1000 uid=1000 pid=3001 comm="ls" exe="/usr/bin/ls" key="exec"
+type=PATH msg=audit(1700006399.999:200): item=0 name="/usr/bin/ls" inode=1001 mode=0100755
+type=SYSCALL msg=audit(1700006400.000:201): arch=c000003e syscall=59 success=yes exit=0 auid=1000 uid=1000 pid=3002 comm="ls" exe="/usr/bin/ls" key="exec"
+type=SYSCALL msg=audit(1700006401.500:202): arch=c000003e syscall=59 success=yes exit=0 auid=1000 uid=1000 pid=3003 comm="ls" exe="/usr/bin/ls" key="exec"

@@ -1,0 +1,5 @@
+type=SYSCALL msg=audit(1700000000.001:300): arch=c000003e syscall=59 success=yes exit=0 auid=1000 uid=1000 pid=4001 comm="ls" exe="/usr/bin/ls" key=6B6579310161
+type=PATH msg=audit(1700000000.001:300): item=0 name="/usr/bin/ls" inode=1001 mode=0100755
+type=SYSCALL msg=audit(1700000001.001:301): arch=c000003e syscall=59 success=yes exit=0 auid=4294967295 uid=0 pid=4002 comm="sh" exe="/usr/bin/sh" key=(null)
+type=SYSCALL msg=audit(1700000002.001:302): arch=c000003e syscall=59 success=yes exit=0 auid=unset uid=0 pid=4003 comm="sh" exe="/usr/bin/sh" key="a"
+type=USER_CMD msg=audit(1700000003.001:303): pid=4004 uid=1000 auid=1000 ses=1 msg='cwd="/tmp" cmd="id" exe="/usr/bin/sudo" res=success'
