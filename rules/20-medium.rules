@@ -1,9 +1,10 @@
-# Medium profile, for critical servers. It adds the commands that logged-in people run, and
+# Medium profile, for critical servers. It adds the commands that users with a login ID run, and
 # changes to persistence, network, and mount settings. It adds noticeable log volume, so measure
 # it with stats.sh on a few hosts first (see docs/sizing-guide.md).
 
-# Commands: every program that a logged-in user starts. This is the largest source of volume in
-# this file. The 1000 floor matches UID_MIN on the supported systems. Edit it if your hosts differ.
+# Commands: every program that a user with a login ID starts, including that user's cron jobs.
+# Services without a login ID are excluded. This is the largest source of volume in this file.
+# The 1000 floor matches UID_MIN on the supported systems. Edit it if your hosts differ.
 -a always,exit -F arch=b64 -S execve,execveat -F auid>=1000 -F auid!=unset -k T1059_Command_and_Scripting_Interpreter
 -a always,exit -F arch=b32 -S execve,execveat -F auid>=1000 -F auid!=unset -k T1059_Command_and_Scripting_Interpreter
 

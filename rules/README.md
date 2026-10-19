@@ -29,7 +29,7 @@ The rules are our own, and no text or rules are copied from these sources. We to
 - [Neo23x0/auditd](https://github.com/Neo23x0/auditd)
 - [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks) for RHEL and Ubuntu
 - [DISA STIGs](https://public.cyber.mil/stigs/)
-- [Red Hat's audit rule samples](https://github.com/linux-audit/audit-userspace/tree/master/rules)
+- [audit-userspace sample rules](https://github.com/linux-audit/audit-userspace/tree/master/rules)
 - [Graylog Illuminate Linux auditd content pack](https://go2docs.graylog.org/illuminate-current/content_packs/linux_auditd_content_pack.htm)
 - [MITRE ATT&CK](https://attack.mitre.org/), for the rule key names
 - [certeu/ansible-auditd-laurel](https://github.com/certeu/ansible-auditd-laurel)
