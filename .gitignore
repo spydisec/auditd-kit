@@ -6,3 +6,6 @@ docs/design/
 
 # Ansible
 *.retry
+
+# Python virtualenv for lint tools
+.venv/

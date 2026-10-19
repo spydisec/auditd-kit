@@ -1,0 +1,7 @@
+# Exact version pins for the lint tools. Dependabot updates them.
+yamllint==1.38.0
+ansible-lint==26.10.1
+shellcheck-py==0.11.0.1
+shfmt-py==4.2.0
+zizmor==1.31.1
+semgrep==1.181.0
