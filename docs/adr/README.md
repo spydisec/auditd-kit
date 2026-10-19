@@ -35,3 +35,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0006](0006-never-halt-the-host.md) | Never halt the host when the audit disk fills | Accepted |
 | [0007](0007-test-strategy.md) | Test strategy | Accepted |
 | [0008](0008-workflow-and-releases.md) | Trunk-based workflow and verifiable release bundles | Accepted |
+| [0009](0009-verify-with-a-canary-watch-rule.md) | Verify with a canary watch rule | Accepted |
