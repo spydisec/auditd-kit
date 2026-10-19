@@ -238,7 +238,7 @@ access
 logins' ]
   for want in \
     'exit=-EACCES' 'exit=-EPERM' '-S open,openat,creat,truncate,ftruncate,open_by_handle_at' \
-    '-S chmod,fchmod,fchmodat' '-S chown,fchown,lchown,fchownat' \
+    '-S chmod,fchmod,fchmodat' '-S chown,fchown,lchown,fchownat' '-S chown32,fchown32,lchown32' '-S truncate64,ftruncate64' \
     '-S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr' \
     '-S unlink,unlinkat,rename,renameat,renameat2,rmdir' '-w /var/log/lastlog -p wa' \
     '-w /var/run/faillock/ -p wa' '-w /var/log/wtmp -p wa' '-w /var/log/btmp -p wa' \

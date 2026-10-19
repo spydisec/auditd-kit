@@ -10,12 +10,17 @@
 -a always,exit -F arch=b32 -S open,openat,creat,truncate,ftruncate,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
 -a always,exit -F arch=b64 -S open,openat,creat,truncate,ftruncate,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
 -a always,exit -F arch=b32 -S open,openat,creat,truncate,ftruncate,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
+# 32-bit programs use the 64-bit-offset truncate calls.
+-a always,exit -F arch=b32 -S truncate64,ftruncate64 -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
+-a always,exit -F arch=b32 -S truncate64,ftruncate64 -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
 
 # Permissions: a logged-in user changed a file's mode, owner, or extended attributes.
 -a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
 -a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
 -a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
 -a always,exit -F arch=b32 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
+# 32-bit programs use the 32-bit owner calls.
+-a always,exit -F arch=b32 -S chown32,fchown32,lchown32 -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
 -a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
 -a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -k T1222_File_and_Directory_Permissions_Modification
 
