@@ -230,6 +230,44 @@ EOF2
   grep -q 'UID_MIN' "$medium"
 }
 
+@test "heavy uses only the agreed keys and covers the agreed paths and syscalls" {
+  [ "$(keys_of "$heavy")" = 'T1070_Indicator_Removal
+T1222_File_and_Directory_Permissions_Modification
+T1562_Impair_Defenses
+access
+logins' ]
+  for want in \
+    'exit=-EACCES' 'exit=-EPERM' '-S open,openat,creat,truncate,ftruncate,open_by_handle_at' \
+    '-S chmod,fchmod,fchmodat' '-S chown,fchown,lchown,fchownat' \
+    '-S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr' \
+    '-S unlink,unlinkat,rename,renameat,renameat2,rmdir' '-w /var/log/lastlog -p wa' \
+    '-w /var/run/faillock/ -p wa' '-w /var/log/wtmp -p wa' '-w /var/log/btmp -p wa' \
+    '-w /var/run/utmp -p wa' '-w /etc/selinux/ -p wa' '-w /etc/apparmor/ -p wa' \
+    '-w /etc/apparmor.d/ -p wa' 'find /' '# -a always,exit -F arch=b64 -S execve,execveat -k'; do
+    grep -qF -- "$want" "$heavy" || {
+      echo "missing: $want" >&2
+      false
+    }
+  done
+}
+
+@test "heavy syscall rules filter on logged-in users" {
+  n=0
+  while IFS= read -r line; do
+    n=$((n + 1))
+    case "$line" in
+      *' -F auid>=1000 -F auid!=unset '*) ;;
+      *)
+        echo "no auid filter: $line" >&2
+        false
+        ;;
+    esac
+  done <<EOF2
+$(rule_lines "$heavy" | grep -F -- ' -S ')
+EOF2
+  [ "$n" -gt 0 ]
+}
+
 @test "medium and heavy headers say they add log volume" {
   for f in "$medium" "$heavy"; do
     head -n 5 "$f" | grep -qi 'volume' || {
