@@ -10,7 +10,7 @@ setup() {
   out="$BATS_TEST_TMPDIR/dist"
   run sh "$repo/scripts/dev/build-collection.sh" "$out"
   [ "$status" -eq 0 ]
-  # The version comes from galaxy.yml, which release-please updates.
+  # The version comes from galaxy.yml, which build-release.sh changes for a release.
   set -- "$out"/spydisec-auditd_kit-*.tar.gz
   tarball=$1
   [ -f "$tarball" ]

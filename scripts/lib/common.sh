@@ -6,9 +6,10 @@ export LC_ALL
 
 AKIT_ROOT=${AKIT_ROOT:-}
 
-# The kit version that install writes to the state file. The release workflow updates it.
+# The kit version that install writes to the state file. The repo stays at 0.0.0, and
+# scripts/dev/build-release.sh writes the release version into the bundle.
 # shellcheck disable=SC2034
-AKIT_VERSION=0.0.0 # x-release-please-version
+AKIT_VERSION=0.0.0
 
 AKIT_EXIT_OK=0
 AKIT_EXIT_REFUSED=1
