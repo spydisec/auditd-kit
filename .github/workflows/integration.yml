@@ -80,6 +80,8 @@ jobs:
           PATH="$PWD/.venv/bin:$PATH" sh scripts/dev/build-collection.sh "$RUNNER_TEMP/dist"
           .venv/bin/ansible-galaxy collection install -p "$RUNNER_TEMP/collections" \
             "$RUNNER_TEMP"/dist/spydisec-auditd_kit-*.tar.gz
+          .venv/bin/ansible-galaxy collection install -p "$RUNNER_TEMP/collections" \
+            -r tests/molecule/requirements.yml
       - name: Molecule
         env:
           SCENARIO: ${{ matrix.scenario }}

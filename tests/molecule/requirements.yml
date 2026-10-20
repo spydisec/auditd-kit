@@ -1,0 +1,5 @@
+---
+# Collections that Molecule's Docker driver needs. 4.8.x still supports ansible-core 2.16.
+collections:
+  - name: community.docker
+    version: "4.8.6"
