@@ -57,6 +57,8 @@ install_work=
 
 install_on_exit() {
   install_rc=$?
+  # A failing command here must not stop the restore.
+  set +e
   trap - EXIT
   # A signal must not stop the restore halfway.
   trap '' INT TERM HUP

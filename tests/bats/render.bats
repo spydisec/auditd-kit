@@ -29,6 +29,10 @@ lib="$repo/scripts/lib"
   [ "$status" -eq 0 ]
   [[ "$output" == *hello* ]]
   grep -q 'info.*hello' "$log"
+  # A log file that can't be written must not make akit_log fail under set -e.
+  AKIT_LOG_FILE=$BATS_TEST_TMPDIR/no-such-dir/akit.log run sh -c 'set -e; . "$1/common.sh"; akit_log info hello; echo after' sh "$lib"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *after* ]]
 }
 
 @test "LC_ALL is C after sourcing and exit codes are defined" {
