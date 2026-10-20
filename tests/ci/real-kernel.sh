@@ -57,6 +57,13 @@ fail() {
     grep -c akit_canary "$work/sink-ours"
     grep -c 'type=SYSCALL' "$work/sink-ours"
     head -c 600 "$work/sink-ours"
+    echo "-- newest install log:"
+    tail -n 30 "$(ls -t /var/log/auditd-kit/install-*.log 2>/dev/null | head -n 1)"
+    echo "-- rules.d and auditd:"
+    ls -l /etc/audit/rules.d
+    systemctl is-active auditd
+    journalctl -u auditd -n 15 --no-pager
+    df -h /var/log/audit
     echo "-- rate limiting:"
     journalctl -u systemd-journald --no-pager | grep -iE 'suppress|rate' | tail -n 5
     journalctl -u rsyslog --no-pager | grep -iE 'rate-limit|ratelimit|dropp' | tail -n 5
