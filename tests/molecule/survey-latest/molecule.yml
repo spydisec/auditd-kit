@@ -1,0 +1,25 @@
+---
+# The same scenario with the latest ansible-core, which can't manage Python 2.7 or 3.6 targets.
+driver:
+  name: docker
+platforms:
+  - name: rocky9
+    image: rockylinux:9
+  - name: ubuntu2204
+    image: ubuntu:22.04
+  - name: ubuntu2404
+    image: ubuntu:24.04
+provisioner:
+  name: ansible
+  playbooks:
+    prepare: ../survey/prepare.yml
+    converge: ../survey/converge.yml
+    verify: ../survey/verify.yml
+scenario:
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy

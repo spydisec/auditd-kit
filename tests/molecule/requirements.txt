@@ -1,0 +1,4 @@
+# Molecule and its Docker driver for the role tests. ansible-core is installed separately per CI job.
+molecule==26.10.0
+molecule-plugins[docker]==26.10.12
+docker==7.2.0

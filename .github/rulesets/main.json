@@ -4,15 +4,23 @@
   "enforcement": "active",
   "conditions": {
     "ref_name": {
-      "include": ["~DEFAULT_BRANCH"],
+      "include": [
+        "~DEFAULT_BRANCH"
+      ],
       "exclude": []
     }
   },
   "bypass_actors": [],
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    { "type": "required_linear_history" },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "required_linear_history"
+    },
     {
       "type": "pull_request",
       "parameters": {
@@ -21,7 +29,9 @@
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": false,
-        "allowed_merge_methods": ["squash"]
+        "allowed_merge_methods": [
+          "squash"
+        ]
       }
     },
     {
@@ -29,22 +39,60 @@
       "parameters": {
         "strict_required_status_checks_policy": false,
         "required_status_checks": [
-          { "context": "lint" },
-          { "context": "bats" },
-          { "context": "bats-portability" },
-          { "context": "semgrep" },
-          { "context": "gitleaks" },
-          { "context": "zizmor" },
-          { "context": "pr-title" },
-          { "context": "real-kernel (ubuntu-22.04, minimal)" },
-          { "context": "real-kernel (ubuntu-22.04, heavy)" },
-          { "context": "real-kernel (ubuntu-24.04, minimal)" },
-          { "context": "real-kernel (ubuntu-24.04, heavy)" },
-          { "context": "container-install (centos:7)" },
-          { "context": "container-install (rockylinux:8)" },
-          { "context": "container-install (rockylinux:9)" },
-          { "context": "container-install (ubuntu:22.04)" },
-          { "context": "container-install (ubuntu:24.04)" }
+          {
+            "context": "lint"
+          },
+          {
+            "context": "bats"
+          },
+          {
+            "context": "bats-portability"
+          },
+          {
+            "context": "semgrep"
+          },
+          {
+            "context": "gitleaks"
+          },
+          {
+            "context": "zizmor"
+          },
+          {
+            "context": "pr-title"
+          },
+          {
+            "context": "real-kernel (ubuntu-22.04, minimal)"
+          },
+          {
+            "context": "real-kernel (ubuntu-22.04, heavy)"
+          },
+          {
+            "context": "real-kernel (ubuntu-24.04, minimal)"
+          },
+          {
+            "context": "real-kernel (ubuntu-24.04, heavy)"
+          },
+          {
+            "context": "container-install (centos:7)"
+          },
+          {
+            "context": "container-install (rockylinux:8)"
+          },
+          {
+            "context": "container-install (rockylinux:9)"
+          },
+          {
+            "context": "container-install (ubuntu:22.04)"
+          },
+          {
+            "context": "container-install (ubuntu:24.04)"
+          },
+          {
+            "context": "molecule-survey (survey, ansible-core==2.16.*)"
+          },
+          {
+            "context": "molecule-survey (survey-latest, ansible-core)"
+          }
         ]
       }
     }

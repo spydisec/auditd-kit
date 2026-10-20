@@ -1,0 +1,19 @@
+---
+- name: Check the CSVs
+  hosts: localhost
+  gather_facts: false
+  vars:
+    csv_dir: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}"
+    survey_lines: "{{ lookup('file', csv_dir ~ '/survey.csv').splitlines() }}"
+    stats_lines: "{{ lookup('file', csv_dir ~ '/stats.csv').splitlines() }}"
+  tasks:
+    - name: The survey CSV has one row per host and a support tier for each
+      ansible.builtin.assert:
+        that:
+          - survey_lines | length == (groups['all'] | length) + 1
+          - '"support_tier" in survey_lines[0]'
+          - survey_lines[1:] | select('search', '"(supported|unsupported)"') | list | length == groups['all'] | length
+    - name: The stats CSV has its header
+      ansible.builtin.assert:
+        that:
+          - stats_lines[0] == 'host,day,bytes,events'
