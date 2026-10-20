@@ -13,38 +13,36 @@ auditd-kit can't do this for you, for two reasons:
 
 ## Steps
 
+The auditd syslog plugin must be installed: `audispd-plugins` on RHEL and Ubuntu. Turn the plugin
+on last, so that no audit event reaches the system log files before the filters are in place.
+
 1. Install with forwarding off, which is the default:
 
    ```sh
    sh scripts/install.sh --profile minimal
    ```
 
-2. Turn on the auditd syslog plugin. Its file is `/etc/audit/plugins.d/syslog.conf`, or
-   `/etc/audisp/plugins.d/syslog.conf` on RHEL 7. Set these two lines, then run
-   `service auditd restart`:
+   If this host ever ran `install.sh` with forwarding on, this run also turns the plugin off. Do it
+   before the next steps, and a later run with forwarding off then leaves the plugin as it is.
 
-   ```
-   active = yes
-   args = LOG_INFO LOG_LOCAL6
-   ```
-
-   A later `install.sh` run with forwarding off leaves the plugin as it is.
-
-3. Keep `local6` out of the system log files. In `/etc/syslog-ng/syslog-ng.conf`, add
-   `and not facility(local6)` to the catch-all filters:
+2. Keep `local6` out of the system log files. In `/etc/syslog-ng/syslog-ng.conf`, add
+   `not facility(local6) and` at the start of the expression in each catch-all filter:
 
    | System | Filters |
    |---|---|
    | RHEL (EPEL syslog-ng) | `f_default` |
    | Ubuntu | `f_syslog3` and `f_messages` |
 
-   For example, on RHEL:
+   For example, the stock RHEL filter becomes:
 
    ```
    filter f_default    { level(info..emerg) and not facility(local6) and
+                           not (facility(mail)
+                           or facility(authpriv)
+                           or facility(cron)); };
    ```
 
-4. Add `/etc/syslog-ng/conf.d/40-auditd-kit.conf`. Use the system source name from the main
+3. Add `/etc/syslog-ng/conf.d/40-auditd-kit.conf`. Use the system source name from the main
    config: `s_sys` on RHEL, `s_src` on Ubuntu. Change the host, port, and transport to your
    collector's:
 
@@ -55,14 +53,25 @@ auditd-kit can't do this for you, for two reasons:
    log { source(s_sys); filter(f_auditd_kit); destination(d_auditd_kit); flags(final); };
    ```
 
-5. Check the config and restart syslog-ng:
+4. Check the config and restart syslog-ng:
 
    ```sh
    syslog-ng --syntax-only && systemctl restart syslog-ng
    ```
 
+5. Turn on the plugin. Its file is `/etc/audit/plugins.d/syslog.conf`, or
+   `/etc/audisp/plugins.d/syslog.conf` on RHEL 7. Set these two lines, then run
+   `service auditd restart`:
+
+   ```
+   active = yes
+   args = LOG_INFO LOG_LOCAL6
+   ```
+
 6. Check the result. `sh scripts/verify.sh` should pass, your collector should get `type=` audit
    records, and `/var/log/messages` (or `/var/log/syslog`) should get none.
 
-To undo it, remove the drop-in, take `and not facility(local6)` out of the filters, set
-`active = no` in the plugin file, and restart syslog-ng and auditd.
+## Undo
+
+1. Set `active = no` in the plugin file, and run `service auditd restart`.
+2. Remove the drop-in and the `not facility(local6) and` edits, and restart syslog-ng.
