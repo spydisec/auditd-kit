@@ -35,7 +35,16 @@
           { "context": "semgrep" },
           { "context": "gitleaks" },
           { "context": "zizmor" },
-          { "context": "pr-title" }
+          { "context": "pr-title" },
+          { "context": "real-kernel (ubuntu-22.04, minimal)" },
+          { "context": "real-kernel (ubuntu-22.04, heavy)" },
+          { "context": "real-kernel (ubuntu-24.04, minimal)" },
+          { "context": "real-kernel (ubuntu-24.04, heavy)" },
+          { "context": "container-install (centos:7)" },
+          { "context": "container-install (rockylinux:8)" },
+          { "context": "container-install (rockylinux:9)" },
+          { "context": "container-install (ubuntu:22.04)" },
+          { "context": "container-install (ubuntu:24.04)" }
         ]
       }
     }
