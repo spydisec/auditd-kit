@@ -58,7 +58,7 @@ fail() {
     grep -c 'type=SYSCALL' "$work/sink-ours"
     head -c 600 "$work/sink-ours"
     echo "-- newest install log:"
-    tail -n 30 "$(ls -t /var/log/auditd-kit/install-*.log 2>/dev/null | head -n 1)"
+    tail -n 30 "$(find /var/log/auditd-kit -name 'install-*.log' 2>/dev/null | sort | tail -n 1)"
     echo "-- rules.d and auditd:"
     ls -l /etc/audit/rules.d
     systemctl is-active auditd
