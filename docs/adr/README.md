@@ -44,3 +44,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0015](0015-role-runs-shared-scripts.md) | The role runs the shared scripts on targets | Accepted |
 | [0016](0016-ansible-core-versions.md) | Supported ansible-core versions | Accepted |
 | [0017](0017-broad-rules-load-last.md) | Broad rules load last | Accepted |
+| [0018](0018-render-drops-exec-rules-on-symlinks.md) | Render drops exec rules on symlinks | Accepted |

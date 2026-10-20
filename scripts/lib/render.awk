@@ -104,6 +104,8 @@ BEGIN {
   watch = ""
   dir = ""
   binary = ""
+  exe = 0
+  perm = ""
   selinux_field = ""
   for (i = 1; i < n; i++) {
     if (t[i] == "-w")
@@ -115,8 +117,11 @@ BEGIN {
         rule_arch = value
       else if (field ~ /^dir=/)
         dir = value
-      else if (field ~ /^(path|exe)=/)
+      else if (field ~ /^(path|exe)=/) {
         binary = value
+        exe = field ~ /^exe=/
+      } else if (field ~ /^perm=/)
+        perm = value
       else if (field ~ /^(subj_(user|role|type|sen|clr)|obj_(user|role|type|lev_low|lev_high))[!<>=&]/)
         selinux_field = field
     }
@@ -152,9 +157,9 @@ BEGIN {
     act("dropped", "missing_binary", binary)
     next
   }
-  # The kernel matches a path rule on the file's inode, and exec and writes reach the link's
-  # target, so a rule on a symlink never fires.
-  if (binary != "" && (binary in links)) {
+  # The kernel matches path and exe rules on the inode of the link itself, and exec reaches the
+  # link's target, so an exe rule or an exec-only path rule on a symlink never fires.
+  if (binary != "" && (binary in links) && (exe || perm == "x")) {
     act("dropped", "symlink", binary)
     next
   }

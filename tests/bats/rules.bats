@@ -38,7 +38,6 @@ keys_of() {
     '-b @AKIT_BACKLOG@' \
     '-f 1' \
     '--backlog_wait_time 60000' \
-    '-a always,exclude -F msgtype=EOE' \
     '-a always,exclude -F msgtype=CRYPTO_KEY_USER' \
     '-w /etc/auditd-kit/canary -p wa -k akit_canary'; do
     n=$(line_of "$base" "$line")
