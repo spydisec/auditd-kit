@@ -45,6 +45,14 @@ fail() {
     ausearch --input /var/log/audit/audit.log -k akit_canary 2>&1 | head -n 6
     ausearch -v 2>&1 | head -n 1
     grep -E "^(log_file|log_format|name_format|write_logs)" /etc/audit/auditd.conf
+    echo "-- forwarding:"
+    pgrep -a audisp || echo "no audisp process"
+    grep -vE '^\s*(#|$)' /etc/audit/plugins.d/syslog.conf
+    cat /etc/rsyslog.d/40-auditd-kit.conf
+    grep -h akit_canary /var/log/syslog /var/log/messages 2>/dev/null | tail -n 3
+    ss -ltn | grep -E ':551[45]'
+    journalctl -u rsyslog -n 15 --no-pager
+    ls -l "${work:-/nonexistent}"/sink-* && tail -c 400 "$work"/sink-*
     echo "-- tail of audit.log:"
     tail -n 5 /var/log/audit/audit.log
   } >&2 2>&1 || true
