@@ -1,6 +1,6 @@
 # 0008. Trunk-based workflow and verifiable release bundles
 
-Status: Accepted
+Status: Superseded by 0020
 Date: 2026-10-19
 
 ## Context

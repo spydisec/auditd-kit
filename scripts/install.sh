@@ -1,7 +1,10 @@
 #!/bin/sh
 # Set up auditd on this host with the kit's rules and auditd.conf keys.
 #
-# Usage: install.sh [--config FILE] [setting flags] [--dry-run] [--skip-load]
+# Usage: install.sh [--config FILE] [setting flags] [--dry-run] [--skip-load] [--guided]
+#
+# --guided shows a survey summary, asks for the main settings on the terminal, and asks again
+# before it changes anything. Settings given as flags or in the config file are the defaults.
 #
 # The stages run in this order. Nothing on the host changes before the backup.
 #   1. preflight  survey.sh | preflight.sh, which refuses an unsafe host
@@ -37,14 +40,16 @@ umask 022
 PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
 export PATH
 
-AKIT_EXTRA_FLAGS="--dry-run --skip-load"
+AKIT_EXTRA_FLAGS="--dry-run --skip-load --guided"
 akit_settings_load "$@"
 install_dry_run=no
 install_skip_load=no
+install_guided=no
 for install_a in $AKIT_ARGS; do
   case "$install_a" in
     --dry-run) install_dry_run=yes ;;
     --skip-load) install_skip_load=yes ;;
+    --guided) install_guided=yes ;;
     *) akit_die "$AKIT_EXIT_REFUSED" "unknown argument: $install_a" ;;
   esac
 done
@@ -101,6 +106,63 @@ akit_log info "install $AKIT_VERSION started: $*"
 install_work=$(mktemp -d) || akit_die "$AKIT_EXIT_REFUSED" "cannot create a temp dir"
 
 # preflight.sh and plan.sh get the same settings through a config file.
+# install_ask <question> <default>: ask on the terminal, and set install_ans to the answer or
+# to the default when the answer is empty.
+install_ask() {
+  printf '%s ' "$1" >/dev/tty
+  IFS= read -r install_ans </dev/tty || install_ans=
+  [ -n "$install_ans" ] || install_ans=$2
+}
+
+# install_survey_get <key>: print a value from the survey in the work dir.
+install_survey_get() {
+  sed -n "s/^$1=//p" "$install_work/survey" | head -n 1
+}
+
+# Guided mode: show the host, then ask only what applies to it.
+if [ "$install_guided" = yes ]; then
+  (: </dev/tty) 2>/dev/null || akit_die "$AKIT_EXIT_REFUSED" "--guided needs a terminal"
+  sh "$install_root/survey.sh" >"$install_work/survey"
+  {
+    echo "auditd-kit $AKIT_VERSION on $(install_survey_get os_id) $(install_survey_get os_version): $(install_survey_get support_tier)"
+    echo "  auditd $(install_survey_get auditd_version), $(install_survey_get audit_log_free_mb) MB free for logs, other agents: $(install_survey_get agents)"
+  } >/dev/tty
+  case "$akit_profile" in minimal) install_d=1 ;; medium) install_d=2 ;; *) install_d=3 ;; esac
+  install_ask "Profile? 1) minimal, for every server  2) medium, for critical servers  3) heavy, for CIS or STIG [$install_d]:" "$install_d"
+  case "$install_ans" in
+    1) akit_settings_set akit_profile minimal ;;
+    2) akit_settings_set akit_profile medium ;;
+    3) akit_settings_set akit_profile heavy ;;
+    *) akit_settings_set akit_profile "$install_ans" ;;
+  esac
+  if [ "$(install_survey_get syslog_daemon)" = rsyslog ] && [ "$akit_forward" = none ]; then
+    install_ask "Send audit events to a syslog server? [y/N]:" n
+    case "$install_ans" in
+      [yY]*)
+        install_ask "Syslog server name or address:" ""
+        akit_settings_set akit_remote_host "$install_ans"
+        [ -n "$akit_remote_host" ] || akit_die "$AKIT_EXIT_REFUSED" "a syslog server is needed, and nothing changed"
+        install_ask "Port [$akit_remote_port]:" "$akit_remote_port"
+        akit_settings_set akit_remote_port "$install_ans"
+        install_ask "Protocol, tcp or udp [$akit_remote_protocol]:" "$akit_remote_protocol"
+        akit_settings_set akit_remote_protocol "$install_ans"
+        akit_settings_set akit_forward remote
+        ;;
+    esac
+  fi
+  # A file with only control lines, such as the distro's audit.rules, is moved either way.
+  install_other=$(install_survey_get rules_d_files | tr ',' '\n' \
+    | { grep -v -e auditd-kit -e '^none$' -e ':control$' || true; } | tr '\n' ' ')
+  if [ "$akit_existing_rules" = unset ] && [ -n "$install_other" ]; then
+    install_ask "Other files in /etc/audit/rules.d: $install_other k) keep them  r) replace them, with a backup [r]:" r
+    case "$install_ans" in
+      k | keep) akit_settings_set akit_existing_rules keep ;;
+      r | replace) akit_settings_set akit_existing_rules replace ;;
+      *) akit_settings_set akit_existing_rules "$install_ans" ;;
+    esac
+  fi
+fi
+
 for install_k in $AKIT_SETTING_KEYS; do
   eval "install_v=\$$install_k"
   [ -z "$install_v" ] || printf '%s=%s\n' "$install_k" "$install_v"
@@ -165,7 +227,22 @@ if [ "$install_dry_run" = yes ]; then
   install_stage=finished
   exit "$AKIT_EXIT_OK"
 fi
-cat "$install_work/changes"
+if [ "$install_guided" = yes ] && [ "$install_changes" -gt 0 ]; then
+  cat "$install_work/plan"
+  install_ask "Apply these $install_changes changes? [y/N]:" n
+  case "$install_ans" in
+    [yY]*) ;;
+    *)
+      akit_log info "cancelled, and nothing changed"
+      echo cancelled
+      echo "changes=0"
+      install_stage=finished
+      exit "$AKIT_EXIT_OK"
+      ;;
+  esac
+else
+  cat "$install_work/changes"
+fi
 if [ "$install_changes" -eq 0 ]; then
   akit_log info "nothing to change"
   echo "changes=0"
