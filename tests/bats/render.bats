@@ -68,7 +68,7 @@ render_setup() {
 
 # render [args...]: run render.sh with the minimal profile and standard size unless args override.
 render() {
-  run sh "$lib/render.sh" --profile minimal --size standard --out-dir "$out" --report "$report" "$@"
+  run sh "$repo/scripts/render.sh" --profile minimal --size standard --out-dir "$out" --report "$report" "$@"
 }
 
 # extra_rules <line>...: write the lines to $extra/50-test.rules.
@@ -287,8 +287,9 @@ out_files() {
   mkdir -p "$kit/scripts"
   cp -R "$repo/rules" "$repo/config" "$kit/"
   cp -R "$lib" "$kit/scripts/lib"
+  cp "$repo/scripts/render.sh" "$kit/scripts/"
   echo '--loginuid-immutable' >>"$kit/rules/20-medium.rules"
-  run sh "$kit/scripts/lib/render.sh" --profile medium --size standard --out-dir "$out" \
+  run sh "$kit/scripts/render.sh" --profile medium --size standard --out-dir "$out" \
     --report "$report"
   [ "$status" -eq 0 ]
   grep -qx -- '--loginuid-immutable' "$out/20-auditd-kit-medium.rules"
@@ -388,7 +389,7 @@ out_files() {
 @test "a report path that can't be written gives exit 1 and leaves no out dir" {
   render_setup
   touch "$BATS_TEST_TMPDIR/plainfile"
-  run sh "$lib/render.sh" --profile minimal --size standard --out-dir "$out" \
+  run sh "$repo/scripts/render.sh" --profile minimal --size standard --out-dir "$out" \
     --report "$BATS_TEST_TMPDIR/plainfile/report.txt"
   [ "$status" -eq 1 ]
   [ ! -e "$out" ]
@@ -479,7 +480,7 @@ esac"
   [ "$status" -eq 1 ]
   render --bogus
   [ "$status" -eq 1 ]
-  run sh "$lib/render.sh" --profile minimal --size standard --report "$report"
+  run sh "$repo/scripts/render.sh" --profile minimal --size standard --report "$report"
   [ "$status" -eq 1 ]
 }
 

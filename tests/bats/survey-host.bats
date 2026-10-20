@@ -97,7 +97,7 @@ run_survey() {
 
 @test "auditd_installed=no when auditctl is not on PATH" {
   empty=$(mktemp -d "$BATS_TEST_TMPDIR/empty.XXXXXX")
-  PATH=$empty run /bin/sh -c '. "$1/common.sh"; . "$1/output.sh"; . "$1/survey-host.sh"
+  PATH=$empty run /bin/sh -c '. "$1/common.sh"; . "$1/survey-host.sh"
     survey_check_auditd_installed; printf "%s|%s\n" "$survey_have_auditctl" "$AKIT_KV_BUF"' sh "$repo/scripts/lib"
   [ "$status" -eq 0 ]
   [[ "$output" == "no|auditd_installed=no"* ]]

@@ -46,7 +46,7 @@ Render the rules on the target host instead. Render changes nothing on the host.
 that load there, and a report that lists each rule it dropped or trimmed, with the reason:
 
 ```sh
-sh scripts/lib/render.sh --profile minimal --size standard \
+sh scripts/render.sh --profile minimal --size standard \
   --out-dir /tmp/akit-rules --report /tmp/akit-report.txt
 ```
 

@@ -26,7 +26,7 @@ set -eu
 
 install_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 install_lib=$install_root/lib
-for install_l in common settings lock backup state auditdconf rulesd load forward; do
+for install_l in common settings backup auditdconf rulesd load forward; do
   # shellcheck source=/dev/null
   . "$install_lib/$install_l.sh"
 done
@@ -142,7 +142,7 @@ set -- --profile "$akit_profile" --size "$akit_size" --immutable "$akit_immutabl
   --out-dir "$install_work/rendered" --report "$install_work/render-report.txt"
 [ -z "$akit_extra_rules_dir" ] || set -- "$@" --extra-dir "$akit_extra_rules_dir"
 [ -z "$akit_skip_keys" ] || set -- "$@" --skip-keys "$akit_skip_keys"
-install_out=$(sh "$install_lib/render.sh" "$@") || akit_die "$AKIT_EXIT_REFUSED" "render failed, and nothing changed"
+install_out=$(sh "$install_root/render.sh" "$@") || akit_die "$AKIT_EXIT_REFUSED" "render failed, and nothing changed"
 install_rule_count=$(printf '%s\n' "$install_out" | sed -n 's/^rule_count=//p')
 
 # 3. Validate

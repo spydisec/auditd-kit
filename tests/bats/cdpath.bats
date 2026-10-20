@@ -25,7 +25,7 @@ fixtures="$repo/tests/fixtures/syscalls"
   AKIT_SYSCALLS_B32="$fixtures/rocky9-b32.txt"
   AKIT_ARCH=x86_64
   export AKIT_SYSCALLS_B64 AKIT_SYSCALLS_B32 AKIT_ARCH
-  run sh scripts/lib/render.sh --profile minimal --size standard \
+  run sh scripts/render.sh --profile minimal --size standard \
     --out-dir "$BATS_TEST_TMPDIR/out" --report "$BATS_TEST_TMPDIR/report.txt"
   [ "$status" -eq 0 ]
   [[ "$output" == rule_count=* ]]

@@ -19,7 +19,7 @@ by hand. Two front ends deploy them:
 
 Both follow the same steps and use the same setting names. One script, `scripts/verify.sh`, is the
 acceptance test for both. Rule rendering, which drops rules that can't load on a host, is a single
-script (`scripts/lib/render.sh`) that both front ends call, because it's the step most likely to
+script (`scripts/render.sh`) that both front ends call, because it's the step most likely to
 fail across a mixed fleet.
 
 ## Consequences
