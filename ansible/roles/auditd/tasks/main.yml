@@ -1,5 +1,8 @@
 ---
-# The install tasks come with the role and site playbook. For now the role stages the kit files
-# for the survey and stats playbooks.
-- name: Stage the kit files
-  ansible.builtin.include_tasks: stage.yml
+# The install tasks come in a later release. Until then the role only serves the survey and stats
+# playbooks through tasks_from: stage and cleanup, and a plain role call stops here.
+- name: Stop, because the role has no install tasks yet
+  ansible.builtin.fail:
+    msg: >-
+      spydisec.auditd_kit.auditd has no install tasks in this release. Use the
+      spydisec.auditd_kit.survey and spydisec.auditd_kit.stats playbooks.

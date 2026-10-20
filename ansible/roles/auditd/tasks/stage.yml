@@ -9,10 +9,15 @@
   check_mode: false
   changed_when: false
 
+# Set before the copy, so cleanup.yml can remove the dir even when the copy fails.
+- name: Remember where the kit files are
+  ansible.builtin.set_fact:
+    akit_stage_dir: "{{ akit_stage.path }}"
+
 - name: Copy the kit files to the temp dir
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "{{ akit_stage.path }}/"
+    dest: "{{ akit_stage_dir }}/"
     mode: preserve
   loop:
     - rules
@@ -20,7 +25,3 @@
     - scripts
   check_mode: false
   changed_when: false
-
-- name: Remember where the kit files are
-  ansible.builtin.set_fact:
-    akit_stage_dir: "{{ akit_stage.path }}"

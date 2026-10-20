@@ -10,7 +10,9 @@ setup() {
   out="$BATS_TEST_TMPDIR/dist"
   run sh "$repo/scripts/dev/build-collection.sh" "$out"
   [ "$status" -eq 0 ]
-  tarball="$out/spydisec-auditd_kit-0.0.0.tar.gz"
+  # The version comes from galaxy.yml, which release-please updates.
+  set -- "$out"/spydisec-auditd_kit-*.tar.gz
+  tarball=$1
   [ -f "$tarball" ]
   list=$(tar -tzf "$tarball")
   for want in roles/auditd/files/rules/10-minimal.rules roles/auditd/files/config/auditd/standard.conf \
