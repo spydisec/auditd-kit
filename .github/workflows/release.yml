@@ -34,6 +34,16 @@ jobs:
           python -m venv .venv
           .venv/bin/pip install -r tests/requirements.txt
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      # gh release create reuses an existing tag and ignores --target, so the release would point
+      # at another commit than the one built here.
+      - name: Check that the tag is new
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "tag v$VERSION already exists" >&2
+            exit 1
+          fi
       - name: Build
         env:
           VERSION: ${{ inputs.version }}
