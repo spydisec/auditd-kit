@@ -39,6 +39,11 @@ fail() {
     LC_ALL=C ausearch -k akit_canary -ts "$(LC_ALL=C date '+%m/%d/%y') 00:00:00" 2>&1 | tail -n 4
     echo "-- akit_canary lines in the logs:"
     grep -c akit_canary /var/log/audit/audit.log*
+    grep akit_canary /var/log/audit/audit.log | cut -c1-300 | head -n 8
+    echo "-- ausearch --input audit.log -k akit_canary:"
+    ausearch --input /var/log/audit/audit.log -k akit_canary 2>&1 | head -n 6
+    ausearch -v 2>&1 | head -n 1
+    grep -E "^(log_file|log_format|name_format|write_logs)" /etc/audit/auditd.conf
     echo "-- tail of audit.log:"
     tail -n 5 /var/log/audit/audit.log
   } >&2 2>&1 || true
