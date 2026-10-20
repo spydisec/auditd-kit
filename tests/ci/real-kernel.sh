@@ -95,7 +95,7 @@ same_sums "$work/before" "rollback did not restore /etc/audit and /etc/rsyslog.d
 step "A full audit disk doesn't halt the host"
 start=$(date +%s)
 img=/var/tmp/auditd-kit-test.img
-dd if=/dev/zero of="$img" bs=1M count=64 2>/dev/null
+dd if=/dev/zero of="$img" bs=1M count=128 2>/dev/null
 mkfs.ext4 -q -F -m 0 "$img"
 mount -o loop "$img" /var/log/audit
 chmod 0750 /var/log/audit
