@@ -69,20 +69,22 @@
 -a always,exit -F dir=/dev/shm -F perm=x -k exec_from_shm
 
 # Security tools: MAC policy changes, and firewall, SELinux, and package tools run by a logged-in
-# user. The iptables path is the real binary on RHEL 7 only. Elsewhere it is a link to the nft
-# wrapper, so that wrapper is listed too.
+# user. iptables is a link to one of the xtables programs on every supported distro, so the rules
+# name those: xtables-multi on RHEL 7, and the nft and legacy ones elsewhere.
 -w /etc/selinux/ -p wa -k T1562_Impair_Defenses
 -w /etc/apparmor/ -p wa -k T1562_Impair_Defenses
 -w /etc/apparmor.d/ -p wa -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/nft -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/xtables-nft-multi -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
--a always,exit -F path=/usr/sbin/iptables -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/xtables-legacy-multi -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
+-a always,exit -F path=/usr/sbin/xtables-multi -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/bin/firewall-cmd -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/ufw -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
 -a always,exit -F path=/usr/sbin/setenforce -F perm=x -F auid>=1000 -F auid!=unset -k T1562_Impair_Defenses
 
-# Software installs: package tools run by a logged-in user. A path that is missing on a host is
-# dropped at render time.
+# Software installs: package tools run by a logged-in user. Render drops a path that is missing or
+# a symlink on a host. yum is a link to dnf-3 on RHEL 8 and 9, and snap is a link to snapd on
+# Ubuntu 24.04.
 -a always,exit -F path=/usr/bin/dnf-3 -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
 -a always,exit -F path=/usr/bin/yum -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
 -a always,exit -F path=/usr/bin/rpm -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
@@ -90,6 +92,7 @@
 -a always,exit -F path=/usr/bin/apt-get -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
 -a always,exit -F path=/usr/bin/dpkg -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
 -a always,exit -F path=/usr/bin/snap -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
+-a always,exit -F path=/usr/lib/snapd/snapd -F perm=x -F auid>=1000 -F auid!=unset -k software_mgmt
 
 # Time: clock changes and timezone file changes. The adjtimex call is in the heavy profile,
 # because time daemons call it all the time.

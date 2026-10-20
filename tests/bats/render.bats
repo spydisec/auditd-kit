@@ -164,6 +164,23 @@ out_files() {
   grep -q "50-test.rules:2${tab}dropped${tab}missing_binary${tab}/usr/bin/gone\$" "$report"
 }
 
+@test "an exec rule on a symlink is dropped with symlink, an attribute rule stays" {
+  render_setup
+  mkdir -p "$AKIT_ROOT/usr/bin"
+  touch "$AKIT_ROOT/usr/bin/real"
+  ln -s real "$AKIT_ROOT/usr/bin/link"
+  extra_rules \
+    '-a always,exit -F path=/usr/bin/link -F perm=x -k test_link' \
+    '-a always,exit -F path=/usr/bin/real -F perm=x -k test_real' \
+    '-a always,exit -F path=/usr/bin/link -F perm=a -k test_attr'
+  render --extra-dir "$extra"
+  [ "$status" -eq 0 ]
+  not grep -q test_link "$out/50-test.rules"
+  grep -q test_real "$out/50-test.rules"
+  grep -q test_attr "$out/50-test.rules"
+  grep -q "50-test.rules:1${tab}dropped${tab}symlink${tab}/usr/bin/link\$" "$report"
+}
+
 @test "dir filter on a missing directory is dropped with missing_path" {
   render_setup
   mkdir -p "$AKIT_ROOT/etc"

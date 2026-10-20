@@ -172,12 +172,16 @@ all_sources() {
   fi
 }
 
-# List the host paths that rules depend on, and keep the ones missing under AKIT_ROOT.
+# List the host paths that rules depend on, and keep the ones missing under AKIT_ROOT and the
+# ones that are symlinks.
 : >"$tmp/paths"
 all_sources paths
 sort -u "$tmp/paths" | while IFS= read -r p; do
   [ -e "$(akit_path "$p")" ] || printf '%s\n' "$p"
 done >"$tmp/missing" || refuse "cannot check rule paths"
+sort -u "$tmp/paths" | while IFS= read -r p; do
+  [ ! -L "$(akit_path "$p")" ] || printf '%s\n' "$p"
+done >"$tmp/links" || refuse "cannot check rule paths"
 
 # The base file only gets its backlog value, so the canary and the control lines always load.
 {

@@ -6,7 +6,7 @@
 # Variables (-v): mode, strip (1 to drop control lines), b32_ok (1 when b32 rules can load),
 # selinux (1 when SELinux has a loaded policy).
 # Environment: AKIT_RENDER_LABEL (source name for the report), AKIT_RENDER_ARCH,
-# AKIT_RENDER_TMP, the dir that holds the b64, b32, missing, and report files, and
+# AKIT_RENDER_TMP, the dir that holds the b64, b32, missing, links, and report files, and
 # AKIT_CONTROL_FLAGS from common.sh.
 
 function load_syscalls(file, set, line, n, f) {
@@ -73,6 +73,7 @@ BEGIN {
     load_syscalls(tmp "/b64", b64_calls)
     load_syscalls(tmp "/b32", b32_calls)
     load_lines(tmp "/missing", missing)
+    load_lines(tmp "/links", links)
     name = label
     sub(/^.*\//, "", name)
     print "# Rendered by auditd-kit from " name ". Do not edit."
@@ -103,6 +104,8 @@ BEGIN {
   watch = ""
   dir = ""
   binary = ""
+  exe = 0
+  perm = ""
   selinux_field = ""
   for (i = 1; i < n; i++) {
     if (t[i] == "-w")
@@ -114,8 +117,11 @@ BEGIN {
         rule_arch = value
       else if (field ~ /^dir=/)
         dir = value
-      else if (field ~ /^(path|exe)=/)
+      else if (field ~ /^(path|exe)=/) {
         binary = value
+        exe = field ~ /^exe=/
+      } else if (field ~ /^perm=/)
+        perm = value
       else if (field ~ /^(subj_(user|role|type|sen|clr)|obj_(user|role|type|lev_low|lev_high))[!<>=&]/)
         selinux_field = field
     }
@@ -149,6 +155,12 @@ BEGIN {
   }
   if (binary != "" && (binary in missing)) {
     act("dropped", "missing_binary", binary)
+    next
+  }
+  # The kernel matches path and exe rules on the inode of the link itself, and exec reaches the
+  # link's target, so an exe rule or an exec-only path rule on a symlink never fires.
+  if (binary != "" && (binary in links) && (exe || perm == "x")) {
+    act("dropped", "symlink", binary)
     next
   }
 
