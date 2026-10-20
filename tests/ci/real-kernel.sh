@@ -57,6 +57,9 @@ fail() {
     grep -c akit_canary "$work/sink-ours"
     grep -c 'type=SYSCALL' "$work/sink-ours"
     head -c 600 "$work/sink-ours"
+    echo "-- rate limiting:"
+    journalctl -u systemd-journald --no-pager | grep -iE 'suppress|rate' | tail -n 5
+    journalctl -u rsyslog --no-pager | grep -iE 'rate-limit|ratelimit|dropp' | tail -n 5
     echo "-- canary SYSCALL in audit.log:"
     grep 'key="akit_canary"' /var/log/audit/audit.log | grep SYSCALL | tail -n 2 | cut -c1-200
     echo "-- tail of audit.log:"
