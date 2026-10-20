@@ -119,7 +119,7 @@ verify_lost() {
     return
   fi
   if [ "$verify_lost_after" -gt "$verify_lost_before" ]; then
-    verify_report lost fail "the kernel dropped $((verify_lost_after - verify_lost_before)) events during the canary check. Use a larger akit_size or a lighter profile."
+    verify_report lost fail "the lost count rose by $((verify_lost_after - verify_lost_before)) during the canary check. Use a larger akit_size or a lighter profile."
   else
     verify_report lost pass "no events dropped during the canary check"
   fi

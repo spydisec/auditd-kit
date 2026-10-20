@@ -177,7 +177,7 @@ check() {
   akit_stub auditctl 'if [ "$1" = -s ]; then n=$(cat "$AKIT_ROOT/lost" 2>/dev/null || echo 0); echo "lost $n"; echo $((n + 1)) >"$AKIT_ROOT/lost"; else echo "-w /x -p wa -k k"; echo "-w /y -p wa -k k"; fi'
   run sh "$verify"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"check=lost result=fail detail=the kernel dropped 1 events"* ]]
+  [[ "$output" == *"check=lost result=fail detail=the lost count rose by 1 during"* ]]
 }
 
 @test "the lost check reads the older AUDIT_STATUS format" {
