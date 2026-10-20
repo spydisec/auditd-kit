@@ -47,6 +47,33 @@ the `akit_` prefix and uses dashes, so `akit_skip_keys` is `--skip-keys`.
 | `akit_forward` | `none` | Forward audit events through rsyslog. `remote` sends them to `akit_remote_host`. `local` sends them to the syslog facility only, for a local agent such as Azure Monitor Agent to read. |
 | `akit_immutable` | `false` | `true` locks the rules until reboot (`-e 2`). |
 
+### One-line install
+
+`get.sh` downloads a release, checks it against `SHA256SUMS`, unpacks it into `/opt/auditd-kit/`,
+and runs its `install.sh`:
+
+```sh
+curl -fsSL https://github.com/spydisec/auditd-kit/releases/latest/download/get.sh | sudo sh
+```
+
+On a terminal it asks a few questions, shows the plan, and asks before it changes anything. With no
+terminal, as from an ssh loop or a config tool, it only prints the survey and the plan. Add
+`--yes` to install with no questions, and put other settings after `sh -s --`:
+
+```sh
+curl -fsSL https://github.com/spydisec/auditd-kit/releases/latest/download/get.sh \
+  | sudo AKIT_VERSION=0.1.0 sh -s -- --yes --config /etc/auditd-kit/site.conf
+```
+
+It ends with one line per host, such as `result=installed version=0.1.0 host=web01` or
+`result=refused version=0.1.0 host=web02 codes=low_disk`, so a fleet run can collect them. For a
+fleet, pin `AKIT_VERSION`, keep `site.conf` in your own repo, and roll out in waves: a run without
+`--yes` on every host first, then `--yes` on a few hosts, then the rest. For hosts without internet
+access, copy one release's files to your own server and set `AKIT_MIRROR` to that URL
+(`https://` or `file://`).
+
+The one-liner needs a published release.
+
 ### Without install.sh
 
 To load the rules by hand, render them on the host first. Render writes rule files that load on

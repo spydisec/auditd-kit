@@ -12,7 +12,9 @@
 # AKIT_VERSION=X.Y.Z picks a release instead of the latest one. AKIT_MIRROR is a URL to download
 # from instead of GitHub, e.g. a dir on your own web server that holds one release's
 # auditd-kit-<version>.tar.gz and SHA256SUMS. AKIT_DIR is where releases are unpacked (default
-# /opt/auditd-kit). The bundle is checked against SHA256SUMS before anything runs.
+# /opt/auditd-kit) and must be owned by root. The bundle is checked against SHA256SUMS before
+# anything runs. That catches a broken download. Both files come from the same place, so use a
+# mirror that you control.
 #
 # Exits 1 when it can't download or check the release, and otherwise with install.sh's exit code.
 set -eu
@@ -29,6 +31,10 @@ done
 
 if [ -n "${AKIT_MIRROR:-}" ]; then
   get_base=${AKIT_MIRROR%/}
+  case "$get_base" in
+    https://* | file://*) ;;
+    *) die "AKIT_MIRROR must be an https:// or file:// URL" ;;
+  esac
 elif [ -n "${AKIT_VERSION:-}" ]; then
   get_base="https://github.com/spydisec/auditd-kit/releases/download/v$AKIT_VERSION"
 else
@@ -63,11 +69,16 @@ printf '%s\n' "$get_line" >"$get_tmp/sum"
 
 get_dir=${AKIT_DIR:-/opt/auditd-kit}
 mkdir -p "$get_dir" || die "cannot create $get_dir"
+# Root runs what is unpacked here, so the dir must be root's, and an old copy of this version is
+# replaced, not added to.
+[ "$(stat -c %u "$get_dir")" = 0 ] || die "$get_dir must be owned by root"
+rm -rf "${get_dir:?}/auditd-kit-$get_version"
 tar -xzf "$get_tmp/$get_name" -C "$get_dir" || die "cannot unpack $get_name into $get_dir"
 printf 'auditd-kit get: %s is in %s/auditd-kit-%s\n' "$get_version" "$get_dir" "$get_version" >&2
 
-# Take --yes out of the arguments, then pick the mode.
+# Take --yes out of the arguments, then pick the mode. An explicit --dry-run only plans.
 get_yes=no
+get_dry=no
 get_n=$#
 while [ "$get_n" -gt 0 ]; do
   get_a=$1
@@ -76,11 +87,14 @@ while [ "$get_n" -gt 0 ]; do
   if [ "$get_a" = --yes ]; then
     get_yes=yes
   else
+    [ "$get_a" != --dry-run ] || get_dry=yes
     set -- "$@" "$get_a"
   fi
 done
 get_mode=apply
-if [ "$get_yes" = no ]; then
+if [ "$get_dry" = yes ]; then
+  get_mode=plan
+elif [ "$get_yes" = no ]; then
   if (: </dev/tty) 2>/dev/null; then
     get_mode=guided
     set -- --guided "$@"

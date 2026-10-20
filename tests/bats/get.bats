@@ -11,6 +11,8 @@ get="$repo/scripts/get.sh"
 # refuse=low_disk and exits with FAKE_RC when that is set.
 setup() {
   akit_stub id 'echo 0'
+  # The test dirs belong to the test user, so stat reports them as root's.
+  akit_stub stat 'echo 0'
   mirror="$BATS_TEST_TMPDIR/mirror"
   mkdir -p "$mirror" "$BATS_TEST_TMPDIR/b/auditd-kit-9.9.9/scripts"
   printf '%s\n' 'echo "install ran: $*"' '[ -z "${FAKE_RC:-}" ] || { echo "refuse=low_disk override=x"; exit "$FAKE_RC"; }' \
@@ -38,6 +40,29 @@ get() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"install ran: --dry-run --profile medium"* ]]
   [[ "${lines[${#lines[@]} - 1]}" == "result=planned "* ]]
+}
+
+@test "an explicit --dry-run with --yes reports planned, and an old copy of the version is replaced" {
+  mkdir -p "$AKIT_DIR/auditd-kit-9.9.9/scripts/lib"
+  touch "$AKIT_DIR/auditd-kit-9.9.9/scripts/lib/planted.sh"
+  get --yes --dry-run
+  [ "$status" -eq 0 ]
+  [[ "${lines[${#lines[@]} - 1]}" == "result=planned "* ]]
+  [ ! -e "$AKIT_DIR/auditd-kit-9.9.9/scripts/lib/planted.sh" ]
+}
+
+@test "an AKIT_DIR that root doesn't own is refused" {
+  akit_stub stat 'echo 1000'
+  get --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"must be owned by root"* ]]
+  [[ "$output" != *"install ran"* ]]
+}
+
+@test "a mirror that isn't https or file is refused" {
+  AKIT_MIRROR=http://example.com/auditd-kit get
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"must be an https:// or file:// URL"* ]]
 }
 
 @test "a refusal ends with result=refused and its codes, and keeps the exit code" {
