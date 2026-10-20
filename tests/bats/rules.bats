@@ -31,13 +31,15 @@ keys_of() {
   done
 }
 
-@test "base sets -D, backlog placeholder, -f 1, backlog_wait_time, canary" {
+@test "base sets -D, backlog placeholder, -f 1, backlog_wait_time, the excludes, canary" {
   prev=0
   for line in \
     '-D' \
     '-b @AKIT_BACKLOG@' \
     '-f 1' \
     '--backlog_wait_time 60000' \
+    '-a always,exclude -F msgtype=EOE' \
+    '-a always,exclude -F msgtype=CRYPTO_KEY_USER' \
     '-w /etc/auditd-kit/canary -p wa -k akit_canary'; do
     n=$(line_of "$base" "$line")
     [ -n "$n" ]
@@ -70,7 +72,7 @@ keys_of() {
     [ -n "$line" ] || continue
     count=$((count + 1))
     case "$line" in
-      *' -k '* | *'-F key='*) ;;
+      *' -k '* | *'-F key='* | '-a always,exclude -F msgtype='*) ;;
       *)
         echo "no key: $line" >&2
         false
@@ -162,7 +164,7 @@ time_change' ]
     [ -n "$line" ] || continue
     count=$((count + 1))
     case "$line" in
-      -D | -b* | -f* | --backlog_wait_time*) continue ;;
+      -D | -b* | -f* | --backlog_wait_time* | '-a always,exclude '*) continue ;;
       *' /etc/auditd-kit/canary '*)
         want=akit_canary ;;
       *path=/usr/sbin/useradd' '* | *path=/usr/sbin/groupadd' '* | *path=/usr/sbin/newusers' '*)
@@ -186,12 +188,12 @@ time_change' ]
         want=T1574_Hijack_Execution_Flow ;;
       *dir=/dev/shm' '*)
         want=exec_from_shm ;;
-      *path=/usr/sbin/nft' '* | *path=/usr/sbin/xtables-nft-multi' '* | *path=/usr/sbin/iptables' '* | \
+      *path=/usr/sbin/nft' '* | *path=/usr/sbin/xtables-*-multi' '* | *path=/usr/sbin/xtables-multi' '* | \
         *path=/usr/bin/firewall-cmd' '* | *path=/usr/sbin/ufw' '* | *path=/usr/sbin/setenforce' '* | \
         *' /etc/selinux/ '* | *' /etc/apparmor/ '* | *' /etc/apparmor.d/ '*)
         want=T1562_Impair_Defenses ;;
       *path=/usr/bin/dnf-3' '* | *path=/usr/bin/yum' '* | *path=/usr/bin/rpm' '* | \
-        *path=/usr/bin/apt' '* | *path=/usr/bin/apt-get' '* | *path=/usr/bin/dpkg' '* | *path=/usr/bin/snap' '*)
+        *path=/usr/bin/apt' '* | *path=/usr/bin/apt-get' '* | *path=/usr/bin/dpkg' '* | *path=/usr/bin/snap' '* | *path=/usr/lib/snapd/snapd' '*)
         want=software_mgmt ;;
       *kexec_load*)
         want=kexec ;;

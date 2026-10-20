@@ -13,6 +13,12 @@
 # 60 s on a kernel with HZ=1000 and longer on a kernel with a lower HZ. RHEL ships the same value.
 --backlog_wait_time 60000
 
+# Records to drop. EOE only marks the end of an event, and sshd writes a CRYPTO_KEY_USER record
+# for each connection. Both add log volume and nothing to search on. Older kernels accept only
+# the msgtype field on exclude rules, so these rules have no key.
+-a always,exclude -F msgtype=EOE
+-a always,exclude -F msgtype=CRYPTO_KEY_USER
+
 # Canary: verify writes to this file and looks for the akit_canary key.
 -w /etc/auditd-kit/canary -p wa -k akit_canary
 
