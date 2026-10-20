@@ -17,9 +17,10 @@ setup() {
   stub_ausearch found
 }
 
-# stub_auditctl <n>: auditctl -l prints n rule lines, or "No rules" when n is 0.
+# stub_auditctl <n> [<status line>]: auditctl -l prints n rule lines, or "No rules" when n is 0.
+# auditctl -s prints the status line, "lost 0" by default.
 stub_auditctl() {
-  akit_stub auditctl "if [ $1 -eq 0 ]; then echo 'No rules'; else i=0; while [ \$i -lt $1 ]; do echo '-w /x -p wa -k k'; i=\$((i + 1)); done; fi"
+  akit_stub auditctl "if [ \"\$1\" = -s ]; then echo '${2:-lost 0}'; elif [ $1 -eq 0 ]; then echo 'No rules'; else i=0; while [ \$i -lt $1 ]; do echo '-w /x -p wa -k k'; i=\$((i + 1)); done; fi"
 }
 
 # stub_ausearch <found|none>: record the arguments in $AKIT_ROOT/ausearch.args.
@@ -168,4 +169,21 @@ check() {
   printf 'forward=none\n' >>"$AKIT_ROOT/etc/auditd-kit/state"
   run sh "$verify"
   [[ "$output" != *rsyslog_active* ]]
+}
+
+@test "lost events during the canary check fail the lost check" {
+  write_state
+  # Each auditctl -s call reports one more lost event.
+  akit_stub auditctl 'if [ "$1" = -s ]; then n=$(cat "$AKIT_ROOT/lost" 2>/dev/null || echo 0); echo "lost $n"; echo $((n + 1)) >"$AKIT_ROOT/lost"; else echo "-w /x -p wa -k k"; echo "-w /y -p wa -k k"; fi'
+  run sh "$verify"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"check=lost result=fail detail=the lost count rose by 1 during"* ]]
+}
+
+@test "the lost check reads the older AUDIT_STATUS format" {
+  write_state
+  stub_auditctl 2 'AUDIT_STATUS: enabled=1 flag=1 pid=1 rate_limit=0 backlog_limit=320 lost=0 backlog=0'
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"check=lost result=pass"* ]]
 }

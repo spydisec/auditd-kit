@@ -43,3 +43,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0014](0014-files-auditd-kit-writes.md) | Files auditd-kit writes | Accepted |
 | [0015](0015-role-runs-shared-scripts.md) | The role runs the shared scripts on targets | Accepted |
 | [0016](0016-ansible-core-versions.md) | Supported ansible-core versions | Accepted |
+| [0017](0017-broad-rules-load-last.md) | Broad rules load last | Accepted |

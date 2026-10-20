@@ -67,6 +67,7 @@ akit_sums() {
 # akit_host_stubs: stub the host tools that install, rollback, and verify call. Each stub logs its
 # arguments to $calls. Files in $stub_state change what they do:
 #   uid, enabled, free   the value for id -u, the auditctl -s enabled field, and df free KB
+#   lost                 the auditctl -s lost field, which grows by one on each call
 #   augenrules_fails     augenrules runs this file as a script and exits 1
 #   ausearch_fails       ausearch finds no event
 #   rsyslogd_fails       rsyslogd -N1 rejects the configuration
@@ -85,7 +86,12 @@ echo \"/dev/sda1 99000000 1 \$(cat $akit_s/free 2>/dev/null || echo 90000000) 1%
   akit_stub auditctl "echo \"auditctl \$*\" >>$akit_c
 case \"\$1\" in
   -v) echo 'auditctl version 3.1.2' ;;
-  -s) echo \"enabled \$(cat $akit_s/enabled 2>/dev/null || echo 1)\" ;;
+  -s)
+    echo \"enabled \$(cat $akit_s/enabled 2>/dev/null || echo 1)\"
+    l=\$(cat $akit_s/lost 2>/dev/null || echo 0)
+    echo \"lost \$l\"
+    [ ! -e $akit_s/lost ] || echo \$((l + 1)) >$akit_s/lost
+    ;;
   -l) grep -E '^-[aw] ' \"\$AKIT_ROOT/etc/audit/audit.rules\" || echo 'No rules' ;;
 esac"
   akit_stub augenrules "echo \"augenrules \$*\" >>$akit_c

@@ -1,0 +1,8 @@
+# Minimal profile, loaded last. The kernel gives an event the key of the first rule that matches
+# it, so this broad rule loads after every rule that names a program. Otherwise a setuid program
+# such as crontab would get this key instead of its own.
+
+# Privilege: any program that a logged-in user starts and that runs with root's effective ID,
+# such as a setuid binary.
+-a always,exit -F arch=b64 -S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
+-a always,exit -F arch=b32 -S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
