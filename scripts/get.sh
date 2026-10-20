@@ -2,7 +2,12 @@
 # Download an auditd-kit release, check it, and run its install.sh.
 #
 # Usage: curl -fsSL https://github.com/spydisec/auditd-kit/releases/latest/download/get.sh | sudo sh
-#        ... | sudo sh -s -- <install.sh arguments>
+#        ... | sudo sh -s -- [--yes] [install.sh arguments]
+#
+# On a terminal, install runs in guided mode and asks before it changes anything. With no
+# terminal, as from ssh or a config tool, it only prints the survey and the plan. --yes runs
+# install with the given settings and no questions. The last line is a result line for the host:
+#   result=<installed|unchanged|planned|cancelled|refused|rolled_back|rollback_failed> version=X.Y.Z host=<name>
 #
 # AKIT_VERSION=X.Y.Z picks a release instead of the latest one. AKIT_MIRROR is a URL to download
 # from instead of GitHub, e.g. a dir on your own web server that holds one release's
@@ -61,6 +66,51 @@ mkdir -p "$get_dir" || die "cannot create $get_dir"
 tar -xzf "$get_tmp/$get_name" -C "$get_dir" || die "cannot unpack $get_name into $get_dir"
 printf 'auditd-kit get: %s is in %s/auditd-kit-%s\n' "$get_version" "$get_dir" "$get_version" >&2
 
-rm -rf "$get_tmp"
-trap - EXIT
-exec sh "$get_dir/auditd-kit-$get_version/scripts/install.sh" "$@"
+# Take --yes out of the arguments, then pick the mode.
+get_yes=no
+get_n=$#
+while [ "$get_n" -gt 0 ]; do
+  get_a=$1
+  shift
+  get_n=$((get_n - 1))
+  if [ "$get_a" = --yes ]; then
+    get_yes=yes
+  else
+    set -- "$@" "$get_a"
+  fi
+done
+get_mode=apply
+if [ "$get_yes" = no ]; then
+  if (: </dev/tty) 2>/dev/null; then
+    get_mode=guided
+    set -- --guided "$@"
+  else
+    get_mode=plan
+    set -- --dry-run "$@"
+  fi
+fi
+
+# Run install, keep its output for the result line, and keep its exit code.
+{ sh "$get_dir/auditd-kit-$get_version/scripts/install.sh" "$@" || echo "$?" >"$get_tmp/rc"; } \
+  | tee "$get_tmp/out"
+get_rc=$(cat "$get_tmp/rc" 2>/dev/null || echo 0)
+get_changes=$(sed -n 's/^changes=//p' "$get_tmp/out" | tail -n 1)
+case "$get_rc" in
+  0)
+    if [ "$get_mode" = plan ]; then
+      get_result=planned
+    elif grep -qx cancelled "$get_tmp/out"; then
+      get_result=cancelled
+    elif [ "$get_changes" = 0 ]; then
+      get_result=unchanged
+    else
+      get_result=installed
+    fi
+    ;;
+  1) get_result=refused ;;
+  2) get_result=rolled_back ;;
+  *) get_result=rollback_failed ;;
+esac
+get_codes=$(sed -n 's/^refuse=\([^ ]*\).*/\1/p' "$get_tmp/out" | paste -sd, -)
+printf 'result=%s version=%s host=%s%s\n' "$get_result" "$get_version" "$(uname -n)" "${get_codes:+ codes=$get_codes}"
+exit "$get_rc"
