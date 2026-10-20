@@ -93,16 +93,16 @@ out_files() {
   render_setup
   render
   [ "$status" -eq 0 ]
-  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules" ]
+  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules 90-auditd-kit-minimal-last.rules" ]
   rm -rf "$out"
   render --profile medium
   [ "$status" -eq 0 ]
-  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules 20-auditd-kit-medium.rules" ]
+  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules 20-auditd-kit-medium.rules 90-auditd-kit-minimal-last.rules 91-auditd-kit-medium-last.rules" ]
   rm -rf "$out"
   extra_rules '-w /etc/x -p wa -k test_x'
   render --profile heavy --immutable true --extra-dir "$extra"
   [ "$status" -eq 0 ]
-  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules 20-auditd-kit-medium.rules 30-auditd-kit-heavy.rules 50-test.rules 99-auditd-kit-finalize.rules" ]
+  [ "$(out_files)" = "00-auditd-kit-base.rules 10-auditd-kit-minimal.rules 20-auditd-kit-medium.rules 30-auditd-kit-heavy.rules 50-test.rules 90-auditd-kit-minimal-last.rules 91-auditd-kit-medium-last.rules 99-auditd-kit-finalize.rules" ]
 }
 
 @test "the old profile and size names exit 1 and name the new value" {
@@ -484,6 +484,6 @@ esac"
   render_setup
   render --profile heavy
   [ "$status" -eq 0 ]
-  grep -q -- '-S execve,execveat -F auid>=1000' "$out/20-auditd-kit-medium.rules"
+  grep -q -- '-S execve,execveat -F auid>=1000' "$out/91-auditd-kit-medium-last.rules"
   [ "$(awk '!/^[[:space:]]*#/ && /-S execve/ && !/auid>=1000/' "$out"/*.rules | wc -l)" -eq 0 ]
 }

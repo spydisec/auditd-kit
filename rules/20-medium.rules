@@ -3,11 +3,7 @@
 # adds noticeable log volume (the command and connection rules are the largest sources), so
 # measure it with stats.sh on a few hosts first (see docs/sizing-guide.md).
 
-# Commands: every program that a user with a login ID starts, including that user's cron jobs.
-# Services without a login ID are excluded, and so is a direct root login, which has login ID 0.
-# The 1000 floor matches UID_MIN on the supported systems. Edit it if your hosts differ.
--a always,exit -F arch=b64 -S execve,execveat -F auid>=1000 -F auid!=unset -k T1059_Command_and_Scripting_Interpreter
--a always,exit -F arch=b32 -S execve,execveat -F auid>=1000 -F auid!=unset -k T1059_Command_and_Scripting_Interpreter
+# Commands: 91-medium-last.rules logs every program that a logged-in user starts.
 
 # Staging: a program started from a temporary directory, by any user or service. Package
 # scripts run from /var/tmp, so expect bursts during installs.

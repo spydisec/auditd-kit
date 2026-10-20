@@ -32,15 +32,12 @@
 -w /etc/login.defs -p wa -k T1556_Modify_Authentication_Process
 -w /etc/ssh/ -p wa -k T1556_Modify_Authentication_Process
 
-# Privilege: changes to sudoers, use of sudo and su, and any program that a logged-in user starts
-# and that runs with root's effective ID, such as a setuid binary. The last two rules name tools
-# that users run to get a root or service context.
+# Privilege: changes to sudoers, and use of sudo and su. The last two rules name tools that users
+# run to get a root or service context. 90-minimal-last.rules logs the other setuid programs.
 -w /etc/sudoers -p wa -k T1548_Abuse_Elevation_Control_Mechanism
 -w /etc/sudoers.d/ -p wa -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/sudo -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/su -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
--a always,exit -F arch=b64 -S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
--a always,exit -F arch=b32 -S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/pkexec -F perm=x -k T1548_Abuse_Elevation_Control_Mechanism
 -a always,exit -F path=/usr/bin/systemd-run -F perm=x -F auid>=1000 -F auid!=unset -k T1548_Abuse_Elevation_Control_Mechanism
 

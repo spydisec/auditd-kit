@@ -103,6 +103,28 @@ verify_canary_check() {
   verify_report canary fail "no akit_canary event within 10 seconds"
 }
 
+# verify_lost_count: print the kernel's lost event count. Older auditctl prints lost=N.
+verify_lost_count() {
+  auditctl -s 2>/dev/null | awk '{
+    gsub(/=/, " ")
+    for (i = 1; i < NF; i++) if ($i == "lost" && $(i + 1) ~ /^[0-9]+$/) { print $(i + 1); f = 1; exit }
+  } END { exit !f }'
+}
+
+# The kernel counts events it dropped because the backlog was full or the rate limit was hit.
+# A count that grew during the canary check means the rules log more than the host can keep.
+verify_lost() {
+  if [ -z "$verify_lost_before" ] || ! verify_lost_after=$(verify_lost_count); then
+    verify_report lost fail "auditctl -s shows no lost count"
+    return
+  fi
+  if [ "$verify_lost_after" -gt "$verify_lost_before" ]; then
+    verify_report lost fail "the kernel dropped $((verify_lost_after - verify_lost_before)) events during the canary check. Use a larger akit_size or a lighter profile."
+  else
+    verify_report lost pass "no events dropped during the canary check"
+  fi
+}
+
 # The checks for forwarding run only when the state file says that install turned it on.
 verify_forward() {
   service rsyslog status >/dev/null 2>&1 && verify_rs=pass || verify_rs=fail
@@ -131,7 +153,9 @@ verify_forward() {
 verify_rule_count
 if [ -f "$verify_state" ]; then
   verify_files
+  verify_lost_before=$(verify_lost_count) || verify_lost_before=
   verify_canary_check
+  verify_lost
   case "$(sed -n 's/^forward=//p' "$verify_state" | head -n 1)" in
     local | remote) verify_forward ;;
   esac

@@ -6,6 +6,8 @@ base="$rules/00-base.rules"
 minimal="$rules/10-minimal.rules"
 medium="$rules/20-medium.rules"
 heavy="$rules/30-heavy.rules"
+minimal_last="$rules/90-minimal-last.rules"
+medium_last="$rules/91-medium-last.rules"
 finalize="$rules/99-finalize.rules"
 
 # Lines that are not blank and not comments.
@@ -52,7 +54,7 @@ keys_of() {
 
 @test "only base sets control lines" {
   run grep -El -- '^[[:space:]]*(-D|-b|-f|-e|-r|-i|--backlog_wait_time|--loginuid-immutable)([[:space:]=]|$)' \
-    "$base" "$minimal" "$medium" "$heavy"
+    "$base" "$minimal" "$medium" "$heavy" "$minimal_last" "$medium_last"
   [ "$status" -eq 0 ]
   [ "$output" = "$base" ]
 }
@@ -75,7 +77,7 @@ keys_of() {
         ;;
     esac
   done <<EOF2
-$(grep -hE '^[[:space:]]*-[aw][[:space:]]' "$base" "$minimal" "$medium" "$heavy")
+$(grep -hE '^[[:space:]]*-[aw][[:space:]]' "$base" "$minimal" "$medium" "$heavy" "$minimal_last" "$medium_last")
 EOF2
   [ "$count" -gt 0 ]
 }
@@ -84,7 +86,7 @@ EOF2
   # Syscalls that exist on b64 only. A b64 rule that names one of these needs no b32 twin.
   b64_only='kexec_load'
   count=0
-  for f in "$base" "$minimal" "$medium" "$heavy"; do
+  for f in "$base" "$minimal" "$medium" "$heavy" "$minimal_last" "$medium_last"; do
     while IFS= read -r line; do
       [ -n "$line" ] || continue
       count=$((count + 1))
@@ -112,7 +114,7 @@ EOF2
 @test "base and minimal use only the agreed keys" {
   [ "$(keys_of "$base")" = 'T1562_Impair_Defenses
 akit_canary' ]
-  [ "$(keys_of "$minimal")" = 'T1053_Scheduled_Task_Job
+  [ "$(keys_of "$minimal" "$minimal_last")" = 'T1053_Scheduled_Task_Job
 T1098_Account_Manipulation
 T1136_Create_Account
 T1543_Create_or_Modify_System_Process
@@ -145,7 +147,7 @@ time_change' ]
     '-F path=/usr/bin/sudo -F perm=x' '-F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset' \
     '-S execve,execveat -C uid!=euid -F euid=0 -F auid>=1000 -F auid!=unset' \
     '-S kexec_load,kexec_file_load' '-w /etc/ssh/ -p wa'; do
-    grep -qF -- "$want" "$minimal" || {
+    grep -qF -- "$want" "$minimal" "$minimal_last" || {
       echo "missing: $want" >&2
       false
     }
@@ -213,13 +215,13 @@ time_change' ]
         ;;
     esac
   done <<EOF2
-$(rule_lines "$base" "$minimal" | sed 's/^[^:]*://')
+$(rule_lines "$base" "$minimal" "$minimal_last" | sed 's/^[^:]*://')
 EOF2
   [ "$count" -gt 0 ]
 }
 
 @test "medium uses only the agreed keys" {
-  [ "$(keys_of "$medium")" = 'T1037_Boot_or_Logon_Initialization_Scripts
+  [ "$(keys_of "$medium" "$medium_last")" = 'T1037_Boot_or_Logon_Initialization_Scripts
 T1040_Network_Sniffing
 T1055_Process_Injection
 T1059_Command_and_Scripting_Interpreter
@@ -255,10 +257,10 @@ sysctl' ]
         ;;
     esac
   done <<EOF2
-$(rule_lines "$medium" | grep -F -- '-S execve')
+$(rule_lines "$medium_last" | grep -F -- '-S execve')
 EOF2
   [ "$n" -eq 2 ]
-  grep -q 'UID_MIN' "$medium"
+  grep -q 'UID_MIN' "$medium_last"
 }
 
 @test "heavy uses only the agreed keys, the setuid recipe, and the commented execve rule" {
@@ -316,12 +318,18 @@ EOF2
         ;;
     esac
   done <<EOF2
-$(rule_lines "$medium" | grep -F -- ' -S ')
+$(rule_lines "$medium" "$medium_last" | sed 's/^[^:]*://' | grep -F -- ' -S ')
 EOF2
 }
 
 @test "no rule filters on exe" {
-  [ "$(rule_lines "$base" "$minimal" "$medium" "$heavy" | grep -c -- 'exe=')" -eq 0 ]
+  [ "$(rule_lines "$base" "$minimal" "$medium" "$heavy" "$minimal_last" "$medium_last" | grep -c -- 'exe=')" -eq 0 ]
+}
+
+@test "broad execve rules live only in the last files, after every rule that names a program" {
+  # The first matching rule sets the key, so a broad rule must not load before a specific one.
+  [ "$(rule_lines "$base" "$minimal" "$medium" "$heavy" | grep -c -- '-S execve')" -eq 0 ]
+  [ "$(rule_lines "$minimal_last" "$medium_last" | grep -vc -- '-S execve')" -eq 0 ]
 }
 
 @test "medium and heavy headers say they add log volume" {

@@ -83,6 +83,7 @@ deploy_by_hand() {
   [ "$status" -eq 0 ]
   [ "$(plan_lines)" = "add /etc/audit/rules.d/00-auditd-kit-base.rules
 add /etc/audit/rules.d/10-auditd-kit-minimal.rules
+add /etc/audit/rules.d/90-auditd-kit-minimal-last.rules
 move /etc/audit/rules.d/audit.rules
 set /etc/audit/auditd.conf max_log_file
 set /etc/audit/auditd.conf num_logs
@@ -107,7 +108,8 @@ add /etc/auditd-kit/canary" ]
   run sh "$lib/plan.sh" "$BATS_TEST_TMPDIR/out"
   [ "$status" -eq 0 ]
   [ "$(plan_lines)" = "move /etc/audit/rules.d/20-auditd-kit-medium.rules
-move /etc/audit/rules.d/30-auditd-kit-heavy.rules" ]
+move /etc/audit/rules.d/30-auditd-kit-heavy.rules
+move /etc/audit/rules.d/91-auditd-kit-medium-last.rules" ]
 }
 
 @test "dry-run changes nothing and prints the plan" {
@@ -116,7 +118,7 @@ move /etc/audit/rules.d/30-auditd-kit-heavy.rules" ]
   [ "$status" -eq 0 ]
   [[ "$output" == *"move /etc/audit/rules.d/audit.rules"* ]]
   [[ "$output" == *"+max_log_file = 100"* ]]
-  [[ "$output" == *"changes=7"* ]]
+  [[ "$output" == *"changes=8"* ]]
   [ "$(config_sums)" = "$before" ]
   [ ! -e "$AKIT_ROOT/run/auditd-kit.lock" ]
 }
@@ -124,7 +126,7 @@ move /etc/audit/rules.d/30-auditd-kit-heavy.rules" ]
 @test "fresh install writes the rule files, sets auditd.conf keys, creates the canary, writes state" {
   install
   [ "$status" -eq 0 ]
-  [ "${lines[${#lines[@]} - 1]}" = changes=7 ]
+  [ "${lines[${#lines[@]} - 1]}" = changes=8 ]
   [ -f "$rules_d/00-auditd-kit-base.rules" ] && [ -f "$rules_d/10-auditd-kit-minimal.rules" ]
   [ ! -e "$rules_d/audit.rules" ]
   grep -qx 'max_log_file = 100' "$conf" && grep -qx 'name_format = hostname' "$conf"
@@ -132,7 +134,7 @@ move /etc/audit/rules.d/30-auditd-kit-heavy.rules" ]
   [ -f "$AKIT_ROOT/etc/auditd-kit/canary" ]
   state="$AKIT_ROOT/etc/auditd-kit/state"
   grep -qx profile=minimal "$state" && grep -q '^rule_count=[1-9]' "$state"
-  [ "$(grep -c '^file=' "$state")" -eq 3 ]
+  [ "$(grep -c '^file=' "$state")" -eq 4 ]
   grep -q '^file=[0-9a-f]* /etc/audit/auditd.conf$' "$state"
   run ! grep -q canary "$state"
   [ -f "$AKIT_ROOT/var/lib/auditd-kit/render-report.txt" ]

@@ -47,11 +47,18 @@ while [ $# -gt 0 ]; do
   shift 2
 done
 
-# Each profile loads the files of the profiles below it.
+# Each profile loads the files of the profiles below it. The 9x-*-last files hold the broad rules,
+# which must load after every specific rule because the first matching rule sets the key.
 case $profile in
-  minimal) profile_rules="rules/10-minimal.rules" ;;
-  medium) profile_rules="rules/10-minimal.rules rules/20-medium.rules" ;;
-  heavy) profile_rules="rules/10-minimal.rules rules/20-medium.rules rules/30-heavy.rules" ;;
+  minimal) profile_rules="rules/10-minimal.rules rules/90-minimal-last.rules" ;;
+  medium)
+    profile_rules="rules/10-minimal.rules rules/20-medium.rules
+      rules/90-minimal-last.rules rules/91-medium-last.rules"
+    ;;
+  heavy)
+    profile_rules="rules/10-minimal.rules rules/20-medium.rules rules/30-heavy.rules
+      rules/90-minimal-last.rules rules/91-medium-last.rules"
+    ;;
   standard) refuse "--profile standard is now heavy" ;;
   *) refuse "--profile must be minimal, medium, or heavy" ;;
 esac
