@@ -26,6 +26,27 @@ Overlay files must not hold control lines, which are `-D`, `-b`, `-f`, `-e`, `-r
 `--backlog_wait_time`, and `--loginuid-immutable`. Render removes them from overlay files and lists
 each one in the render report.
 
+## Load the rules without install.sh
+
+Don't copy these files into `/etc/audit/rules.d/` as they are. `00-base.rules` holds a placeholder
+for the backlog size, and some rules name syscalls, programs, or paths that a host may not have.
+`auditctl` stops at the first rule it can't load, so every rule after that one is lost.
+
+Render the rules on the target host instead. Render changes nothing on the host. It writes files
+that load there, and a report that lists each rule it dropped or trimmed, with the reason:
+
+```sh
+sh scripts/lib/render.sh --profile minimal --size standard \
+  --out-dir /tmp/akit-rules --report /tmp/akit-report.txt
+```
+
+Then move any other files out of `/etc/audit/rules.d/`, copy the rendered files in, and run
+`augenrules --load`. `install.sh` does all of this for you. It also backs up the files it changes,
+checks the result, and rolls back if a check fails.
+
+Write each rule on one line. Rule files have no line continuation, so a rule split with `\` fails
+to load.
+
 ## Credits
 
 The rules are our own, and no text or rules are copied from these sources. We took ideas from:
