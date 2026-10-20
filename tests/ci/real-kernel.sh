@@ -53,6 +53,12 @@ fail() {
     ss -ltn | grep -E ':551[45]'
     journalctl -u rsyslog -n 15 --no-pager
     ls -l "${work:-/nonexistent}"/sink-* && tail -c 400 "$work"/sink-*
+    echo "-- sink-ours: akit_canary lines, SYSCALL lines, first lines:"
+    grep -c akit_canary "$work/sink-ours"
+    grep -c 'type=SYSCALL' "$work/sink-ours"
+    head -c 600 "$work/sink-ours"
+    echo "-- canary SYSCALL in audit.log:"
+    grep 'key="akit_canary"' /var/log/audit/audit.log | grep SYSCALL | tail -n 2 | cut -c1-200
     echo "-- tail of audit.log:"
     tail -n 5 /var/log/audit/audit.log
   } >&2 2>&1 || true
