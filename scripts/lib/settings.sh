@@ -7,7 +7,8 @@
 # dashes, so akit_syslog_facility is --syslog-facility. A flag takes its value as the next
 # argument or after an equals sign. The config file holds key=value lines, # comments and blank
 # lines, and is parsed, never sourced. Arguments that are not flags are left in AKIT_ARGS.
-# Any bad key, flag, or value exits 1 through akit_die.
+# Any bad key, flag, or value exits 1 through akit_die. A caller can list its own value-less flags
+# in AKIT_EXTRA_FLAGS (space separated). Those go to AKIT_ARGS as they are, and no value is read.
 
 AKIT_SETTING_KEYS='akit_profile akit_size akit_max_log_file akit_num_logs akit_forward
   akit_syslog_facility akit_remote_host akit_remote_port akit_remote_protocol akit_immutable
@@ -122,7 +123,7 @@ akit_settings_set() {
 akit_settings_read_config() {
   [ -r "$1" ] || akit_die "$AKIT_EXIT_REFUSED" "cannot read config file $1"
   while IFS= read -r cfg_line || [ -n "$cfg_line" ]; do
-    cfg_line=$(printf '%s\n' "$cfg_line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    cfg_line=$(printf '%s\n' "$cfg_line" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     case "$cfg_line" in
       '' | '#'*) continue ;;
       *=*) ;;
@@ -152,6 +153,13 @@ akit_settings_load() {
 
   AKIT_ARGS=
   while [ $# -gt 0 ]; do
+    for load_x in ${AKIT_EXTRA_FLAGS:-}; do
+      if [ "$1" = "$load_x" ]; then
+        AKIT_ARGS="${AKIT_ARGS:+$AKIT_ARGS }$1"
+        shift
+        continue 2
+      fi
+    done
     case "$1" in
       --config)
         [ $# -ge 2 ] || akit_settings_bad --config "missing value"
@@ -179,7 +187,6 @@ akit_settings_load() {
     standard) load_max=100 load_num=8 akit_backlog=16384 ;;
     large) load_max=200 load_num=10 akit_backlog=32768 ;;
   esac
-  : "${akit_max_log_file:=$load_max}"
   [ -n "$akit_max_log_file" ] || akit_max_log_file=$load_max
   [ -n "$akit_num_logs" ] || akit_num_logs=$load_num
   akit_preset_total_mb=$((akit_max_log_file * akit_num_logs))

@@ -60,6 +60,7 @@ args="
 
 @test "flag overrides config file, config overrides default" {
   config '# comment' '' 'akit_profile=medium' 'akit_size=small' '  akit_syslog_facility = local3'
+  sed -i 's/$/\r/' "$cfg"
   run load_settings --config "$cfg" --size=large extra
   [ "$status" -eq 0 ]
   echo "$output" | grep -qx 'akit_profile=medium'
@@ -112,4 +113,13 @@ args="
   run load_settings --size medium
   [ "$status" -eq 1 ]
   [[ "$output" == *"akit_size"*"standard"* ]]
+}
+
+@test "listed extra flags pass through and others are rejected" {
+  AKIT_EXTRA_FLAGS="--dry-run --skip-load" run load_settings --dry-run --size small --skip-load file
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -qx 'akit_size=small'
+  echo "$output" | grep -qx 'args=--dry-run --skip-load file'
+  AKIT_EXTRA_FLAGS="--dry-run" run load_settings --skip-load
+  [ "$status" -eq 1 ]
 }
