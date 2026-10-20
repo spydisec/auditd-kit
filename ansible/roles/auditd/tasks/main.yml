@@ -1,0 +1,5 @@
+---
+# The install tasks come with the role and site playbook. For now the role stages the kit files
+# for the survey and stats playbooks.
+- name: Stage the kit files
+  ansible.builtin.include_tasks: stage.yml

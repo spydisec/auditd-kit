@@ -1,0 +1,19 @@
+{#- One row per host that answered. The columns are host, then every survey key, sorted. -#}
+{%- set ns = namespace(keys=[]) -%}
+{%- set hosts = ansible_play_hosts_all | select('in', hostvars) | list -%}
+{%- for h in hosts if hostvars[h].akit_survey is defined and hostvars[h].akit_survey.stdout_lines is defined -%}
+{%- for line in hostvars[h].akit_survey.stdout_lines if '=' in line -%}
+{%- set ns.keys = ns.keys + [line.split('=', 1)[0]] -%}
+{%- endfor -%}
+{%- endfor -%}
+{%- set keys = ns.keys | unique | sort -%}
+"host"{% for k in keys %},"{{ k }}"{% endfor %}
+
+{% for h in hosts if hostvars[h].akit_survey is defined and hostvars[h].akit_survey.stdout_lines is defined -%}
+{%- set row = namespace(d={}) -%}
+{%- for line in hostvars[h].akit_survey.stdout_lines if '=' in line -%}
+{%- set row.d = row.d | combine({line.split('=', 1)[0]: line.split('=', 1)[1]}) -%}
+{%- endfor -%}
+"{{ h | replace('"', '""') }}"{% for k in keys %},"{{ (row.d[k] | default('')) | replace('"', '""') }}"{% endfor %}
+
+{% endfor %}

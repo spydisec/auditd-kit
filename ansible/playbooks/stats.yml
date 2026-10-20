@@ -1,0 +1,38 @@
+---
+# Run stats.sh on every host and write the audit volume per host and day on the controller.
+- name: Measure audit volume
+  hosts: "{{ akit_hosts | default('all') }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Run stats
+      block:
+        - name: Stage the kit files
+          ansible.builtin.include_role:
+            name: spydisec.auditd_kit.auditd
+            tasks_from: stage
+
+        - name: Run stats.sh
+          ansible.builtin.command:
+            cmd: "sh {{ akit_stage_dir }}/scripts/stats.sh --format csv"
+          register: akit_stats
+          changed_when: false
+          check_mode: false
+      always:
+        - name: Remove the kit files
+          ansible.builtin.include_role:
+            name: spydisec.auditd_kit.auditd
+            tasks_from: cleanup
+
+- name: Write the fleet stats CSV
+  hosts: "{{ akit_hosts | default('all') }}"
+  gather_facts: false
+  tasks:
+    - name: Write the CSV on the controller
+      ansible.builtin.template:
+        src: stats.csv.j2
+        dest: "{{ akit_stats_csv | default('stats.csv') }}"
+        mode: "0644"
+      run_once: true
+      delegate_to: localhost
+      check_mode: false

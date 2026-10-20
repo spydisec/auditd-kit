@@ -1,0 +1,5 @@
+---
+# The role and the script path share the akit_ setting names on purpose (ADR 0012), so the
+# check that role variables start with the role name doesn't apply.
+skip_list:
+  - var-naming[no-role-prefix]

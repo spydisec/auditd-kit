@@ -1,0 +1,26 @@
+---
+# Copy the kit's rules, config, and scripts to a temp dir on the host. These tasks change nothing
+# that lasts, so they run in check mode too and never report a change. cleanup.yml removes the dir.
+- name: Make a temp dir for the kit files
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: .auditd-kit
+  register: akit_stage
+  check_mode: false
+  changed_when: false
+
+- name: Copy the kit files to the temp dir
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ akit_stage.path }}/"
+    mode: preserve
+  loop:
+    - rules
+    - config
+    - scripts
+  check_mode: false
+  changed_when: false
+
+- name: Remember where the kit files are
+  ansible.builtin.set_fact:
+    akit_stage_dir: "{{ akit_stage.path }}"

@@ -9,3 +9,7 @@ docs/design/
 
 # Python virtualenv for lint tools
 .venv/
+
+# Collection build: the role gets a copy of rules/, config/, and scripts/.
+ansible/roles/auditd/files/
+dist/

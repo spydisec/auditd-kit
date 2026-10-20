@@ -1,0 +1,6 @@
+host,day,bytes,events
+{% for h in ansible_play_hosts_all | select('in', hostvars) | list if hostvars[h].akit_stats is defined and hostvars[h].akit_stats.stdout_lines is defined %}
+{% for line in hostvars[h].akit_stats.stdout_lines if line %}
+{{ line }}
+{% endfor %}
+{% endfor %}
