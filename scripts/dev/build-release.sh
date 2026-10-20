@@ -18,6 +18,9 @@ die() {
 [ $# -eq 2 ] || die "usage: build-release.sh <version> <out-dir>"
 version=$1
 out=$2
+case $version in
+  '' | *[!0-9.]*) die "version must be X.Y.Z: $version" ;;
+esac
 printf '%s\n' "$version" | grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+' || die "version must be X.Y.Z: $version"
 if [ -d "$out" ] && [ -n "$(ls -A "$out")" ]; then
   die "out dir is not empty: $out"
