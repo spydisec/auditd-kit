@@ -9,7 +9,8 @@
 #
 # It checks that the survey changes nothing, that an install loads and verifies, that a second
 # install has nothing to change, that a rollback gives back checksum-identical /etc/audit and
-# /etc/rsyslog.d, and that a full audit disk doesn't halt the host.
+# /etc/rsyslog.d, that forwarding to a TCP sink reaches the sink and leaves the other rsyslog files
+# alone, and that a full audit disk doesn't halt the host.
 set -eu
 LC_ALL=C
 export LC_ALL
@@ -58,7 +59,11 @@ esac
 [ "$(id -u)" -eq 0 ] || fail "run as root"
 
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+cleanup() {
+  pkill -x socat 2>/dev/null || true
+  rm -rf "$work"
+}
+trap cleanup EXIT
 
 # sums: the sorted sha256sum of every file under /etc/audit and /etc/rsyslog.d.
 sums() {
@@ -88,8 +93,9 @@ run_install() {
 step "Test setup: install auditd with apt"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q --no-install-recommends auditd audispd-plugins
+apt-get install -y -q --no-install-recommends auditd audispd-plugins rsyslog socat
 service auditd start || true
+service rsyslog start || true
 auditctl -s
 
 step "Record checksums of /etc/audit and /etc/rsyslog.d"
@@ -115,6 +121,66 @@ run_install "$work/install2" --profile "$profile" --existing-rules replace
 step "Rollback gives back the files from before the install"
 sh "$repo/scripts/rollback.sh" || fail "rollback.sh exited $?"
 same_sums "$work/before" "rollback did not restore /etc/audit and /etc/rsyslog.d"
+
+# wait_for <file> <text>: wait up to 30 seconds for the text to appear in the file.
+wait_for() {
+  w=0
+  while [ "$w" -lt 30 ]; do
+    grep -F -q -- "$2" "$1" 2>/dev/null && return 0
+    sleep 1
+    w=$((w + 1))
+  done
+  return 1
+}
+
+step "Forwarding reaches the sink and leaves the other rsyslog files alone"
+: >"$work/sink-ours"
+: >"$work/sink-existing"
+socat -u TCP-LISTEN:5514,bind=127.0.0.1,reuseaddr,fork "OPEN:$work/sink-ours,append" &
+socat -u TCP-LISTEN:5515,bind=127.0.0.1,reuseaddr,fork "OPEN:$work/sink-existing,append" &
+# A forward that was there before auditd-kit. It must keep working and must not change.
+printf '%s\n' 'auth.* action(type="omfwd" target="127.0.0.1" port="5515" protocol="tcp")' \
+  >/etc/rsyslog.d/30-existing.conf
+service rsyslog restart
+sums >"$work/fwd-before"
+ls /etc/rsyslog.d >"$work/fwd-ls-before"
+sha256sum /etc/rsyslog.conf /etc/rsyslog.d/30-existing.conf >"$work/fwd-main-before"
+run_install "$work/install-fwd" --profile "$profile" --existing-rules replace \
+  --forward remote --remote-host 127.0.0.1 --remote-port 5514
+ls /etc/rsyslog.d >"$work/fwd-ls-after"
+{
+  cat "$work/fwd-ls-before"
+  echo 40-auditd-kit.conf
+} | sort >"$work/fwd-ls-want"
+sort "$work/fwd-ls-after" | diff -u "$work/fwd-ls-want" - || fail "the install added or removed an rsyslog.d file other than ours"
+sha256sum /etc/rsyslog.conf /etc/rsyslog.d/30-existing.conf | diff -u "$work/fwd-main-before" - \
+  || fail "the install changed rsyslog.conf or 30-existing.conf"
+grep -qx 'active = yes' /etc/audit/plugins.d/syslog.conf || fail "the syslog plugin is not active"
+# Empty the sink first, so that only a new event passes the check.
+: >"$work/sink-ours"
+echo "canary $(date)" >/etc/auditd-kit/canary
+wait_for "$work/sink-ours" akit_canary || fail "the canary event did not reach the sink on port 5514"
+logger -p auth.info "auditd-kit-marker-$$"
+wait_for "$work/sink-existing" "auditd-kit-marker-$$" || fail "the existing auth forward stopped working"
+grep -F -q "auditd-kit-marker-$$" "$work/sink-ours" && fail "our sink got an auth message"
+
+# A 20 KB execve argument. The drop-in sets maxMessageSize, which some rsyslog versions ignore in
+# a drop-in. That is only a warning, because auditd-kit never edits rsyslog.conf to fix it.
+auditctl -a always,exit -F arch=b64 -S execve -k akit_longtest || fail "cannot add the long event test rule"
+long=$(head -c 20000 /dev/zero | tr '\0' a)
+/bin/true "AKITLONG${long}AKITEND"
+auditctl -d always,exit -F arch=b64 -S execve -k akit_longtest
+if wait_for "$work/sink-ours" AKITEND; then
+  echo "The long execve event reached the sink. Longest line: $(awk '{ if (length($0) > m) m = length($0) } END { print m }' "$work/sink-ours") bytes"
+else
+  echo "WARNING: the long execve event did not reach the sink whole, so maxMessageSize may not take effect from a drop-in"
+fi
+
+sh "$repo/scripts/rollback.sh" || fail "rollback.sh exited $? after the forwarding install"
+same_sums "$work/fwd-before" "rollback did not restore /etc/audit and /etc/rsyslog.d after forwarding"
+pkill -x socat || true
+rm -f /etc/rsyslog.d/30-existing.conf
+service rsyslog restart
 
 step "A full audit disk doesn't halt the host"
 start=$(date +%s)
