@@ -50,10 +50,12 @@ write_state() {
   [[ "$output" == *"check=files result=pass"* ]]
   [[ "$output" == *"check=canary result=pass"* ]]
   [ -s "$AKIT_ROOT/etc/auditd-kit/canary" ]
-  # ausearch needs the date and the time as two separate arguments after -ts.
-  [ "$(sed -n 3p "$AKIT_ROOT/ausearch.args")" = -ts ]
-  sed -n 4p "$AKIT_ROOT/ausearch.args" | grep -Eqx '[0-9]{2}/[0-9]{2}/[0-9]{2}'
-  sed -n 5p "$AKIT_ROOT/ausearch.args" | grep -Eqx '[0-9]{2}:[0-9]{2}:[0-9]{2}'
+  # ausearch must read the log files (not stdin), and needs the date and the time as two
+  # separate arguments after -ts.
+  [ "$(sed -n 1p "$AKIT_ROOT/ausearch.args")" = --input-logs ]
+  [ "$(sed -n 4p "$AKIT_ROOT/ausearch.args")" = -ts ]
+  sed -n 5p "$AKIT_ROOT/ausearch.args" | grep -Eqx '[0-9]{2}/[0-9]{2}/[0-9]{2}'
+  sed -n 6p "$AKIT_ROOT/ausearch.args" | grep -Eqx '[0-9]{2}:[0-9]{2}:[0-9]{2}'
 }
 
 @test "canary file is overwritten, not appended" {
