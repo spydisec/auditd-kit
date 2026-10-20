@@ -77,8 +77,12 @@ verify_canary_check() {
   case "$verify_poll" in
     '' | *[!0-9]*) verify_poll=1 ;;
   esac
-  # ausearch parses -ts with the C locale's %x, which has a two-digit year. The event time is never before this second, so the search can't miss it.
-  verify_start=$(date '+%m/%d/%y %H:%M:%S')
+  # ausearch reads stdin when it isn't a terminal, so --input-logs makes it read the audit logs.
+  # ausearch -ts takes the date and the time as two arguments. It parses the date with the C
+  # locale's %x, which has a two-digit year. The event time is never before this second.
+  verify_date=$(date '+%m/%d/%y')
+  verify_time=$(date '+%H:%M:%S')
+  verify_start="$verify_date $verify_time"
   if ! printf 'canary %s\n' "$verify_start" >"$verify_canary" 2>/dev/null; then
     verify_report canary fail "cannot write $verify_canary"
     return
@@ -87,7 +91,7 @@ verify_canary_check() {
   [ "$verify_poll" -le 1 ] || verify_tries=$((10 / verify_poll))
   verify_i=0
   while [ "$verify_i" -lt "$verify_tries" ]; do
-    if ausearch -k akit_canary -ts "$verify_start" >/dev/null 2>&1; then
+    if ausearch --input-logs -k akit_canary -ts "$verify_date" "$verify_time" >/dev/null 2>&1; then
       verify_report canary pass "event found"
       return
     fi

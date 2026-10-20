@@ -1,0 +1,49 @@
+---
+name: integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  # install.sh, a second install, and rollback.sh on a real kernel, then a full audit disk.
+  real-kernel:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        profile: [minimal, heavy]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Real kernel test
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: sudo AKIT_CI_OK=yes sh tests/ci/real-kernel.sh "$PROFILE"
+
+  # install.sh --skip-load twice and rollback.sh --skip-load in each supported OS image.
+  container-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["centos:7", "rockylinux:8", "rockylinux:9", "ubuntu:22.04", "ubuntu:24.04"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Container install test
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: sh tests/ci/container-install.sh "$IMAGE"

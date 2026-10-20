@@ -7,42 +7,9 @@
 # survey.sh must set survey_root before it calls the checks, because two of them run the awk
 # programs in lib/. A list with no entries is reported as "none".
 
-survey_rules_dir=/etc/audit/rules.d
-
 # survey_join: read lines from stdin and print them joined by $1 (default a comma), or "none".
 survey_join() {
   awk -v sep="${1:-,}" 'NF {printf "%s%s", (n++ ? sep : ""), $0} END {if (!n) printf "none"; print ""}'
-}
-
-# survey_state_has_file <abs-path>: succeed when the state file lists the path as written by
-# auditd-kit (a file=<sha256> <path> line).
-survey_state_has_file() {
-  survey_sf=$(akit_path /etc/auditd-kit/state)
-  [ -r "$survey_sf" ] || return 1
-  sed -n 's/^file=[^ ]* //p' "$survey_sf" | grep -x -F "$1" >/dev/null 2>&1
-}
-
-# survey_is_akit_rule <name>: succeed when auditd-kit wrote /etc/audit/rules.d/<name>.
-survey_is_akit_rule() {
-  case "$1" in
-    *auditd-kit*) return 0 ;;
-  esac
-  survey_state_has_file "$survey_rules_dir/$1"
-}
-
-# survey_rules_files: print the names of the *.rules files in rules.d, one per line.
-survey_rules_files() {
-  survey_rdir=$(akit_path "$survey_rules_dir")
-  [ -d "$survey_rdir" ] || return 0
-  for survey_rf in "$survey_rdir"/*.rules; do
-    [ -f "$survey_rf" ] || continue
-    printf '%s\n' "${survey_rf##*/}"
-  done
-}
-
-# survey_rules_body <name>: print the lines of a rules.d file that are not blank or comments.
-survey_rules_body() {
-  sed -e 's/^[[:space:]]*//' -e '/^#/d' -e '/^$/d' "$(akit_path "$survey_rules_dir/$1")"
 }
 
 survey_check_agents() {
@@ -88,19 +55,19 @@ survey_check_hardening() {
   if [ -r "$survey_ar" ] && grep -v '^[[:space:]]*#' "$survey_ar" | grep -e '--loginuid-immutable' >/dev/null 2>&1; then
     survey_li=yes
   fi
-  survey_list=$(survey_rules_files)
+  survey_list=$(akit_rulesd_files)
   for survey_n in $survey_list; do
-    survey_body=$(survey_rules_body "$survey_n") || return 1
+    survey_body=$(akit_rulesd_body "$survey_n") || return 1
     if printf '%s\n' "$survey_body" | grep -e '--loginuid-immutable' >/dev/null 2>&1; then
       survey_li=yes
     fi
-    survey_is_akit_rule "$survey_n" && continue
+    akit_rulesd_is_ours "$survey_n" && continue
     survey_lname=$(printf '%s\n' "$survey_n" | tr '[:upper:]' '[:lower:]')
     survey_hit=no
     case "$survey_lname" in
       *cis* | *stig*) survey_hit=yes ;;
     esac
-    if [ "$survey_hit" = no ] && grep -i -E '^[[:space:]]*#(.*[^a-z])?(cis|stig)([^a-z]|$)' "$(akit_path "$survey_rules_dir/$survey_n")" >/dev/null 2>&1; then
+    if [ "$survey_hit" = no ] && grep -i -E '^[[:space:]]*#(.*[^a-z])?(cis|stig)([^a-z]|$)' "$(akit_path "$AKIT_RULES_D/$survey_n")" >/dev/null 2>&1; then
       survey_hit=yes
     fi
     if [ "$survey_hit" = yes ]; then
@@ -111,50 +78,31 @@ survey_check_hardening() {
   akit_kv hardening_rule_files "${survey_hf:-none}"
 }
 
-# Only a distro audit.rules that holds nothing but control lines gets the :control suffix, and
-# its control lines are not reported. Every other foreign file is listed plainly, with each of
-# its control lines (the flags in AKIT_CONTROL_FLAGS, with or without a space before the value).
-# augenrules keeps the last -f and -b it reads, so a kept file can override ours.
+# akit_rulesd_sort in rulesd.sh sorts the files. A distro audit.rules with only control lines
+# gets the :control suffix, and its lines are not reported. Every foreign file is listed with
+# each of its control lines, because augenrules keeps the last -f and -b it reads, so a kept file
+# can override ours.
 survey_check_rules_d() {
   survey_df=
   survey_cl=
-  survey_list=$(survey_rules_files)
-  for survey_n in $survey_list; do
-    survey_is_akit_rule "$survey_n" && continue
-    survey_body=$(survey_rules_body "$survey_n") || return 1
-    # The first output line is "yes" when the file holds only control lines. The second line
-    # lists the control lines.
-    survey_ctl_out=$(printf '%s\n' "$survey_body" | awk -v f="$survey_n" '
-      function is_control(word,    n, c, i) {
-        n = split(ENVIRON["AKIT_CONTROL_FLAGS"], c, " ")
-        for (i = 1; i <= n; i++) {
-          if (word == c[i]) return 1
-          if (c[i] ~ /^--/) {
-            if (index(word, c[i] "=") == 1) return 1
-          } else if (index(word, c[i]) == 1) return 1
-        }
-        return 0
-      }
-      NF == 0 {next}
-      is_control($1) {
-        gsub(/[ \t]+/, " ")
-        sub(/ $/, "")
-        lines = lines (n++ ? "," : "") f ":" $0
-        next
-      }
-      {bad = 1}
-      END {print (bad ? "no" : "yes"); print lines}')
-    survey_ctl=$(printf '%s\n' "$survey_ctl_out" | sed -n 1p)
-    if [ "$survey_n" = audit.rules ] && [ "$survey_ctl" = yes ]; then
-      survey_df="${survey_df:+$survey_df,}$survey_n:control"
-      continue
-    fi
+  survey_sorted=$(akit_rulesd_sort) || return 1
+  while read -r survey_kind survey_n; do
+    case "$survey_kind" in
+      foreign) ;;
+      control)
+        survey_df="${survey_df:+$survey_df,}$survey_n:control"
+        continue
+        ;;
+      *) continue ;;
+    esac
     survey_df="${survey_df:+$survey_df,}$survey_n"
-    survey_cl_new=$(printf '%s\n' "$survey_ctl_out" | sed -n 2p)
+    survey_cl_new=$(akit_rulesd_control "$survey_n" | sed -n 2p)
     if [ -n "$survey_cl_new" ]; then
       survey_cl="${survey_cl:+$survey_cl,}$survey_cl_new"
     fi
-  done
+  done <<EOF
+$survey_sorted
+EOF
   akit_kv rules_d_files "${survey_df:-none}"
   akit_kv rules_d_control_lines "${survey_cl:-none}"
 }

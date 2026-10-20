@@ -40,3 +40,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0011](0011-our-own-layered-rule-profiles.md) | Our own layered rule profiles | Accepted |
 | [0012](0012-settings-flags-and-exit-codes.md) | Settings, flags, and exit codes | Accepted |
 | [0013](0013-no-package-installs.md) | auditd-kit doesn't install packages | Accepted |
+| [0014](0014-files-auditd-kit-writes.md) | Files auditd-kit writes | Accepted |
