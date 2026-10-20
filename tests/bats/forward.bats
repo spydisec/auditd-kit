@@ -75,6 +75,15 @@ fwd() {
   grep -qx 'active = no' "$plugin"
 }
 
+@test "forwarding without the plugin's config file refuses and changes nothing" {
+  rm "$plugin"
+  before=$(akit_sums etc)
+  remote_install
+  [ "$status" -eq 1 ]
+  [[ "$output" == *refuse=syslog_plugin_missing* ]]
+  [ "$(akit_sums etc)" = "$before" ]
+}
+
 @test "forwarding sets the plugin to active with the facility" {
   remote_install --syslog-facility local3
   [ "$status" -eq 0 ]

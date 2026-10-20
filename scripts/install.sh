@@ -126,6 +126,12 @@ if [ "$install_dry_run" = no ] && [ "$install_skip_load" = no ] && ! command -v 
   install_missing="${install_missing:+$install_missing
 }refuse=service_missing override=install initscripts-service"
 fi
+# Forwarding needs the plugin's config file. Refusing here also means that forward=local or
+# remote in the state file always records a plugin that this install turned on.
+if [ "$akit_forward" != none ] && ! akit_forward_plugin_file >/dev/null; then
+  install_missing="${install_missing:+$install_missing
+}refuse=syslog_plugin_missing override=install the audit syslog plugin (audispd-plugins)"
+fi
 if [ -n "$install_missing" ]; then
   printf '%s\n' "$install_missing"
   akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
