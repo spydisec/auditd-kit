@@ -11,7 +11,8 @@
 #   move <path>        a rules.d file that install removes, after the backup has saved it
 #   set <file> <key>   an auditd.conf key or a syslog plugin key whose value changes
 # With forwarding on, the rsyslog drop-in is added or changed, and the syslog plugin is set to
-# active. With forwarding off, the plugin is set to inactive and our drop-in is moved, if there is one.
+# active. With forwarding off, our drop-in is moved, if there is one, and the plugin is
+# set to inactive only if auditd-kit turned it on.
 # Only our own files and a distro audit.rules with only control lines are moved, plus every other
 # rules.d file when akit_existing_rules is replace.
 # shellcheck disable=SC2154
@@ -99,9 +100,8 @@ if grep '^set ' "$tmp/lines" >/dev/null; then
 fi
 
 # The syslog plugin. A host without the plugin file has nothing to set.
-if plan_plug=$(akit_forward_plugin_file); then
-  plan_want=no
-  [ "$akit_forward" = none ] || plan_want=yes
+plan_want=$(akit_forward_plugin_want)
+if [ "$plan_want" != keep ] && plan_plug=$(akit_forward_plugin_file); then
   plan_cur=$(akit_path "$plan_plug")
   cp "$plan_cur" "$tmp/plugin"
   akit_forward_plugin "$tmp/plugin" "$plan_want"

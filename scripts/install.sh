@@ -213,9 +213,8 @@ akit_auditdconf_wanted "$install_root/.." >"$install_work/wanted" || install_fai
 while read -r install_k install_v; do
   akit_auditdconf_set "$install_conf" "$install_k" "$install_v" || install_fail "cannot set $install_k in $install_conf"
 done <"$install_work/wanted"
-if install_plug=$(akit_forward_plugin_file); then
-  install_want=no
-  [ "$akit_forward" = none ] || install_want=yes
+install_want=$(akit_forward_plugin_want)
+if [ "$install_want" != keep ] && install_plug=$(akit_forward_plugin_file); then
   akit_forward_plugin "$(akit_path "$install_plug")" "$install_want" || install_fail "cannot set $install_plug"
 fi
 if [ "$akit_forward" != none ]; then

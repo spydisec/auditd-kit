@@ -55,15 +55,24 @@ fwd() {
   [ "$status" -eq 1 ]
 }
 
-@test "forward=none sets active = no and touches no rsyslog file" {
+@test "forward=none leaves a plugin it didn't turn on, and touches no rsyslog file" {
   sed -i 's/^active = no/active = yes/' "$plugin"
   before=$(akit_sums etc/rsyslog.d etc/rsyslog.conf)
   install
   [ "$status" -eq 0 ]
-  grep -qx 'active = no' "$plugin"
+  grep -qx 'active = yes' "$plugin"
   [ "$(akit_sums etc/rsyslog.d etc/rsyslog.conf)" = "$before" ]
   run ! akit_called "service rsyslog restart"
   run ! akit_called "rsyslogd -N1"
+}
+
+@test "forward=none turns off the plugin after auditd-kit turned it on" {
+  remote_install
+  [ "$status" -eq 0 ]
+  grep -qx 'active = yes' "$plugin"
+  install
+  [ "$status" -eq 0 ]
+  grep -qx 'active = no' "$plugin"
 }
 
 @test "forwarding sets the plugin to active with the facility" {
