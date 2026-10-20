@@ -37,6 +37,19 @@ akit_forward_plugin_file() {
 
 # akit_forward_plugin <plugin-file> <yes|no>: set active in the plugin file. With yes, also set
 # args to the priority and the facility. The file is written only when it changes.
+# akit_forward_plugin_want: print what the syslog plugin's active value should become: yes when
+# forwarding is on, no when it's off and the state file shows that auditd-kit turned it on, and
+# keep otherwise. keep leaves a plugin that a person or another agent set up as it is.
+akit_forward_plugin_want() {
+  if [ "$akit_forward" != none ]; then
+    echo yes
+  elif grep -Eq '^forward=(local|remote)$' "$(akit_path /etc/auditd-kit/state)" 2>/dev/null; then
+    echo no
+  else
+    echo keep
+  fi
+}
+
 akit_forward_plugin() {
   akit_auditdconf_set "$1" active "$2" || return 1
   [ "$2" = yes ] || return 0
