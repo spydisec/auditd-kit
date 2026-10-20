@@ -47,6 +47,10 @@ verify_rule_count() {
 }
 
 verify_files() {
+  if [ ! -r "$verify_state" ]; then
+    verify_report files fail "cannot read $verify_state"
+    return
+  fi
   verify_bad=
   while IFS= read -r verify_line; do
     case "$verify_line" in
@@ -73,9 +77,9 @@ verify_canary_check() {
   case "$verify_poll" in
     '' | *[!0-9]*) verify_poll=1 ;;
   esac
-  # The event time is never before this second, so the search can't miss it.
-  verify_start=$(date '+%m/%d/%Y %H:%M:%S')
-  if ! printf 'canary %s\n' "$verify_start" >>"$verify_canary" 2>/dev/null; then
+  # ausearch parses -ts with the C locale's %x, which has a two-digit year. The event time is never before this second, so the search can't miss it.
+  verify_start=$(date '+%m/%d/%y %H:%M:%S')
+  if ! printf 'canary %s\n' "$verify_start" >"$verify_canary" 2>/dev/null; then
     verify_report canary fail "cannot write $verify_canary"
     return
   fi

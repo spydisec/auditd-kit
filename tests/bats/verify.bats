@@ -50,7 +50,23 @@ write_state() {
   [[ "$output" == *"check=files result=pass"* ]]
   [[ "$output" == *"check=canary result=pass"* ]]
   [ -s "$AKIT_ROOT/etc/auditd-kit/canary" ]
-  grep -q -- '-k akit_canary -ts [0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9][0-9] [0-9:]*$' "$AKIT_ROOT/ausearch.args"
+  grep -Eq -- '^-k akit_canary -ts [0-9]{2}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$' "$AKIT_ROOT/ausearch.args"
+}
+
+@test "canary file is overwritten, not appended" {
+  write_state
+  run sh "$verify"
+  run sh "$verify"
+  [ "$(wc -l <"$AKIT_ROOT/etc/auditd-kit/canary")" -eq 1 ]
+}
+
+@test "unreadable state file fails the files check with exit 2" {
+  write_state
+  chmod 000 "$AKIT_ROOT/etc/auditd-kit/state"
+  [ -r "$AKIT_ROOT/etc/auditd-kit/state" ] && skip "running as root"
+  run sh "$verify"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"check=files result=fail detail=cannot read"* ]]
 }
 
 @test "rule count compares against auditctl output" {
