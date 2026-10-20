@@ -37,6 +37,8 @@ fail() {
     ausearch -ts recent -k akit_canary 2>&1 | tail -n 4
     echo "-- LC_ALL=C ausearch -ts <today 00:00:00>:"
     LC_ALL=C ausearch -k akit_canary -ts "$(LC_ALL=C date '+%m/%d/%y') 00:00:00" 2>&1 | tail -n 4
+    echo "-- akit_canary lines in the logs:"
+    grep -c akit_canary /var/log/audit/audit.log*
     echo "-- tail of audit.log:"
     tail -n 5 /var/log/audit/audit.log
   } >&2 2>&1 || true
