@@ -13,6 +13,8 @@ survey_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 # shellcheck source=/dev/null
 . "$survey_root/lib/output.sh"
 # shellcheck source=/dev/null
+. "$survey_root/lib/rulesd.sh"
+# shellcheck source=/dev/null
 . "$survey_root/lib/survey-host.sh"
 # shellcheck source=/dev/null
 . "$survey_root/lib/survey-logging.sh"

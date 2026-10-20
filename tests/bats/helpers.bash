@@ -44,3 +44,22 @@ akit_path_without() {
   fi
   echo "$akit_hide"
 }
+
+# akit_host_fixture: make a new AKIT_ROOT that holds a host with auditd installed but not yet set
+# up by auditd-kit, and point render at the Ubuntu 24.04 syscall tables.
+akit_host_fixture() {
+  akit_fixture_root
+  akit_fx="$BATS_TEST_DIRNAME/../fixtures"
+  cp -R "$akit_fx/hosts/ubuntu2404/." "$AKIT_ROOT/"
+  cp -R "$akit_fx/install/etc" "$AKIT_ROOT/"
+  mkdir -p "$AKIT_ROOT/run" "$AKIT_ROOT/var/log/audit"
+  AKIT_SYSCALLS_B64="$akit_fx/syscalls/ubuntu2404-b64.txt"
+  AKIT_SYSCALLS_B32="$akit_fx/syscalls/ubuntu2404-b32.txt"
+  AKIT_ARCH=x86_64
+  export AKIT_SYSCALLS_B64 AKIT_SYSCALLS_B32 AKIT_ARCH
+}
+
+# akit_sums <dir>...: print the sorted sha256sum of every file under the dirs, relative to AKIT_ROOT.
+akit_sums() {
+  (cd "$AKIT_ROOT" && find "$@" -type f -exec sha256sum {} + 2>/dev/null | sort)
+}

@@ -6,6 +6,10 @@ export LC_ALL
 
 AKIT_ROOT=${AKIT_ROOT:-}
 
+# The kit version that install writes to the state file. The release workflow updates it.
+# shellcheck disable=SC2034
+AKIT_VERSION=0.0.0 # x-release-please-version
+
 AKIT_EXIT_OK=0
 AKIT_EXIT_REFUSED=1
 AKIT_EXIT_FAILED=2
@@ -21,6 +25,12 @@ export AKIT_CONTROL_FLAGS
 # akit_path <abs-path>: print the path under AKIT_ROOT.
 akit_path() {
   printf '%s%s\n' "$AKIT_ROOT" "$1"
+}
+
+# akit_same_file <a> <b>: succeed when both files exist and have the same content.
+akit_same_file() {
+  [ -f "$1" ] && [ -f "$2" ] || return 1
+  [ "$(sha256sum <"$1")" = "$(sha256sum <"$2")" ]
 }
 
 # akit_log <level> <message>: write to stderr, and to AKIT_LOG_FILE when it is set.
