@@ -172,7 +172,9 @@ sha256sum /etc/rsyslog.conf /etc/rsyslog.d/30-existing.conf | diff -u "$work/fwd
 grep -qx 'active = yes' /etc/audit/plugins.d/syslog.conf || fail "the syslog plugin is not active"
 # Empty the sink first, so that only a new event passes the check.
 : >"$work/sink-ours"
-echo "canary $(date)" >/etc/auditd-kit/canary
+# This shell started before auditd enabled auditing and may have no syscall audit context.
+# Open and write the canary in a new process so that the kernel audits the write.
+sh -c 'echo "canary $(date)" >/etc/auditd-kit/canary'
 wait_for "$work/sink-ours" akit_canary || fail "the canary event did not reach the sink on port 5514"
 logger -p auth.info "auditd-kit-marker-$$"
 wait_for "$work/sink-existing" "auditd-kit-marker-$$" || fail "the existing auth forward stopped working"
