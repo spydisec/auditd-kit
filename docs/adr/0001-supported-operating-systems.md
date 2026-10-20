@@ -1,6 +1,6 @@
 # 0001. Supported operating systems for v1
 
-Status: Accepted
+Status: Superseded by 0019
 Date: 2026-10-19
 
 ## Context

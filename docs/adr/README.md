@@ -27,7 +27,7 @@ What becomes easier, what becomes harder, and what we have to do next.
 
 | ADR | Title | Status |
 |---|---|---|
-| [0001](0001-supported-operating-systems.md) | Supported operating systems for v1 | Accepted |
+| [0001](0001-supported-operating-systems.md) | Supported operating systems for v1 | Superseded by 0019 |
 | [0002](0002-plain-files-with-script-and-ansible-paths.md) | Plain files with a script path and an Ansible path | Accepted |
 | [0003](0003-survey-before-change.md) | Run a read-only survey before any change | Accepted |
 | [0004](0004-local-logs-by-default.md) | Keep logs local by default and forward through one added file | Accepted |
@@ -45,3 +45,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0016](0016-ansible-core-versions.md) | Supported ansible-core versions | Accepted |
 | [0017](0017-broad-rules-load-last.md) | Broad rules load last | Accepted |
 | [0018](0018-render-drops-exec-rules-on-symlinks.md) | Render drops exec rules on symlinks | Accepted |
+| [0019](0019-add-rhel-10.md) | Add RHEL 10 | Accepted |

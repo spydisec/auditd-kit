@@ -116,6 +116,20 @@ if ! install_out=$(sh "$install_lib/preflight.sh" --config "$install_work/settin
   esac
   akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
 fi
+# The backup needs tar, and the load step restarts auditd with service. A minimal RHEL 10 host
+# has neither, and RHEL 9 and later ship service in initscripts-service.
+install_missing=
+if [ "$install_dry_run" = no ] && ! command -v tar >/dev/null 2>&1; then
+  install_missing="refuse=tar_missing override=install tar"
+fi
+if [ "$install_dry_run" = no ] && [ "$install_skip_load" = no ] && ! command -v service >/dev/null 2>&1; then
+  install_missing="${install_missing:+$install_missing
+}refuse=service_missing override=install initscripts-service"
+fi
+if [ -n "$install_missing" ]; then
+  printf '%s\n' "$install_missing"
+  akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
+fi
 
 # 2. Render, into a temp dir with its report next to it.
 set -- --profile "$akit_profile" --size "$akit_size" --immutable "$akit_immutable" \

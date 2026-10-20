@@ -38,7 +38,11 @@ setup() {
     apt-get update -q
     apt-get install -y -q --no-install-recommends auditd procps
   elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y -q audit tar gzip procps-ng findutils diffutils
+    # RHEL 10 ships auditctl and augenrules in audit-rules.
+    extra=
+    major=$(sed -n 's/^VERSION_ID="\{0,1\}\([0-9]*\).*/\1/p' /etc/os-release)
+    [ "$major" -lt 10 ] || extra=audit-rules
+    dnf install -y -q audit $extra tar gzip procps-ng findutils diffutils
   else
     yum install -y -q audit tar gzip procps-ng findutils diffutils
   fi

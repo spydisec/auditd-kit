@@ -14,7 +14,7 @@ releases. A quickstart will be added to this file once the scripts and the Ansib
 
 ## Supported systems
 
-- Red Hat Enterprise Linux 7, 8, and 9, tested on CentOS 7, Rocky Linux 8, and Rocky Linux 9
+- Red Hat Enterprise Linux 7, 8, 9, and 10, tested on CentOS 7 and Rocky Linux 8, 9, and 10
 - Ubuntu 22.04 and 24.04
 
 ## More information

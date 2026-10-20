@@ -31,7 +31,7 @@ pf_get() {
 pf_check_host() {
   [ "$(pf_get uid)" = 0 ] || pf_refuse not_root none
   [ "$(pf_get support_tier)" != unsupported ] || pf_refuse unsupported_os none
-  [ "$(pf_get auditd_installed)" != no ] || pf_refuse auditd_missing "install auditd from your repos"
+  [ "$(pf_get auditd_installed)" != no ] || pf_refuse auditd_missing "install auditd from your repos (audit and audit-rules on RHEL 10)"
   [ "$(pf_get audit_enabled)" != 2 ] || pf_refuse immutable "reboot without -e 2"
 }
 
@@ -86,7 +86,7 @@ pf_check_forward() {
     return 0
   fi
   [ "$(pf_get syslog_plugin_installed)" = yes ] \
-    || pf_refuse syslog_plugin_missing "install the audit syslog plugin (audispd-plugins on Ubuntu)"
+    || pf_refuse syslog_plugin_missing "install the audit syslog plugin (audispd-plugins)"
   pf_used=$(pf_get syslog_facilities_used)
   case ",$pf_used," in
     *",$akit_syslog_facility,"* | *,unknown,*) pf_refuse facility_in_use "choose another akit_syslog_facility" ;;
