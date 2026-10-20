@@ -15,7 +15,7 @@
 set -eu
 
 rollback_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
-for rollback_l in common lock backup load; do
+for rollback_l in common backup load; do
   # shellcheck source=/dev/null
   . "$rollback_root/lib/$rollback_l.sh"
 done

@@ -19,7 +19,7 @@ where those names don't match.
 
 ## Decision
 
-`scripts/lib/render.sh` removes each unknown syscall from a rule and drops the rule only when no
+`scripts/render.sh` removes each unknown syscall from a rule and drops the rule only when no
 syscalls are left. It checks names against `ausyscall <arch> --dump` for b64 rules and
 `ausyscall i386 --dump` for b32 rules.
 

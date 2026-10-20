@@ -41,7 +41,7 @@ conf_set() {
 render_to() {
   out=$1
   shift
-  sh "$lib/render.sh" --profile minimal --size standard --out-dir "$out" \
+  sh "$repo/scripts/render.sh" --profile minimal --size standard --out-dir "$out" \
     --report "$BATS_TEST_TMPDIR/report.txt" "$@" >/dev/null
 }
 

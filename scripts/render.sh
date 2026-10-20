@@ -9,14 +9,15 @@
 # rule, and prints rule_count=<n>. Exits 0 on success. Exits 1 on bad arguments or any other
 # failure, and then leaves the out dir and the report as they were.
 #
-# The kit's rules/ and config/ dirs must sit two levels above this script's dir (scripts/lib/),
-# so any copy of the kit must keep that layout. Host paths are read under AKIT_ROOT.
+# The kit's rules/ and config/ dirs must sit one level above this script's dir (scripts/), so
+# any copy of the kit must keep that layout. Render changes nothing on the host. Host paths are
+# read under AKIT_ROOT.
 #
 # Test hooks: AKIT_SYSCALLS_B64 and AKIT_SYSCALLS_B32 name files that replace
 # "ausyscall <arch> --dump", and AKIT_ARCH replaces "uname -m".
 set -eu
 
-lib=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
+lib=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)/lib
 # shellcheck source=/dev/null
 . "$lib/common.sh"
 kit=$(cd "$lib/../.." && pwd)

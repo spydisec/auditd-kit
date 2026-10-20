@@ -14,7 +14,7 @@ setup() {
 
 # with_lock <commands>: run the commands in sh after sourcing the lock library.
 with_lock() {
-  run sh -c '. "$1/scripts/lib/common.sh"; . "$1/scripts/lib/lock.sh"; '"$1" sh "$repo"
+  run sh -c '. "$1/scripts/lib/common.sh"; '"$1" sh "$repo"
 }
 
 @test "lock is taken with the PID and released" {
