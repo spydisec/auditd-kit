@@ -1,0 +1,34 @@
+---
+# The same scenario with the latest ansible-core, which can't manage Python 2.7 or 3.6 targets.
+driver:
+  name: docker
+# The images are used as they are. prepare.yml adds what Ansible needs.
+platforms:
+  - name: rocky9
+    image: rockylinux:9
+    pre_build_image: true
+  - name: ubuntu2204
+    image: ubuntu:22.04
+    pre_build_image: true
+  - name: ubuntu2404
+    image: ubuntu:24.04
+    pre_build_image: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        # The containers run as root and have no sudo.
+        ansible_become: false
+  playbooks:
+    prepare: ../survey/prepare.yml
+    converge: ../survey/converge.yml
+    verify: ../survey/verify.yml
+scenario:
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy

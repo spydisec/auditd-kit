@@ -1,0 +1,38 @@
+---
+# The survey and stats playbooks on every supported system, with ansible-core 2.16.
+driver:
+  name: docker
+# The images are used as they are. prepare.yml adds what Ansible needs.
+platforms:
+  - name: centos7
+    image: centos:7
+    pre_build_image: true
+  - name: rocky8
+    image: rockylinux:8
+    pre_build_image: true
+  - name: rocky9
+    image: rockylinux:9
+    pre_build_image: true
+  - name: ubuntu2204
+    image: ubuntu:22.04
+    pre_build_image: true
+  - name: ubuntu2404
+    image: ubuntu:24.04
+    pre_build_image: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        # The containers run as root and have no sudo.
+        ansible_become: false
+scenario:
+  # The survey reads live values such as free space, so the CSV differs on every run. Idempotence
+  # of the hosts is checked in verify.yml instead of with a second converge.
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy

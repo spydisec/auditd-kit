@@ -1,0 +1,8 @@
+# Example inventory. Hosts in auditd_kit_canary get changes first.
+[auditd_kit_canary]
+host1.example.com
+
+[auditd_kit]
+host1.example.com
+host2.example.com
+host3.example.com

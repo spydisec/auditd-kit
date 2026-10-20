@@ -41,3 +41,5 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0012](0012-settings-flags-and-exit-codes.md) | Settings, flags, and exit codes | Accepted |
 | [0013](0013-no-package-installs.md) | auditd-kit doesn't install packages | Accepted |
 | [0014](0014-files-auditd-kit-writes.md) | Files auditd-kit writes | Accepted |
+| [0015](0015-role-runs-shared-scripts.md) | The role runs the shared scripts on targets | Accepted |
+| [0016](0016-ansible-core-versions.md) | Supported ansible-core versions | Accepted |

@@ -1,0 +1,19 @@
+---
+# Container images lack Python on Ubuntu, and CentOS 7's packages moved to vault.centos.org.
+- name: Prepare the containers
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Point CentOS 7 at vault.centos.org
+      ansible.builtin.raw: >-
+        if grep -q 'CentOS Linux release 7' /etc/redhat-release 2>/dev/null; then
+        sed -i -e 's/^mirrorlist=/#mirrorlist=/'
+        -e 's|^#* *baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|'
+        /etc/yum.repos.d/CentOS-*.repo; fi
+      changed_when: false
+
+    - name: Install Python on Ubuntu
+      ansible.builtin.raw: >-
+        if [ -f /etc/debian_version ] && ! command -v python3 >/dev/null; then
+        apt-get update -qq && apt-get install -y -qq python3 procps; fi
+      changed_when: false

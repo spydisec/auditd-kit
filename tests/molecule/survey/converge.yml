@@ -1,0 +1,10 @@
+---
+- name: Survey the fleet
+  ansible.builtin.import_playbook: spydisec.auditd_kit.survey
+  vars:
+    akit_survey_csv: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/survey.csv"
+
+- name: Measure audit volume
+  ansible.builtin.import_playbook: spydisec.auditd_kit.stats
+  vars:
+    akit_stats_csv: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/stats.csv"

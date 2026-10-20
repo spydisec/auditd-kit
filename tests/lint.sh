@@ -51,7 +51,10 @@ fi
 run yamllint -s .
 
 if [ -d ansible ]; then
-  run ansible-lint --profile production ansible/
+  # The role ships a copy of rules/, config/, and scripts/, which the sync makes.
+  sh scripts/dev/sync-collection.sh
+  # Ansible refuses to run without a UTF-8 locale.
+  run env LC_ALL=C.UTF-8 ansible-lint --profile production ansible/
 else
   echo "no ansible/ directory, skipping ansible-lint"
 fi

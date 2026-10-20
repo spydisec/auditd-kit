@@ -1,0 +1,8 @@
+---
+- name: Remove the temp dir with the kit files
+  ansible.builtin.file:
+    path: "{{ akit_stage_dir }}"
+    state: absent
+  when: akit_stage_dir is defined
+  check_mode: false
+  changed_when: false

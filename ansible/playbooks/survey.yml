@@ -1,0 +1,39 @@
+---
+# Run survey.sh on every host and write one CSV for the fleet on the controller.
+# survey.sh changes nothing, so this playbook never reports a change.
+- name: Survey the hosts
+  hosts: "{{ akit_hosts | default('all') }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Run the survey
+      block:
+        - name: Stage the kit files
+          ansible.builtin.include_role:
+            name: spydisec.auditd_kit.auditd
+            tasks_from: stage
+
+        - name: Run survey.sh
+          ansible.builtin.command:
+            cmd: "sh {{ akit_stage_dir }}/scripts/survey.sh"
+          register: akit_survey
+          changed_when: false
+          check_mode: false
+      always:
+        - name: Remove the kit files
+          ansible.builtin.include_role:
+            name: spydisec.auditd_kit.auditd
+            tasks_from: cleanup
+
+- name: Write the fleet survey CSV
+  hosts: "{{ akit_hosts | default('all') }}"
+  gather_facts: false
+  tasks:
+    - name: Write the CSV on the controller
+      ansible.builtin.template:
+        src: survey.csv.j2
+        dest: "{{ akit_survey_csv | default('survey.csv') }}"
+        mode: "0644"
+      run_once: true
+      delegate_to: localhost
+      check_mode: false

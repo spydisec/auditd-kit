@@ -1,0 +1,25 @@
+---
+- name: Check the CSVs
+  hosts: localhost
+  gather_facts: false
+  vars:
+    csv_dir: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}"
+    survey_lines: "{{ lookup('file', csv_dir ~ '/survey.csv').splitlines() }}"
+    stats_lines: "{{ lookup('file', csv_dir ~ '/stats.csv').splitlines() }}"
+    # Every field is quoted, so this pattern splits a row into fields even when a value has commas.
+    csv_field: '"((?:[^"]|"")*)"'
+    survey_header: "{{ survey_lines[0] | regex_findall(csv_field) }}"
+    tier_index: "{{ survey_header.index('support_tier') }}"
+    tiers: "{{ survey_lines[1:] | map('regex_findall', csv_field) | map(attribute=tier_index | int) | list }}"
+  tasks:
+    - name: The survey CSV has one row per host and a support tier for each
+      ansible.builtin.assert:
+        that:
+          - survey_lines | length == (groups['all'] | length) + 1
+          - "'support_tier' in survey_header"
+          - tiers | length == groups['all'] | length
+          - tiers | reject('in', ['supported', 'unsupported']) | list | length == 0
+    - name: The stats CSV has its header
+      ansible.builtin.assert:
+        that:
+          - stats_lines[0] == 'host,day,bytes,events'

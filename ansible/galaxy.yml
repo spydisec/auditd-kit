@@ -1,0 +1,19 @@
+---
+namespace: spydisec
+name: auditd_kit
+version: 0.0.0
+readme: README.md
+authors:
+  - spydisec
+description: Turn on Linux audit logging across a fleet with safe defaults.
+license:
+  - Apache-2.0
+tags:
+  - auditd
+  - security
+  - linux
+repository: https://github.com/spydisec/auditd-kit
+issues: https://github.com/spydisec/auditd-kit/issues
+build_ignore:
+  - "*.retry"
+  - inventory.example
