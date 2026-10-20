@@ -1,5 +1,6 @@
 #!/bin/sh
-# Build the files of one release: the offline bundle, the collection tarball, and SHA256SUMS.
+# Build the files of one release: the offline bundle, the collection tarball, get.sh, and
+# SHA256SUMS.
 #
 # Usage: build-release.sh <version> <out-dir>
 #
@@ -47,5 +48,6 @@ stamp "$tmp/ansible/galaxy.yml" "s/^version: .*/version: $version/"
 stamp "$tmp/ansible/roles/auditd/files/scripts/lib/common.sh" "s/^AKIT_VERSION=.*/AKIT_VERSION=$version/"
 ansible-galaxy collection build "$tmp/ansible" --output-path "$out" >/dev/null
 
-(cd "$out" && sha256sum ./*.tar.gz | sed 's| \./| |' >SHA256SUMS)
+cp "$repo/scripts/get.sh" "$out/get.sh"
+(cd "$out" && sha256sum ./*.tar.gz ./get.sh | sed 's| \./| |' >SHA256SUMS)
 ls "$out"
