@@ -26,6 +26,16 @@ Overlay files must not hold control lines, which are `-D`, `-b`, `-f`, `-e`, `-r
 `--backlog_wait_time`, and `--loginuid-immutable`. Render removes them from overlay files and lists
 each one in the render report.
 
+## Skip rules on a host
+
+To leave kit rules out on a host, list their keys in `akit_skip_keys` (flag `--skip-keys`), e.g.
+`akit_skip_keys=exec_from_tmp,network_connect`. Render drops every rule with those keys from the
+profile files and lists each one in the render report as `skipped`. It never skips the rules in
+`00-base.rules`, which verify needs, or rules in overlay files.
+
+Render refuses a key that no profile rule uses, so a typo can't pass for a skipped rule. A key from
+a bigger profile is accepted, so one setting can serve hosts on different profiles.
+
 ## Load the rules without install.sh
 
 Don't copy these files into `/etc/audit/rules.d/` as they are. `00-base.rules` holds a placeholder

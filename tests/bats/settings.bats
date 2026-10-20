@@ -41,6 +41,7 @@ akit_existing_rules=unset
 akit_extra_rules_dir=
 akit_accept_agents=
 akit_accept_catchall=false
+akit_skip_keys=
 akit_backlog=16384
 akit_preset_total_mb=800
 args="
@@ -72,7 +73,8 @@ args="
 @test "a bad key, flag, or value exits 1 and names the setting" {
   for row in 'akit_profle=minimal:akit_profle' 'akit_size=huge:akit_size' \
     'akit_remote_port=70000:akit_remote_port' 'akit_immutable=yes:akit_immutable' \
-    'akit_accept_agents=a b:akit_accept_agents' 'not a pair:not a pair'; do
+    'akit_accept_agents=a b:akit_accept_agents' 'akit_skip_keys=a;b:akit_skip_keys' \
+    'not a pair:not a pair'; do
     config "${row%:*}"
     run load_settings --config "$cfg"
     [ "$status" -eq 1 ]
