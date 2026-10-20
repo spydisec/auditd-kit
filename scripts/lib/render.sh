@@ -98,7 +98,7 @@ case $skip_keys in
   *[!A-Za-z0-9_,]*) refuse "--skip-keys must be a comma list of rule keys" ;;
 esac
 for k in $(printf '%s\n' "$skip_keys" | tr ',' ' '); do
-  grep -Eq -- "(-k |-F key=)$k( |\$)" "$kit"/rules/[1-9]*.rules \
+  grep -Eq -- "^[^#]*(-k |-F key=)$k( |\$)" "$kit"/rules/[1-9]*.rules \
     || refuse "--skip-keys names $k, which no profile rule uses"
 done
 

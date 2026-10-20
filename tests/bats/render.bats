@@ -185,20 +185,24 @@ out_files() {
   render_setup
   mkdir -p "$AKIT_ROOT/etc"
   extra_rules '-w /etc/x -p wa -k T1053_Scheduled_Task_Job'
-  render --skip-keys T1053_Scheduled_Task_Job,exec_from_tmp --extra-dir "$extra"
+  render --skip-keys T1053_Scheduled_Task_Job,exec_from_tmp,T1562_Impair_Defenses --extra-dir "$extra"
   [ "$status" -eq 0 ]
   not grep -q T1053 "$out/10-auditd-kit-minimal.rules"
+  grep -q T1562 "$out/00-auditd-kit-base.rules"
   grep -q T1098 "$out/10-auditd-kit-minimal.rules"
   grep -q akit_canary "$out/00-auditd-kit-base.rules"
   grep -q T1053 "$out/50-test.rules"
   grep -q "10-minimal.rules:[0-9]*${tab}dropped${tab}skipped${tab}T1053_Scheduled_Task_Job\$" "$report"
 }
 
-@test "a skip key that no profile rule uses exits 1" {
+@test "a skip key that no profile rule uses exits 1, even if a comment or a longer key has it" {
   render_setup
-  render --skip-keys T1053_Scheduled_Task_Jobb
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"--skip-keys names T1053_Scheduled_Task_Jobb, which no profile rule uses"* ]]
+  # A typo, a prefix of a real key, and a key that only commented rules use.
+  for k in T1053_Scheduled_Task_Jobb T1053 T1505_Server_Software_Component; do
+    render --skip-keys "$k"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"--skip-keys names $k, which no profile rule uses"* ]]
+  done
 }
 
 @test "dir filter on a missing directory is dropped with missing_path" {
