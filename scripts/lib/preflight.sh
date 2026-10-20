@@ -77,6 +77,25 @@ pf_check_rules() {
   fi
 }
 
+# Forwarding adds one rsyslog drop-in and turns on the audit syslog plugin. A survey value that
+# is missing or unknown refuses.
+pf_check_forward() {
+  [ "$akit_forward" != none ] || return 0
+  if [ "$(pf_get syslog_daemon)" != rsyslog ]; then
+    pf_refuse no_rsyslog none
+    return 0
+  fi
+  [ "$(pf_get syslog_plugin_installed)" = yes ] \
+    || pf_refuse syslog_plugin_missing "install the audit syslog plugin (audispd-plugins on Ubuntu)"
+  pf_used=$(pf_get syslog_facilities_used)
+  case ",$pf_used," in
+    *",$akit_syslog_facility,"* | *,unknown,*) pf_refuse facility_in_use "choose another akit_syslog_facility" ;;
+  esac
+  if [ "$(pf_get syslog_catchall)" != no ] && [ "$akit_accept_catchall" != true ]; then
+    pf_refuse catchall_forward akit_accept_catchall=true
+  fi
+}
+
 akit_settings_load "$@"
 pf_survey=$(cat)
 
@@ -84,6 +103,7 @@ pf_check_host
 pf_check_disk
 pf_check_agents
 pf_check_rules
+pf_check_forward
 
 if [ -n "$pf_refusals" ]; then
   printf '%s' "$pf_refusals"

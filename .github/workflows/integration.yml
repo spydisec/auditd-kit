@@ -9,7 +9,8 @@ on:
 permissions: {}
 
 jobs:
-  # install.sh, a second install, and rollback.sh on a real kernel, then a full audit disk.
+  # install.sh, a second install, and rollback.sh on a real kernel, then forwarding to a TCP sink,
+  # then a full audit disk.
   real-kernel:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20

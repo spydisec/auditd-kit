@@ -9,9 +9,10 @@
 #   3. validate   validate.sh checks the rule syntax in that dir
 #   4. plan       plan.sh lists each change. --dry-run prints the plan and stops here
 #   5. backup     saves the files that the next stages change
-#   6. deploy     writes the rules, the auditd.conf keys, the canary, the report, and the state
-#   7. load       augenrules --load when the rules changed, service auditd restart when
-#                 auditd.conf changed
+#   6. deploy     writes the rules, the auditd.conf keys, the syslog plugin setting, the rsyslog
+#                 drop-in (checked with rsyslogd -N1), the canary, the report, and the state
+#   7. load       augenrules --load when the rules changed, service rsyslog restart when the
+#                 drop-in changed, service auditd restart when auditd.conf or the plugin changed
 #   8. verify     verify.sh
 # A failure after the backup restores it. --skip-load skips load and verify, and is only for
 # tests in containers, where the kernel audit system can't be used.
@@ -25,7 +26,7 @@ set -eu
 
 install_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 install_lib=$install_root/lib
-for install_l in common settings lock backup state auditdconf rulesd load; do
+for install_l in common settings lock backup state auditdconf rulesd load forward; do
   # shellcheck source=/dev/null
   . "$install_lib/$install_l.sh"
 done
@@ -56,6 +57,8 @@ install_work=
 
 install_on_exit() {
   install_rc=$?
+  # A failing command here must not stop the restore.
+  set +e
   trap - EXIT
   # A signal must not stop the restore halfway.
   trap '' INT TERM HUP
@@ -108,6 +111,9 @@ sh "$install_root/survey.sh" >"$install_work/survey"
 if ! install_out=$(sh "$install_lib/preflight.sh" --config "$install_work/settings.conf" \
   <"$install_work/survey" 2>&1); then
   printf '%s\n' "$install_out"
+  case "$install_out" in
+    *refuse=catchall_forward*) akit_forward_estimate "$install_root/stats.sh" ;;
+  esac
   akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
 fi
 
@@ -154,6 +160,7 @@ install_stage=change
 # 6. Deploy
 install_rules=no
 install_auditd=no
+install_rsyslog=no
 set --
 for install_f in "$install_work/rendered"/*.rules; do
   set -- "$@" "$AKIT_RULES_D/${install_f##*/}"
@@ -178,6 +185,11 @@ while read -r install_verb install_path install_key; do
       rm -f "$(akit_path "$install_path")" || install_fail "cannot remove $(akit_path "$install_path")"
       install_rules=yes
       ;;
+    add:"$AKIT_RSYSLOG_DROPIN" | change:"$AKIT_RSYSLOG_DROPIN") install_rsyslog=yes ;;
+    move:"$AKIT_RSYSLOG_DROPIN")
+      rm -f "$(akit_path "$install_path")" || install_fail "cannot remove $(akit_path "$install_path")"
+      install_rsyslog=yes
+      ;;
     set:*) install_auditd=yes ;;
   esac
   akit_log info "$install_verb $install_path${install_key:+ $install_key}"
@@ -187,11 +199,26 @@ akit_auditdconf_wanted "$install_root/.." >"$install_work/wanted" || install_fai
 while read -r install_k install_v; do
   akit_auditdconf_set "$install_conf" "$install_k" "$install_v" || install_fail "cannot set $install_k in $install_conf"
 done <"$install_work/wanted"
+if install_plug=$(akit_forward_plugin_file); then
+  install_want=no
+  [ "$akit_forward" = none ] || install_want=yes
+  akit_forward_plugin "$(akit_path "$install_plug")" "$install_want" || install_fail "cannot set $install_plug"
+fi
+if [ "$akit_forward" != none ]; then
+  install_drop=$(akit_path "$AKIT_RSYSLOG_DROPIN")
+  mkdir -p "$(dirname "$install_drop")" || install_fail "cannot create $(dirname "$install_drop")"
+  akit_forward_render "$install_root/../config/rsyslog/40-auditd-kit.conf" "$install_work/dropin" \
+    || install_fail "cannot read the rsyslog template"
+  { cat "$install_work/dropin" >"$install_drop" && chmod 0644 "$install_drop"; } \
+    || install_fail "cannot write $install_drop"
+  akit_forward_check "$install_drop" || install_fail "rsyslogd -N1 rejected the drop-in"
+  set -- "$@" "$AKIT_RSYSLOG_DROPIN"
+fi
 if ! { mkdir -p "$(akit_path /var/lib/auditd-kit)" \
   && cp "$install_work/render-report.txt" "$(akit_path /var/lib/auditd-kit/render-report.txt)"; }; then
   install_fail "cannot write the render report"
 fi
-install_targets=$(sed -n 's/^syslog_forward_targets=//p' "$install_work/survey")
+install_targets=$(akit_forward_targets "$install_lib")
 akit_state_write "$install_rule_count" "$install_targets" "$@" "$AKIT_AUDITD_CONF" \
   || install_fail "cannot write $AKIT_STATE_FILE"
 
@@ -199,7 +226,7 @@ if [ "$install_skip_load" = yes ]; then
   akit_log info "skipping load and verify"
 else
   # 7. Load
-  akit_load_apply "$install_rules" "$install_auditd" || install_fail "loading the rules or restarting auditd failed"
+  akit_load_apply "$install_rules" "$install_auditd" "$install_rsyslog" || install_fail "loading the rules or restarting auditd failed"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"
 fi

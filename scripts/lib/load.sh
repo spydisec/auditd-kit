@@ -21,12 +21,17 @@ akit_load_run() {
   return "$load_rc"
 }
 
-# akit_load_apply <rules yes|no> <auditd yes|no>: load the rules with augenrules when they
-# changed, then restart auditd when auditd.conf changed. Loading first means a rule that the
-# kernel rejects fails here, with its error, and not later in auditd's start hook.
+# akit_load_apply <rules yes|no> <auditd yes|no> <rsyslog yes|no>: load the rules with augenrules
+# when they changed, then restart rsyslog when our drop-in changed, then restart auditd when
+# auditd.conf or the syslog plugin changed. Loading first means a rule that the kernel rejects
+# fails here, with its error, and not later in auditd's start hook. rsyslog restarts before
+# auditd so that the drop-in is in effect when the plugin starts to write.
 akit_load_apply() {
   if [ "$1" = yes ]; then
     akit_load_run augenrules --load || return 1
+  fi
+  if [ "${3:-no}" = yes ]; then
+    akit_load_run service rsyslog restart || return 1
   fi
   if [ "$2" = yes ]; then
     akit_load_run service auditd restart || return 1

@@ -51,7 +51,7 @@ akit_host_fixture() {
   akit_fixture_root
   akit_fx="$BATS_TEST_DIRNAME/../fixtures"
   cp -R "$akit_fx/hosts/ubuntu2404/." "$AKIT_ROOT/"
-  cp -R "$akit_fx/install/etc" "$AKIT_ROOT/"
+  cp -R "$akit_fx/install/etc" "$akit_fx/install/usr" "$AKIT_ROOT/"
   mkdir -p "$AKIT_ROOT/run" "$AKIT_ROOT/var/log/audit"
   AKIT_SYSCALLS_B64="$akit_fx/syscalls/ubuntu2404-b64.txt"
   AKIT_SYSCALLS_B32="$akit_fx/syscalls/ubuntu2404-b32.txt"
@@ -69,6 +69,7 @@ akit_sums() {
 #   uid, enabled, free   the value for id -u, the auditctl -s enabled field, and df free KB
 #   augenrules_fails     augenrules runs this file as a script and exits 1
 #   ausearch_fails       ausearch finds no event
+#   rsyslogd_fails       rsyslogd -N1 rejects the configuration
 # augenrules joins the rules.d files into audit.rules, and auditctl -l lists that file's rules.
 akit_host_stubs() {
   calls="$BATS_TEST_TMPDIR/calls"
@@ -93,6 +94,7 @@ cp \"\$AKIT_ROOT/etc/audit/audit.rules\" \"\$AKIT_ROOT/etc/audit/audit.rules.pre
 cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rules\""
   akit_stub service "echo \"service \$*\" >>$akit_c"
   akit_stub systemctl "echo \"systemctl \$*\" >>$akit_c"
+  akit_stub rsyslogd "echo \"rsyslogd \$*\" >>$akit_c; [ \"\$1\" != -N1 ] || [ ! -e $akit_s/rsyslogd_fails ]"
   akit_stub ausearch "echo \"ausearch \$*\" >>$akit_c; [ ! -e $akit_s/ausearch_fails ]"
 }
 

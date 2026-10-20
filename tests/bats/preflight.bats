@@ -10,7 +10,8 @@ survey() {
   input="$BATS_TEST_TMPDIR/survey"
   printf '%s\n' 'uid=0' 'support_tier=supported' 'auditd_installed=yes' 'audit_enabled=1' \
     'audit_log_free_mb=5000' 'agents=none' 'rules_d_files=audit.rules:control' \
-    'rules_d_control_lines=none' >"$input"
+    'rules_d_control_lines=none' 'syslog_daemon=rsyslog' 'syslog_plugin_installed=yes' \
+    'syslog_facilities_used=auth,authpriv' 'syslog_catchall=no' >"$input"
   for kv in "$@"; do
     sed -i "s/^${kv%%=*}=.*/$kv/" "$input"
   done
@@ -78,4 +79,22 @@ refuse=agent_conflict:wazuh override=akit_accept_agents" "" agents=mde,wazuh
   run sh "$preflight" --size huge <"$input"
   [ "$status" -eq 1 ]
   [[ "$output" == *"invalid setting akit_size"* ]]
+}
+
+@test "forwarding refusals print their code and override" {
+  fl="--forward remote --remote-host 192.0.2.10"
+  refuses "refuse=no_rsyslog override=none" "$fl" syslog_daemon=journald
+  refuses "refuse=syslog_plugin_missing override=install the audit syslog plugin (audispd-plugins on Ubuntu)" "$fl" \
+    syslog_plugin_installed=no
+  refuses "refuse=facility_in_use override=choose another akit_syslog_facility" "$fl" \
+    syslog_facilities_used=auth,local6
+  refuses "refuse=facility_in_use override=choose another akit_syslog_facility" "$fl" syslog_facilities_used=unknown
+  refuses "refuse=catchall_forward override=akit_accept_catchall=true" "$fl" syslog_catchall=yes
+  refuses "refuse=catchall_forward override=akit_accept_catchall=true" "$fl" syslog_catchall=unknown
+}
+
+@test "forwarding checks are skipped for none and an accepted catch-all passes" {
+  passes "" syslog_daemon=none syslog_catchall=yes syslog_facilities_used=local6 syslog_plugin_installed=no
+  passes "--forward local --accept-catchall true" syslog_catchall=yes
+  passes "--forward local --syslog-facility local5"
 }

@@ -36,9 +36,10 @@ akit_same_file() {
 # akit_log <level> <message>: write to stderr, and to AKIT_LOG_FILE when it is set.
 akit_log() {
   akit_log_line="auditd-kit: $1: $2"
-  printf '%s\n' "$akit_log_line" >&2
+  # Logging must never fail, because an exit trap that logs must go on to restore the backup.
+  printf '%s\n' "$akit_log_line" >&2 || true
   if [ -n "${AKIT_LOG_FILE:-}" ]; then
-    printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$akit_log_line" >>"$AKIT_LOG_FILE"
+    printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$akit_log_line" >>"$AKIT_LOG_FILE" 2>/dev/null || true
   fi
 }
 
