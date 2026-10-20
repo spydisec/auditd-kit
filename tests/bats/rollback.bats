@@ -1,14 +1,18 @@
 #!/usr/bin/env bats
 # The sh -c scripts expand their own variables, so single quotes are intended.
 # shellcheck disable=SC2016
+# akit_host_stubs in helpers.bash sets calls and stub_state.
+# shellcheck disable=SC2154
 
 load helpers
+bats_require_minimum_version 1.5.0
 
 repo=$(cd "$BATS_TEST_DIRNAME/../.." && pwd)
 lib="$repo/scripts/lib"
 
 setup() {
   akit_host_fixture
+  akit_host_stubs
   backups="$AKIT_ROOT/var/lib/auditd-kit/backups"
 }
 
@@ -84,4 +88,32 @@ install_by_hand() {
     [ "$status" -ne 0 ]
   done
   [ "$(akit_sums etc)" = "$before" ]
+}
+
+@test "rollback restores the newest backup, reloads the rules, and verifies" {
+  before=$(akit_sums etc/audit etc/rsyslog.d)
+  run sh "$repo/scripts/install.sh" </dev/null
+  [ "$status" -eq 0 ]
+  run sh "$repo/scripts/rollback.sh" --list
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(cd "$backups" && echo *.tgz | sed 's/[.]tgz$//')" ]
+  : >"$calls"
+  run sh "$repo/scripts/rollback.sh"
+  [ "$status" -eq 0 ]
+  [ "$(akit_sums etc/audit etc/rsyslog.d)" = "$before" ]
+  akit_called "auditctl -D"
+  akit_called "auditctl -R $AKIT_ROOT/etc/audit/audit.rules"
+  akit_called "service auditd restart"
+  akit_called "auditctl -l"
+  run ! akit_called augenrules
+}
+
+@test "rollback refuses an unknown backup id and changes nothing" {
+  backup akit_backup_create
+  before=$(akit_sums etc var/lib)
+  for bad in 20200101T000000Z ../x; do
+    run sh "$repo/scripts/rollback.sh" "$bad"
+    [ "$status" -eq 1 ]
+  done
+  [ "$(akit_sums etc var/lib)" = "$before" ]
 }

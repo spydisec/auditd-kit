@@ -63,3 +63,40 @@ akit_host_fixture() {
 akit_sums() {
   (cd "$AKIT_ROOT" && find "$@" -type f -exec sha256sum {} + 2>/dev/null | sort)
 }
+
+# akit_host_stubs: stub the host tools that install, rollback, and verify call. Each stub logs its
+# arguments to $calls. Files in $stub_state change what they do:
+#   uid, enabled, free   the value for id -u, the auditctl -s enabled field, and df free KB
+#   augenrules_fails     augenrules runs this file as a script and exits 1
+#   ausearch_fails       ausearch finds no event
+# augenrules joins the rules.d files into audit.rules, and auditctl -l lists that file's rules.
+akit_host_stubs() {
+  calls="$BATS_TEST_TMPDIR/calls"
+  stub_state="$BATS_TEST_TMPDIR/stub-state"
+  mkdir -p "$stub_state"
+  : >"$calls"
+  export AKIT_VERIFY_POLL=0
+  akit_s=$stub_state
+  akit_c=$calls
+  akit_stub id "[ \"\$1\" = -u ] || exec $(command -v id) \"\$@\"; cat $akit_s/uid 2>/dev/null || echo 0"
+  akit_stub df "echo 'Filesystem 1024-blocks Used Available Capacity Mounted on'
+echo \"/dev/sda1 99000000 1 \$(cat $akit_s/free 2>/dev/null || echo 90000000) 1% /\""
+  akit_stub auditctl "echo \"auditctl \$*\" >>$akit_c
+case \"\$1\" in
+  -v) echo 'auditctl version 3.1.2' ;;
+  -s) echo \"enabled \$(cat $akit_s/enabled 2>/dev/null || echo 1)\" ;;
+  -l) grep -E '^-[aw] ' \"\$AKIT_ROOT/etc/audit/audit.rules\" || echo 'No rules' ;;
+esac"
+  akit_stub augenrules "echo \"augenrules \$*\" >>$akit_c
+if [ -e $akit_s/augenrules_fails ]; then sh $akit_s/augenrules_fails; exit 1; fi
+cp \"\$AKIT_ROOT/etc/audit/audit.rules\" \"\$AKIT_ROOT/etc/audit/audit.rules.prev\"
+cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rules\""
+  akit_stub service "echo \"service \$*\" >>$akit_c"
+  akit_stub systemctl "echo \"systemctl \$*\" >>$akit_c"
+  akit_stub ausearch "echo \"ausearch \$*\" >>$akit_c; [ ! -e $akit_s/ausearch_fails ]"
+}
+
+# akit_called <text>: succeed when a stub from akit_host_stubs logged a call that holds the text.
+akit_called() {
+  grep -F -e "$1" "$calls" >/dev/null 2>&1
+}
