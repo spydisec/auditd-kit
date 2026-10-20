@@ -23,6 +23,23 @@ step() {
 
 fail() {
   printf 'FAIL: %s\n' "$*" >&2
+  # Print what is needed to see why the canary or a load failed.
+  echo "== Diagnostics" >&2
+  {
+    date
+    locale
+    auditctl -s
+    auditctl -l | grep -i canary
+    ls -l /etc/auditd-kit
+    echo "-- ausearch -k akit_canary:"
+    ausearch -k akit_canary 2>&1 | tail -n 8
+    echo "-- ausearch -ts recent -k akit_canary:"
+    ausearch -ts recent -k akit_canary 2>&1 | tail -n 4
+    echo "-- LC_ALL=C ausearch -ts <today 00:00:00>:"
+    LC_ALL=C ausearch -k akit_canary -ts "$(LC_ALL=C date '+%m/%d/%y') 00:00:00" 2>&1 | tail -n 4
+    echo "-- tail of audit.log:"
+    tail -n 5 /var/log/audit/audit.log
+  } >&2 2>&1 || true
   exit 1
 }
 
