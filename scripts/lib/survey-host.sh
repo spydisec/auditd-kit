@@ -84,7 +84,7 @@ survey_check_support_tier() {
   case "$survey_os_id" in
     rhel | centos | rocky | almalinux | ol)
       case "$survey_major" in
-        7 | 8 | 9) survey_tier=supported ;;
+        7 | 8 | 9 | 10) survey_tier=supported ;;
       esac
       ;;
     ubuntu)

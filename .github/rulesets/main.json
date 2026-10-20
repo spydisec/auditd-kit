@@ -82,6 +82,9 @@
             "context": "container-install (rockylinux:9)"
           },
           {
+            "context": "container-install (rockylinux/rockylinux:10)"
+          },
+          {
             "context": "container-install (ubuntu:22.04)"
           },
           {

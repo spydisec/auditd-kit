@@ -45,7 +45,7 @@ passes() {
 @test "each refusal prints its code and override" {
   refuses "refuse=not_root override=none" "" uid=1000
   refuses "refuse=unsupported_os override=none" "" support_tier=unsupported
-  refuses "refuse=auditd_missing override=install auditd from your repos" "" auditd_installed=no
+  refuses "refuse=auditd_missing override=install auditd from your repos (audit and audit-rules on RHEL 10)" "" auditd_installed=no
   refuses "refuse=immutable override=reboot without -e 2" "" audit_enabled=2
   refuses "refuse=low_disk override=free space or set a smaller size" "" audit_log_free_mb=unknown
   refuses "refuse=existing_rules override=akit_existing_rules=keep or replace" "" rules_d_files=50-cis.rules
@@ -84,7 +84,7 @@ refuse=agent_conflict:wazuh override=akit_accept_agents" "" agents=mde,wazuh
 @test "forwarding refusals print their code and override" {
   fl="--forward remote --remote-host 192.0.2.10"
   refuses "refuse=no_rsyslog override=none" "$fl" syslog_daemon=journald
-  refuses "refuse=syslog_plugin_missing override=install the audit syslog plugin (audispd-plugins on Ubuntu)" "$fl" \
+  refuses "refuse=syslog_plugin_missing override=install the audit syslog plugin (audispd-plugins)" "$fl" \
     syslog_plugin_installed=no
   refuses "refuse=facility_in_use override=choose another akit_syslog_facility" "$fl" \
     syslog_facilities_used=auth,local6

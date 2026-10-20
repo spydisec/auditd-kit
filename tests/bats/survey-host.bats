@@ -376,7 +376,8 @@ echo "/dev/vg-var 4194304 2097152 2097152 50% /var"'
   }
   check_tier almalinux 9.4 supported
   check_tier ol 8.10 supported
-  check_tier rhel 10.0 unsupported
+  check_tier rhel 10.0 supported
+  check_tier rocky 11.0 unsupported
   check_tier ubuntu 20.04 unsupported
   check_tier ubuntu 24.04 supported
 }
