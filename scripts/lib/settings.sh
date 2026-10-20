@@ -12,7 +12,7 @@
 
 AKIT_SETTING_KEYS='akit_profile akit_size akit_max_log_file akit_num_logs akit_forward
   akit_syslog_facility akit_remote_host akit_remote_port akit_remote_protocol akit_immutable
-  akit_existing_rules akit_extra_rules_dir akit_accept_agents akit_accept_catchall'
+  akit_existing_rules akit_extra_rules_dir akit_accept_agents akit_accept_catchall akit_skip_keys'
 
 akit_settings_defaults() {
   akit_profile=minimal
@@ -29,6 +29,7 @@ akit_settings_defaults() {
   akit_extra_rules_dir=
   akit_accept_agents=
   akit_accept_catchall=false
+  akit_skip_keys=
 }
 
 # akit_settings_bad <key> <reason>
@@ -113,6 +114,11 @@ akit_settings_set() {
     akit_accept_agents)
       case "$set_val" in
         *[!a-z0-9,_-]*) akit_settings_bad "$set_key" "'$set_val' is not a comma list of agent ids" ;;
+      esac
+      ;;
+    akit_skip_keys)
+      case "$set_val" in
+        *[!A-Za-z0-9_,]*) akit_settings_bad "$set_key" "'$set_val' is not a comma list of rule keys" ;;
       esac
       ;;
   esac

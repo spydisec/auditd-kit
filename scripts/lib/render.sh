@@ -2,7 +2,8 @@
 # Build this host's audit rules from the kit's rule files.
 #
 # Usage: render.sh --profile <minimal|medium|heavy> --size <small|standard|large>
-#          [--extra-dir DIR] [--immutable true|false] --out-dir DIR --report FILE
+#          [--extra-dir DIR] [--immutable true|false] [--skip-keys KEY,...] --out-dir DIR
+#          --report FILE
 #
 # Writes the rule files to the out dir, writes one report line for each dropped or trimmed
 # rule, and prints rule_count=<n>. Exits 0 on success. Exits 1 on bad arguments or any other
@@ -27,12 +28,13 @@ refuse() {
 profile=
 size=
 extra_dir=
+skip_keys=
 immutable=false
 out_dir=
 report=
 while [ $# -gt 0 ]; do
   case $1 in
-    --profile | --size | --extra-dir | --immutable | --out-dir | --report) ;;
+    --profile | --size | --extra-dir | --immutable | --skip-keys | --out-dir | --report) ;;
     *) refuse "unknown argument: $1" ;;
   esac
   [ $# -ge 2 ] || refuse "$1 needs a value"
@@ -40,6 +42,7 @@ while [ $# -gt 0 ]; do
     --profile) profile=$2 ;;
     --size) size=$2 ;;
     --extra-dir) extra_dir=$2 ;;
+    --skip-keys) skip_keys=$2 ;;
     --immutable) immutable=$2 ;;
     --out-dir) out_dir=$2 ;;
     --report) report=$2 ;;
@@ -88,6 +91,16 @@ done
 
 backlog=$(sed -n 's/^# akit_backlog = \([0-9][0-9]*\)$/\1/p' "$kit/config/auditd/$size.conf")
 [ -n "$backlog" ] || refuse "no akit_backlog line in config/auditd/$size.conf"
+
+# A skip key must belong to some kit profile file, so a typo can't pass for a skipped rule. A key
+# from a bigger profile is fine, so one setting can serve hosts on different profiles.
+case $skip_keys in
+  *[!A-Za-z0-9_,]*) refuse "--skip-keys must be a comma list of rule keys" ;;
+esac
+for k in $(printf '%s\n' "$skip_keys" | tr ',' ' '); do
+  grep -Eq -- "(-k |-F key=)$k( |\$)" "$kit"/rules/[1-9]*.rules \
+    || refuse "--skip-keys names $k, which no profile rule uses"
+done
 
 if [ -d "$report" ]; then
   refuse "--report is a directory: $report"
@@ -140,7 +153,8 @@ fi
 # It also reads AKIT_CONTROL_FLAGS, which common.sh sets.
 AKIT_RENDER_TMP=$tmp
 AKIT_RENDER_ARCH=$arch
-export AKIT_RENDER_TMP AKIT_RENDER_ARCH AKIT_CONTROL_FLAGS
+AKIT_RENDER_SKIP_KEYS=$skip_keys
+export AKIT_RENDER_TMP AKIT_RENDER_ARCH AKIT_RENDER_SKIP_KEYS AKIT_CONTROL_FLAGS
 
 # rules_file <mode> <strip> <file> <label> <output name>: run render.awk on one source file.
 # strip is 1 to drop control lines.

@@ -15,3 +15,4 @@ akit_existing_rules: unset
 akit_extra_rules_dir: ""
 akit_accept_agents: []
 akit_accept_catchall: false
+akit_skip_keys: ""

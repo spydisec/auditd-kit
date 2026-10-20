@@ -6,7 +6,8 @@
 # Variables (-v): mode, strip (1 to drop control lines), b32_ok (1 when b32 rules can load),
 # selinux (1 when SELinux has a loaded policy).
 # Environment: AKIT_RENDER_LABEL (source name for the report), AKIT_RENDER_ARCH,
-# AKIT_RENDER_TMP, the dir that holds the b64, b32, missing, links, and report files, and
+# AKIT_RENDER_TMP, the dir that holds the b64, b32, missing, links, and report files,
+# AKIT_RENDER_SKIP_KEYS (a comma list of keys to drop from the kit's files), and
 # AKIT_CONTROL_FLAGS from common.sh.
 
 function load_syscalls(file, set, line, n, f) {
@@ -74,6 +75,9 @@ BEGIN {
     load_syscalls(tmp "/b32", b32_calls)
     load_lines(tmp "/missing", missing)
     load_lines(tmp "/links", links)
+    nskip = split(ENVIRON["AKIT_RENDER_SKIP_KEYS"], skip_list, ",")
+    for (i = 1; i <= nskip; i++)
+      skip[skip_list[i]] = 1
     name = label
     sub(/^.*\//, "", name)
     print "# Rendered by auditd-kit from " name ". Do not edit."
@@ -104,12 +108,15 @@ BEGIN {
   watch = ""
   dir = ""
   binary = ""
+  key = ""
   exe = 0
   perm = ""
   selinux_field = ""
   for (i = 1; i < n; i++) {
     if (t[i] == "-w")
       watch = t[i + 1]
+    else if (t[i] == "-k")
+      key = t[i + 1]
     else if (t[i] == "-F") {
       field = t[i + 1]
       value = substr(field, index(field, "=") + 1)
@@ -122,6 +129,8 @@ BEGIN {
         exe = field ~ /^exe=/
       } else if (field ~ /^perm=/)
         perm = value
+      else if (field ~ /^key=/)
+        key = value
       else if (field ~ /^(subj_(user|role|type|sen|clr)|obj_(user|role|type|lev_low|lev_high))[!<>=&]/)
         selinux_field = field
     }
@@ -137,6 +146,11 @@ BEGIN {
     next
   }
 
+  # akit_skip_keys applies to the kit's files only. Overlay files are the host's own rules.
+  if (!strip && key != "" && (key in skip)) {
+    act("dropped", "skipped", key)
+    next
+  }
   if (rule_arch == "b32" && !b32_ok) {
     act("dropped", "no_b32", arch)
     next
