@@ -89,11 +89,19 @@ akit_backup_create() {
   echo "$backup_id"
 }
 
+# A caller that writes files sets AKIT_BACKUP_ADDED to their host paths, space separated,
+# before it writes them, so a restore can remove them before the state file lists them.
+AKIT_BACKUP_ADDED=
+
 # akit_backup_ours <rel-path>: succeed when auditd-kit wrote the file. That is a path that
-# contains auditd-kit, a file the state file lists, or the audit.rules that augenrules writes.
+# contains auditd-kit, a path in AKIT_BACKUP_ADDED, a file the state file lists, or the
+# audit.rules that augenrules writes.
 akit_backup_ours() {
   case "$1" in
     *auditd-kit* | etc/audit/audit.rules | etc/audit/audit.rules.prev) return 0 ;;
+  esac
+  case " $AKIT_BACKUP_ADDED " in
+    *" /$1 "*) return 0 ;;
   esac
   [ -r "$AKIT_BACKUP_STATE" ] || return 1
   sed -n 's/^file=[^ ]* //p' "$AKIT_BACKUP_STATE" | grep -x -F "/$1" >/dev/null 2>&1

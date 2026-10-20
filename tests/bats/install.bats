@@ -242,3 +242,14 @@ EOF
     fi
   done
 }
+
+@test "a deploy failure removes the overlay files it wrote" {
+  mkdir "$BATS_TEST_TMPDIR/extra"
+  echo '-w /etc/hosts -p wa -k hosts' >"$BATS_TEST_TMPDIR/extra/50-site.rules"
+  before=$(akit_sums etc/audit etc/rsyslog.d)
+  # The state file can't be written, so deploy fails after it wrote the rules.
+  mkdir -p "$AKIT_ROOT/etc/auditd-kit/state.tmp"
+  install --extra-rules-dir "$BATS_TEST_TMPDIR/extra"
+  [ "$status" -eq 2 ]
+  [ "$(akit_sums etc/audit etc/rsyslog.d)" = "$before" ]
+}

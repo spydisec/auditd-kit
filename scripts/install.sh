@@ -154,6 +154,11 @@ install_stage=change
 # 6. Deploy
 install_rules=no
 install_auditd=no
+set --
+for install_f in "$install_work/rendered"/*.rules; do
+  set -- "$@" "$AKIT_RULES_D/${install_f##*/}"
+done
+AKIT_BACKUP_ADDED=$*
 for install_d in /etc/auditd-kit "$AKIT_RULES_D"; do
   mkdir -p "$(akit_path "$install_d")" || install_fail "cannot create $(akit_path "$install_d")"
 done
@@ -186,10 +191,6 @@ if ! { mkdir -p "$(akit_path /var/lib/auditd-kit)" \
   && cp "$install_work/render-report.txt" "$(akit_path /var/lib/auditd-kit/render-report.txt)"; }; then
   install_fail "cannot write the render report"
 fi
-set --
-for install_f in "$install_work/rendered"/*.rules; do
-  set -- "$@" "$AKIT_RULES_D/${install_f##*/}"
-done
 install_targets=$(sed -n 's/^syslog_forward_targets=//p' "$install_work/survey")
 akit_state_write "$install_rule_count" "$install_targets" "$@" "$AKIT_AUDITD_CONF" \
   || install_fail "cannot write $AKIT_STATE_FILE"
