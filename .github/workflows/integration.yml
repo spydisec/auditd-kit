@@ -9,9 +9,17 @@ on:
 permissions: {}
 
 jobs:
+  changes:
+    uses: $/.github/workflows/changes.yml
+    permissions:
+      contents: read
+
   # install.sh, a second install, and rollback.sh on a real kernel, then forwarding to a TCP sink,
   # then a full audit disk.
   real-kernel:
+    needs: changes
+    if: >-
+      always() && (needs.changes.result != 'success' || needs.changes.outputs.runtime == 'true')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     permissions:
@@ -22,6 +30,10 @@ jobs:
         os: [ubuntu-22.04, ubuntu-24.04]
         profile: [minimal, heavy]
     steps:
+      - name: Require change detection
+        env:
+          DETECTION_RESULT: ${{ needs.changes.result }}
+        run: test "$DETECTION_RESULT" = success
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
@@ -32,6 +44,9 @@ jobs:
 
   # install.sh --skip-load twice and rollback.sh --skip-load in each supported OS image.
   container-install:
+    needs: changes
+    if: >-
+      always() && (needs.changes.result != 'success' || needs.changes.outputs.runtime == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -41,6 +56,10 @@ jobs:
       matrix:
         image: ["centos:7", "rockylinux:8", "rockylinux:9", "rockylinux/rockylinux:10", "ubuntu:22.04", "ubuntu:24.04"]
     steps:
+      - name: Require change detection
+        env:
+          DETECTION_RESULT: ${{ needs.changes.result }}
+        run: test "$DETECTION_RESULT" = success
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
@@ -50,6 +69,9 @@ jobs:
         run: sh tests/ci/container-install.sh "$IMAGE"
 
   molecule-survey:
+    needs: changes
+    if: >-
+      always() && (needs.changes.result != 'success' || needs.changes.outputs.molecule == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -63,6 +85,10 @@ jobs:
           - scenario: survey-latest
             ansible-core: "ansible-core"
     steps:
+      - name: Require change detection
+        env:
+          DETECTION_RESULT: ${{ needs.changes.result }}
+        run: test "$DETECTION_RESULT" = success
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false

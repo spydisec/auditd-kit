@@ -1,0 +1,57 @@
+---
+name: changes
+
+on:
+  workflow_call:
+    outputs:
+      lint:
+        value: ${{ jobs.detect.outputs.lint }}
+      bats:
+        value: ${{ jobs.detect.outputs.bats }}
+      runtime:
+        value: ${{ jobs.detect.outputs.runtime }}
+      molecule:
+        value: ${{ jobs.detect.outputs.molecule }}
+      packaging:
+        value: ${{ jobs.detect.outputs.packaging }}
+      rules:
+        value: ${{ jobs.detect.outputs.rules }}
+
+permissions: {}
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      lint: ${{ steps.paths.outputs.lint }}
+      bats: ${{ steps.paths.outputs.bats }}
+      runtime: ${{ steps.paths.outputs.runtime }}
+      molecule: ${{ steps.paths.outputs.molecule }}
+      packaging: ${{ steps.paths.outputs.packaging }}
+      rules: ${{ steps.paths.outputs.rules }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select test groups
+        id: paths
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" != pull_request ]]; then
+            bash scripts/dev/ci-changes.bash --all >"$GITHUB_OUTPUT"
+          else
+            git diff --no-renames --name-only -z "$BASE_SHA...$HEAD_SHA" \
+              | bash scripts/dev/ci-changes.bash >"$GITHUB_OUTPUT"
+          fi
+          for group in lint bats runtime molecule packaging rules; do
+            grep -Eq "^${group}=(true|false)$" "$GITHUB_OUTPUT"
+          done
