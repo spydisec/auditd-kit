@@ -33,7 +33,7 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0004](0004-local-logs-by-default.md) | Keep logs local by default and forward through one added file | Accepted |
 | [0005](0005-rule-profiles.md) | Rule profiles and upstream rule sources | Superseded by 0011 |
 | [0006](0006-never-halt-the-host.md) | Never halt the host when the audit disk fills | Accepted |
-| [0007](0007-test-strategy.md) | Test strategy | Accepted |
+| [0007](0007-test-strategy.md) | Test strategy | Superseded by 0021 |
 | [0008](0008-workflow-and-releases.md) | Trunk-based workflow and verifiable release bundles | Superseded by 0020 |
 | [0009](0009-verify-with-a-canary-watch-rule.md) | Verify with a canary watch rule | Accepted |
 | [0010](0010-render-trims-unknown-syscalls.md) | Render trims unknown syscalls and strips control lines | Accepted |
@@ -47,3 +47,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0018](0018-render-drops-exec-rules-on-symlinks.md) | Render drops exec rules on symlinks | Accepted |
 | [0019](0019-add-rhel-10.md) | Add RHEL 10 | Accepted |
 | [0020](0020-releases-from-a-manual-workflow.md) | Releases from a manual workflow | Accepted |
+| [0021](0021-select-tests-from-changed-files.md) | Select tests from changed files | Accepted |

@@ -9,32 +9,55 @@ on:
 permissions: {}
 
 jobs:
+  changes:
+    uses: $/.github/workflows/changes.yml
+    permissions:
+      contents: read
+
   lint:
+    needs: changes
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
+      - name: Require change detection
+        env:
+          DETECTION_RESULT: ${{ needs.changes.result }}
+        run: test "$DETECTION_RESULT" = success
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        if: needs.changes.outputs.lint == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        if: needs.changes.outputs.lint == 'true'
         with:
           python-version: "3.12"
       - name: Install tools
+        if: needs.changes.outputs.lint == 'true'
         run: |
           python -m venv .venv
           .venv/bin/pip install -r tests/requirements.txt
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Lint
+        if: needs.changes.outputs.lint == 'true'
         run: sh tests/lint.sh
 
   bats:
+    needs: changes
+    if: >-
+      always() && (needs.changes.result != 'success' || needs.changes.outputs.bats == 'true' ||
+      needs.changes.outputs.packaging == 'true' || needs.changes.outputs.rules == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
+      - name: Require change detection
+        env:
+          DETECTION_RESULT: ${{ needs.changes.result }}
+        run: test "$DETECTION_RESULT" = success
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
@@ -45,16 +68,51 @@ jobs:
           assert-install: false
           detik-install: false
           file-install: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        if: needs.changes.outputs.bats == 'true' || needs.changes.outputs.packaging == 'true'
+        with:
+          python-version: "3.12"
+      - name: Install packaging tools
+        if: needs.changes.outputs.bats == 'true' || needs.changes.outputs.packaging == 'true'
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install 'ansible-core==2.16.*'
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Bats
-        run: bats tests/bats
+        env:
+          RUN_ALL: ${{ needs.changes.outputs.bats }}
+          RUN_PACKAGING: ${{ needs.changes.outputs.packaging }}
+          RUN_RULES: ${{ needs.changes.outputs.rules }}
+        run: |
+          if [ "$RUN_ALL" = true ]; then
+            command -v ansible-galaxy
+            bats tests/bats
+          else
+            set --
+            if [ "$RUN_PACKAGING" = true ]; then
+              command -v ansible-galaxy
+              set -- "$@" tests/bats/collection.bats tests/bats/release.bats
+            fi
+            if [ "$RUN_RULES" = true ]; then
+              set -- "$@" tests/bats/rules.bats
+            fi
+            bats "$@"
+          fi
 
   # The suite again with sh as bash in POSIX mode, as on RHEL, and with mawk as awk, as on Ubuntu.
   bats-portability:
+    needs: changes
+    if: >-
+      always() && (needs.changes.result != 'success' || needs.changes.outputs.bats == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
     steps:
+      - name: Require change detection
+        env:
+          DETECTION_RESULT: ${{ needs.changes.result }}
+        run: test "$DETECTION_RESULT" = success
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false

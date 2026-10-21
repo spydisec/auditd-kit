@@ -16,6 +16,10 @@ Run `sh tests/lint.sh` for the linters, and run `bats tests/bats` for the tests.
 lint script needs shellcheck, shfmt, and yamllint on your path, and `tests/requirements.txt` lists the Python
 tools.
 
+PRs run test groups selected by changed paths and file extensions. Security scans run on every
+PR, and pushes to `main` run the full suite. See [ADR 0021](docs/adr/0021-select-tests-from-changed-files.md)
+for the groups. Changes to the routing rules must include tests in `tests/bats/ci-changes.bats`.
+
 ## Public repository rules
 
 This repository is public, so a change must not contain any of the following.

@@ -1,6 +1,6 @@
 # 0007. Test strategy
 
-Status: Accepted
+Status: Superseded by 0021
 Date: 2026-10-19
 
 ## Context
