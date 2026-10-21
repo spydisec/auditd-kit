@@ -259,10 +259,11 @@ EOF
 @test "a command that succeeds logs its output to the file only, and one that fails shows it" {
   log="$BATS_TEST_TMPDIR/run.log"
   run sh -c '. "$1/common.sh"; . "$1/backup.sh"; . "$1/load.sh"; AKIT_LOG_FILE=$2
-    akit_load_run sh -c "echo one; echo two"' sh "$lib" "$log"
+    akit_load_run sh -c "echo one; echo Error sending add rule"' sh "$lib" "$log"
   [ "$status" -eq 0 ]
   [[ "$output" == *"its output (2 lines) is in $log"* ]]
   [[ "$output" != *"  one"* ]]
+  [[ "$output" == *"  Error sending add rule"* ]]
   grep -q 'info:   one$' "$log"
   run sh -c '. "$1/common.sh"; . "$1/backup.sh"; . "$1/load.sh"; AKIT_LOG_FILE=$2
     akit_load_run sh -c "echo broken; exit 3"' sh "$lib" "$log"

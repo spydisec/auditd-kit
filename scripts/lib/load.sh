@@ -16,12 +16,16 @@ akit_load_run() {
     load_rc=$?
   fi
   [ -n "$load_out" ] || return "$load_rc"
-  if [ "$load_rc" -eq 0 ] && [ -n "${AKIT_LOG_FILE:-}" ]; then
-    printf '%s\n' "$load_out" | sed "s/^/$(date '+%Y-%m-%dT%H:%M:%S') auditd-kit: info:   /" \
-      >>"$AKIT_LOG_FILE" 2>/dev/null || true
+  if [ "$load_rc" -eq 0 ] && [ -n "${AKIT_LOG_FILE:-}" ] \
+    && printf '%s\n' "$load_out" | sed "s/^/$(date '+%Y-%m-%dT%H:%M:%S') auditd-kit: info:   /" \
+      >>"$AKIT_LOG_FILE" 2>/dev/null; then
     load_n=$(printf '%s\n' "$load_out" | wc -l | tr -d ' ')
     [ "$load_n" -eq 1 ] && load_lines=line || load_lines=lines
     akit_log info "  its output ($load_n $load_lines) is in $AKIT_LOG_FILE"
+    # An error or a warning shows even when the command succeeds.
+    printf '%s\n' "$load_out" | grep -iE 'error|warning|failed' | while IFS= read -r load_line; do
+      akit_log info "  $load_line"
+    done
   else
     printf '%s\n' "$load_out" | while IFS= read -r load_line; do
       akit_log info "  $load_line"
