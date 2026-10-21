@@ -84,3 +84,10 @@
 # -a always,exit -F arch=b32 -S connect -F a2=16 -k network_connect
 # -a always,exit -F arch=b64 -S connect -F a2=28 -k network_connect
 # -a always,exit -F arch=b32 -S connect -F a2=28 -k network_connect
+
+# Root from a user: a logged-in user's process that switched to root's ID. Caution: sudo makes
+# about 12 of these calls on each run, which the minimal profile already logs, so this is very
+# busy on hosts that automate with sudo (for example Ansible become).
+# -a always,exit -F arch=b64 -S setuid,setreuid,setresuid -F euid=0 -F auid>=1000 -F auid!=unset -F success=1 -k T1548_Abuse_Elevation_Control_Mechanism
+# -a always,exit -F arch=b32 -S setuid,setreuid,setresuid -F euid=0 -F auid>=1000 -F auid!=unset -F success=1 -k T1548_Abuse_Elevation_Control_Mechanism
+# -a always,exit -F arch=b32 -S setuid32,setreuid32,setresuid32 -F euid=0 -F auid>=1000 -F auid!=unset -F success=1 -k T1548_Abuse_Elevation_Control_Mechanism
