@@ -228,7 +228,6 @@ T1055_Process_Injection
 T1059_Command_and_Scripting_Interpreter
 T1543_Create_or_Modify_System_Process
 T1546_Event_Triggered_Execution
-T1548_Abuse_Elevation_Control_Mechanism
 T1556_Modify_Authentication_Process
 T1562_Impair_Defenses
 T1611_Escape_to_Host
@@ -277,6 +276,7 @@ time_change' ]
   grep -qF -- '# -a always,exit -F arch=b64 -S execve,execveat -k' "$heavy"
   grep -qF -- '# -a always,exit -F arch=b64 -S execve,execveat -F auid=unset' "$heavy"
   grep -qF -- '# -a always,exit -F arch=b64 -S connect -F a2=16 -k' "$heavy"
+  grep -qF -- '# -a always,exit -F arch=b64 -S setuid,setreuid,setresuid -F euid=0' "$heavy"
 }
 
 @test "heavy syscall rules filter on logged-in users" {
@@ -297,12 +297,10 @@ EOF2
 }
 
 @test "32-bit-only syscalls appear only on b32 rules" {
-  for pair in heavy:chown32 heavy:fchown32 heavy:lchown32 heavy:truncate64 heavy:ftruncate64 \
-    medium:setuid32 medium:setreuid32 medium:setresuid32; do
-    case "${pair%%:*}" in heavy) f=$heavy ;; *) f=$medium ;; esac
-    pat="[ ,]${pair#*:}[ ,]"
-    [ "$(rule_lines "$f" | grep -c -- "$pat")" -gt 0 ]
-    [ "$(rule_lines "$f" | grep -- "$pat" | grep -vc -- 'arch=b32')" -eq 0 ]
+  for sc in chown32 fchown32 lchown32 truncate64 ftruncate64; do
+    pat="[ ,]${sc}[ ,]"
+    [ "$(rule_lines "$heavy" | grep -c -- "$pat")" -gt 0 ]
+    [ "$(rule_lines "$heavy" | grep -- "$pat" | grep -vc -- 'arch=b32')" -eq 0 ]
   done
 }
 
