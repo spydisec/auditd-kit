@@ -135,6 +135,12 @@ if [ "$install_guided" = yes ]; then
     3) akit_settings_set akit_profile heavy ;;
     *) akit_settings_set akit_profile "$install_ans" ;;
   esac
+  if [ "$akit_profile" = heavy ] && [ "$akit_immutable" = false ]; then
+    install_ask "Lock the rules until reboot (-e 2), as CIS and STIG expect? Every later rule change, rollback too, then needs a reboot. [y/N]:" n
+    case "$install_ans" in
+      [yY]*) akit_settings_set akit_immutable true ;;
+    esac
+  fi
   if [ "$(install_survey_get syslog_daemon)" = rsyslog ] && [ "$akit_forward" = none ]; then
     install_ask "Send audit events to a syslog server? [y/N]:" n
     case "$install_ans" in
@@ -206,6 +212,10 @@ set -- --profile "$akit_profile" --size "$akit_size" --immutable "$akit_immutabl
 [ -z "$akit_skip_keys" ] || set -- "$@" --skip-keys "$akit_skip_keys"
 install_out=$(sh "$install_root/render.sh" "$@") || akit_die "$AKIT_EXIT_REFUSED" "render failed, and nothing changed"
 install_rule_count=$(printf '%s\n' "$install_out" | sed -n 's/^rule_count=//p')
+install_dropped=$(grep -c . "$install_work/render-report.txt" || true)
+if [ "$install_dropped" -gt 0 ]; then
+  akit_log info "render left out or trimmed $install_dropped rules that this host can't load. An install lists them in /var/lib/auditd-kit/render-report.txt"
+fi
 
 # 3. Validate
 if ! install_out=$(sh "$install_lib/validate.sh" "$install_work/rendered" 2>&1); then
@@ -228,7 +238,8 @@ if [ "$install_dry_run" = yes ]; then
   exit "$AKIT_EXIT_OK"
 fi
 if [ "$install_guided" = yes ] && [ "$install_changes" -gt 0 ]; then
-  cat "$install_work/plan"
+  cat "$install_work/changes"
+  echo "To see each change in full first, run install.sh with --dry-run."
   install_ask "Apply these $install_changes changes? [y/N]:" n
   case "$install_ans" in
     [yY]*) ;;

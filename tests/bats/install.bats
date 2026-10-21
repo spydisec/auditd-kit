@@ -255,3 +255,23 @@ EOF
   [ "$status" -eq 2 ]
   [ "$(akit_sums etc/audit etc/rsyslog.d)" = "$before" ]
 }
+
+@test "a command that succeeds logs its output to the file only, and one that fails shows it" {
+  log="$BATS_TEST_TMPDIR/run.log"
+  run sh -c '. "$1/common.sh"; . "$1/backup.sh"; . "$1/load.sh"; AKIT_LOG_FILE=$2
+    akit_load_run sh -c "echo one; echo two"' sh "$lib" "$log"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"its output (2 lines) is in $log"* ]]
+  [[ "$output" != *"  one"* ]]
+  grep -q 'info:   one$' "$log"
+  run sh -c '. "$1/common.sh"; . "$1/backup.sh"; . "$1/load.sh"; AKIT_LOG_FILE=$2
+    akit_load_run sh -c "echo broken; exit 3"' sh "$lib" "$log"
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"info:   broken"* ]]
+}
+
+@test "install says how many rules render left out" {
+  install --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"render left out or trimmed "*" rules that this host can't load"* ]]
+}
