@@ -1,5 +1,9 @@
 # auditd-kit
 
+[![Integration tests](https://github.com/spydisec/auditd-kit/actions/workflows/integration.yml/badge.svg?branch=main)](https://github.com/spydisec/auditd-kit/actions/workflows/integration.yml)
+[![Security scans](https://github.com/spydisec/auditd-kit/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/spydisec/auditd-kit/actions/workflows/security.yml)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/spydisec/auditd-kit)
+
 auditd-kit turns on Linux audit logging (auditd) across a fleet with safe defaults. It ships plain rule and
 configuration files, POSIX shell scripts, and an Ansible collection, so you can use the files by hand, run the
 scripts on a single host, or roll the change out with Ansible.
