@@ -276,6 +276,7 @@ time_change' ]
   grep -qF -- '# -a always,exit -F arch=b64 -S execve,execveat -k' "$heavy"
   grep -qF -- '# -a always,exit -F arch=b64 -S execve,execveat -F auid=unset' "$heavy"
   grep -qF -- '# -a always,exit -F arch=b64 -S connect -F a2=16 -k' "$heavy"
+  grep -qF -- '# -a always,exit -F arch=b64 -S setuid,setreuid,setresuid -F euid=0' "$heavy"
 }
 
 @test "heavy syscall rules filter on logged-in users" {
