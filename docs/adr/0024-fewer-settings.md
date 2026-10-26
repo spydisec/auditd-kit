@@ -29,7 +29,7 @@ Overrides become one setting. `akit_accept` is a comma list of refusal codes, an
 `akit_accept_agents` and `akit_accept_catchall` are removed. A refusal prints the exact value to
 add, e.g. `refuse=agent_conflict:wazuh override=akit_accept=agent_conflict:wazuh`. Only refusals
 that the operator can't fix on the host take part, which today are `agent_conflict:<agent>` and
-`catchall_forward`. The others, e.g. `low_disk` or `not_root`, still print an action to take.
+`catchall_forward`. The others print an action to take, e.g. `low_disk` or `auditd_missing`, or `none`.
 
 Log sizes stay as they are. `akit_size=small|standard|large` sets the log file size and count, and
 that covers most hosts. An operator who needs other values sets `akit_max_log_file` and
