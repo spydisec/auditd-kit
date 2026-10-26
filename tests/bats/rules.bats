@@ -361,3 +361,12 @@ EOF2
     }
   done
 }
+
+@test "every rule key, commented ones too, has a Wazuh rule" {
+  wazuh="$repo/config/wazuh/auditd-kit-rules.xml"
+  keys=$(sed -n 's/^#* *-[aw] .*\(-k \|key=\)\([A-Za-z0-9_]*\).*/\2/p' "$repo"/rules/*.rules | sort -u)
+  [ -n "$keys" ]
+  for k in $keys; do
+    grep -q "<field name=\"audit.key\">^$k\$</field>" "$wazuh" || { echo "no Wazuh rule for $k"; false; }
+  done
+}

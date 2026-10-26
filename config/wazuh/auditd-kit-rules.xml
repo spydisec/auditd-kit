@@ -1,0 +1,319 @@
+<!--
+  Wazuh rules for auditd-kit audit keys. Copy this file to /var/ossec/etc/rules/ on the Wazuh
+  manager and restart it. See docs/integrations/wazuh.md.
+
+  Wazuh decodes every audit event (rule 80700, level 0), but only raises alerts for the keys in
+  etc/lists/audit-keys. These rules raise an alert for each auditd-kit key. The IDs are in the
+  custom range: change them if 100800 to 100899 is already in use on your manager.
+-->
+<group name="audit,auditd-kit,">
+  <rule id="100800" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^akit_canary$</field>
+    <description>auditd-kit: auditd-kit canary written by verify.sh (akit_canary).</description>
+  </rule>
+
+  <rule id="100801" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1562_Impair_Defenses$</field>
+    <description>auditd-kit: audit, firewall, or MAC settings changed (T1562_Impair_Defenses).</description>
+    <mitre>
+      <id>T1562</id>
+    </mitre>
+  </rule>
+
+  <rule id="100802" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1098_Account_Manipulation$</field>
+    <description>auditd-kit: account changed (T1098_Account_Manipulation).</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+  </rule>
+
+  <rule id="100803" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1136_Create_Account$</field>
+    <description>auditd-kit: account created (T1136_Create_Account).</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+  </rule>
+
+  <rule id="100804" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1556_Modify_Authentication_Process$</field>
+    <description>auditd-kit: authentication settings changed (T1556_Modify_Authentication_Process).</description>
+    <mitre>
+      <id>T1556</id>
+    </mitre>
+  </rule>
+
+  <rule id="100805" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1548_Abuse_Elevation_Control_Mechanism$</field>
+    <description>auditd-kit: privilege elevation (T1548_Abuse_Elevation_Control_Mechanism).</description>
+    <mitre>
+      <id>T1548</id>
+    </mitre>
+  </rule>
+
+  <rule id="100806" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1053_Scheduled_Task_Job$</field>
+    <description>auditd-kit: scheduled job changed (T1053_Scheduled_Task_Job).</description>
+    <mitre>
+      <id>T1053</id>
+    </mitre>
+  </rule>
+
+  <rule id="100807" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1543_Create_or_Modify_System_Process$</field>
+    <description>auditd-kit: system service changed (T1543_Create_or_Modify_System_Process).</description>
+    <mitre>
+      <id>T1543</id>
+    </mitre>
+  </rule>
+
+  <rule id="100808" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1574_Hijack_Execution_Flow$</field>
+    <description>auditd-kit: library preload or search path changed (T1574_Hijack_Execution_Flow).</description>
+    <mitre>
+      <id>T1574</id>
+    </mitre>
+  </rule>
+
+  <rule id="100809" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1547_Boot_or_Logon_Autostart_Execution$</field>
+    <description>auditd-kit: kernel module loaded or module settings changed (T1547_Boot_or_Logon_Autostart_Execution).</description>
+    <mitre>
+      <id>T1547</id>
+    </mitre>
+  </rule>
+
+  <rule id="100810" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1546_Event_Triggered_Execution$</field>
+    <description>auditd-kit: shell startup file changed (T1546_Event_Triggered_Execution).</description>
+    <mitre>
+      <id>T1546</id>
+    </mitre>
+  </rule>
+
+  <rule id="100811" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1037_Boot_or_Logon_Initialization_Scripts$</field>
+    <description>auditd-kit: boot or logon script changed (T1037_Boot_or_Logon_Initialization_Scripts).</description>
+    <mitre>
+      <id>T1037</id>
+    </mitre>
+  </rule>
+
+  <rule id="100812" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1040_Network_Sniffing$</field>
+    <description>auditd-kit: packet capture or promiscuous mode (T1040_Network_Sniffing).</description>
+    <mitre>
+      <id>T1040</id>
+    </mitre>
+  </rule>
+
+  <rule id="100813" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1055_Process_Injection$</field>
+    <description>auditd-kit: process injection or tracing (T1055_Process_Injection).</description>
+    <mitre>
+      <id>T1055</id>
+    </mitre>
+  </rule>
+
+  <rule id="100814" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1611_Escape_to_Host$</field>
+    <description>auditd-kit: container escape attempt (T1611_Escape_to_Host).</description>
+    <mitre>
+      <id>T1611</id>
+    </mitre>
+  </rule>
+
+  <rule id="100815" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1620_Reflective_Code_Loading$</field>
+    <description>auditd-kit: program run from memory (T1620_Reflective_Code_Loading).</description>
+    <mitre>
+      <id>T1620</id>
+    </mitre>
+  </rule>
+
+  <rule id="100816" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1505_Server_Software_Component$</field>
+    <description>auditd-kit: a service started a program (T1505_Server_Software_Component).</description>
+    <mitre>
+      <id>T1505</id>
+    </mitre>
+  </rule>
+
+  <rule id="100817" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1059_Command_and_Scripting_Interpreter$</field>
+    <description>auditd-kit: command run by a logged-in user (T1059_Command_and_Scripting_Interpreter).</description>
+    <mitre>
+      <id>T1059</id>
+    </mitre>
+  </rule>
+
+  <rule id="100818" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1070_Indicator_Removal$</field>
+    <description>auditd-kit: logs or history removed (T1070_Indicator_Removal).</description>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
+  </rule>
+
+  <rule id="100819" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^T1222_File_and_Directory_Permissions_Modification$</field>
+    <description>auditd-kit: file permissions or owner changed (T1222_File_and_Directory_Permissions_Modification).</description>
+    <mitre>
+      <id>T1222</id>
+    </mitre>
+  </rule>
+
+  <rule id="100820" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^exec_from_shm$</field>
+    <description>auditd-kit: program started from /dev/shm (exec_from_shm).</description>
+    <mitre>
+      <id>T1620</id>
+    </mitre>
+  </rule>
+
+  <rule id="100821" level="10">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^exec_from_tmp$</field>
+    <description>auditd-kit: program started from a temp directory (exec_from_tmp).</description>
+  </rule>
+
+  <rule id="100822" level="12">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^kexec$</field>
+    <description>auditd-kit: another kernel loaded (kexec).</description>
+  </rule>
+
+  <rule id="100823" level="8">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^power_abuse$</field>
+    <description>auditd-kit: root accessed a user's home directory (power_abuse).</description>
+  </rule>
+
+  <rule id="100824" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^time_change$</field>
+    <description>auditd-kit: system time changed (time_change).</description>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
+  </rule>
+
+  <rule id="100825" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^sysctl$</field>
+    <description>auditd-kit: kernel parameters changed (sysctl).</description>
+  </rule>
+
+  <rule id="100826" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^mounts$</field>
+    <description>auditd-kit: file system mounted (mounts).</description>
+  </rule>
+
+  <rule id="100827" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^fstab$</field>
+    <description>auditd-kit: file system table changed (fstab).</description>
+  </rule>
+
+  <rule id="100828" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^swap$</field>
+    <description>auditd-kit: swap changed (swap).</description>
+  </rule>
+
+  <rule id="100829" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^network_config$</field>
+    <description>auditd-kit: network settings changed (network_config).</description>
+  </rule>
+
+  <rule id="100830" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^containers$</field>
+    <description>auditd-kit: container settings changed (containers).</description>
+  </rule>
+
+  <rule id="100831" level="5">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^bpf$</field>
+    <description>auditd-kit: eBPF program loaded (bpf).</description>
+  </rule>
+
+  <rule id="100832" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^software_mgmt$</field>
+    <description>auditd-kit: package tool run or package settings changed (software_mgmt).</description>
+  </rule>
+
+  <rule id="100833" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^network_connect$</field>
+    <description>auditd-kit: outbound network connection (network_connect).</description>
+  </rule>
+
+  <rule id="100834" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^access$</field>
+    <description>auditd-kit: file access denied (access).</description>
+  </rule>
+
+  <rule id="100835" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^logins$</field>
+    <description>auditd-kit: login records changed (logins).</description>
+  </rule>
+
+  <rule id="100836" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^login_banner$</field>
+    <description>auditd-kit: login banner changed (login_banner).</description>
+  </rule>
+
+  <rule id="100837" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key">^sudo_log$</field>
+    <description>auditd-kit: sudo log changed (sudo_log).</description>
+  </rule>
+  <!-- verify.sh and admins run auditctl -s and -l to read the status and the rules. Those change
+       nothing, so they get a low level instead of the T1562 level. -->
+  <rule id="100838" level="3">
+    <if_sid>100801</if_sid>
+    <field name="audit.exe">^/usr/sbin/auditctl$|^/sbin/auditctl$</field>
+    <field name="audit.execve.a1">^-s$|^-l$</field>
+    <description>auditd-kit: auditctl read the audit status or rules (T1562_Impair_Defenses).</description>
+  </rule>
+
+  <!-- More arguments after -s or -l can change settings, e.g. auditctl -s -e 0, so those keep the
+       T1562 level. -->
+  <rule id="100839" level="10">
+    <if_sid>100838</if_sid>
+    <field name="audit.execve.a2">\.+</field>
+    <description>auditd-kit: audit, firewall, or MAC settings changed (T1562_Impair_Defenses).</description>
+    <mitre>
+      <id>T1562</id>
+    </mitre>
+  </rule>
+</group>
