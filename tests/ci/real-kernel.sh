@@ -131,22 +131,25 @@ sh "$repo/scripts/rollback.sh" || fail "rollback.sh exited $?"
 same_sums "$work/before" "rollback did not restore /etc/audit and /etc/rsyslog.d"
 
 step "Install undoes the forwarding of auditd-kit 0.2.0"
-# The host as 0.2.0 left it with forwarding on: an active syslog plugin, our drop-in, and
-# forward=remote in the state file.
-mkdir -p /etc/auditd-kit
-printf 'version=0.2.0\nforward=remote\n' >/etc/auditd-kit/state
+# The host as 0.2.0 left it with forwarding on: our rules, an active syslog plugin, our drop-in,
+# and forward=remote in the state file.
+run_install "$work/install-old0" --profile "$profile" --existing-rules replace
+echo forward=remote >>/etc/auditd-kit/state
 echo "if \$syslogfacility-text == 'local6' then { stop }" >/etc/rsyslog.d/40-auditd-kit.conf
 sed -i 's/^active = no/active = yes/' /etc/audit/plugins.d/syslog.conf
 service rsyslog restart
 sums >"$work/old-before"
+# Install and rollback each restart auditd within seconds, which can hit systemd's start limit.
+systemctl reset-failed auditd || true
 run_install "$work/install-old" --profile "$profile" --existing-rules replace
 grep -qx 'active = no' /etc/audit/plugins.d/syslog.conf || fail "the syslog plugin is still active"
 [ ! -e /etc/rsyslog.d/40-auditd-kit.conf ] || fail "the old drop-in is still there"
-# Install and rollback each restart auditd within seconds, which can hit systemd's start limit.
+grep -q '^forward=' /etc/auditd-kit/state && fail "the state file still has forward="
 systemctl reset-failed auditd || true
 sh "$repo/scripts/rollback.sh" || fail "rollback.sh exited $? after the cleanup"
 same_sums "$work/old-before" "rollback did not restore the 0.2.0 forwarding files"
-rm -f /etc/rsyslog.d/40-auditd-kit.conf /etc/auditd-kit/state
+rm -f /etc/rsyslog.d/40-auditd-kit.conf
+sed -i '/^forward=/d' /etc/auditd-kit/state
 sed -i 's/^active = yes/active = no/' /etc/audit/plugins.d/syslog.conf
 service rsyslog restart
 systemctl reset-failed auditd || true
