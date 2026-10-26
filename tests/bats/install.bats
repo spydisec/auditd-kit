@@ -220,6 +220,18 @@ EOF
   run ! grep -E '^systemctl (restart|stop|start|reload)' "$calls"
 }
 
+@test "the auditd start limit is cleared before each restart" {
+  install
+  [ "$status" -eq 0 ]
+  run sh "$repo/scripts/rollback.sh"
+  [ "$status" -eq 0 ]
+  restarts=$(grep -c '^service auditd restart' "$calls")
+  [ "$restarts" -ge 2 ]
+  # Each restart comes straight after a reset-failed.
+  run grep -B1 '^service auditd restart' "$calls"
+  [ "$(printf '%s\n' "$output" | grep -c '^systemctl reset-failed auditd')" -eq "$restarts" ]
+}
+
 @test "rules-only change runs augenrules --load and no restart" {
   install
   [ "$status" -eq 0 ]
