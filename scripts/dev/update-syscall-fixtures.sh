@@ -15,8 +15,11 @@ mkdir -p "$out"
 pins='centos7 v2.8.5
 rocky8 v3.1.2
 rocky9 v3.1.5
+ubuntu1804 v2.8.2
+ubuntu2004 v2.8.5
 ubuntu2204 v3.0.7
-ubuntu2404 v3.1.2'
+ubuntu2404 v3.1.2
+ubuntu2604 v4.1.2'
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

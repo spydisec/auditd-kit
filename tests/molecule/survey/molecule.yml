@@ -1,5 +1,6 @@
 ---
-# The survey and stats playbooks on every supported system, with ansible-core 2.16.
+# The survey and stats playbooks with ansible-core 2.16, on every supported system up to Ubuntu
+# 24.04. ansible-core 2.16 doesn't support Python 3.14, which Ubuntu 26.04 ships.
 driver:
   name: docker
 # The images are used as they are. prepare.yml adds what Ansible needs.
@@ -12,6 +13,12 @@ platforms:
     pre_build_image: true
   - name: rocky9
     image: rockylinux:9
+    pre_build_image: true
+  - name: ubuntu1804
+    image: ubuntu:18.04
+    pre_build_image: true
+  - name: ubuntu2004
+    image: ubuntu:20.04
     pre_build_image: true
   - name: ubuntu2204
     image: ubuntu:22.04

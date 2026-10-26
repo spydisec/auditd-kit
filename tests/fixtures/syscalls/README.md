@@ -10,7 +10,10 @@ linux-audit/audit-userspace, at the tag for the audit version that OS ships.
 | centos7 | v2.8.5 |
 | rocky8 | v3.1.2 |
 | rocky9 | v3.1.5 |
+| ubuntu1804 | v2.8.2 |
+| ubuntu2004 | v2.8.5 |
 | ubuntu2204 | v3.0.7 |
 | ubuntu2404 | v3.1.2 |
+| ubuntu2604 | v4.1.2 |
 
 To rebuild the files, run `sh scripts/dev/update-syscall-fixtures.sh` and commit the result.

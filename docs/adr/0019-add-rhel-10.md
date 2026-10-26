@@ -1,6 +1,6 @@
 # 0019. Add RHEL 10
 
-Status: Accepted
+Status: Superseded by 0022
 Date: 2026-10-20
 
 ## Context

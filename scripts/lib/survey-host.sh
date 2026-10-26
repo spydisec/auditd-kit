@@ -89,7 +89,7 @@ survey_check_support_tier() {
       ;;
     ubuntu)
       case "$survey_os_version" in
-        22.04 | 24.04) survey_tier=supported ;;
+        18.04 | 20.04 | 22.04 | 24.04 | 26.04) survey_tier=supported ;;
       esac
       ;;
   esac

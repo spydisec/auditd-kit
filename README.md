@@ -86,7 +86,7 @@ that host, and changes nothing. See [rules/README.md](rules/README.md#load-the-r
 ## Supported systems
 
 - Red Hat Enterprise Linux 7, 8, 9, and 10, tested on CentOS 7 and Rocky Linux 8, 9, and 10
-- Ubuntu 22.04 and 24.04
+- Ubuntu 18.04, 20.04, 22.04, 24.04, and 26.04
 
 ## More information
 
