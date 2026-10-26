@@ -18,9 +18,10 @@ setup() {
   state="$AKIT_ROOT/etc/auditd-kit/state"
 }
 
-# install: run install.sh.
+# install [flags]: run install.sh.
+# shellcheck disable=SC2120
 install() {
-  run sh "$repo/scripts/install.sh" </dev/null
+  run sh "$repo/scripts/install.sh" "$@" </dev/null
 }
 
 # old_forwarding: the host as auditd-kit 0.2.0 left it with forwarding on.
