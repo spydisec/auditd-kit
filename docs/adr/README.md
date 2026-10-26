@@ -49,3 +49,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0020](0020-releases-from-a-manual-workflow.md) | Releases from a manual workflow | Accepted |
 | [0021](0021-select-tests-from-changed-files.md) | Select tests from changed files | Accepted |
 | [0022](0022-add-ubuntu-18-04-20-04-and-26-04.md) | Add Ubuntu 18.04, 20.04, and 26.04 | Accepted |
+| [0023](0023-refuse-only-agents-that-use-audit.md) | Refuse only agents that use the audit system | Accepted |

@@ -155,7 +155,89 @@ ruleset(name="fwd") {
     mkdir -p "$AKIT_ROOT${pair#*:}"
     run_survey
     [ "$(key agents)" = "${pair%%:*}" ]
+    [ "$(key agents_audit)" = none ]
   done
+}
+
+@test "Wazuh uses audit only with who-data on" {
+  put /var/ossec/etc/ossec.conf '<directories realtime="yes">/etc</directories>'
+  run_survey
+  [ "$(key agents)" = wazuh ]
+  [ "$(key agents_audit)" = none ]
+  put /var/ossec/etc/ossec.conf '<!-- <directories whodata="yes">/etc</directories> -->'
+  run_survey
+  [ "$(key agents_audit)" = none ]
+  put /var/ossec/etc/ossec.conf '<directories check_all="yes" whodata = "yes">/etc</directories>'
+  run_survey
+  [ "$(key agents_audit)" = wazuh ]
+  put /var/ossec/etc/ossec.conf '<directories realtime="yes">/etc</directories>'
+  put /var/ossec/etc/shared/agent.conf '<directories whodata="yes">/etc</directories>'
+  run_survey
+  [ "$(key agents_audit)" = wazuh ]
+}
+
+@test "MDE uses audit only with mdatp.rules or the auditd event provider" {
+  mkdir -p "$AKIT_ROOT/opt/microsoft/mdatp"
+  akit_stub mdatp 'echo "\"ebpf\""'
+  run_survey
+  [ "$(key agents)" = mde ]
+  [ "$(key agents_audit)" = none ]
+  akit_stub mdatp 'echo "\"auditd\""'
+  run_survey
+  [ "$(key agents_audit)" = mde ]
+  akit_stub mdatp 'exit 1'
+  put /etc/audit/rules.d/mdatp.rules '-w /etc/passwd -p wa -k mdatp'
+  run_survey
+  [ "$(key agents_audit)" = mde ]
+}
+
+@test "Auditbeat uses audit only with rules or unicast" {
+  put /etc/auditbeat/auditbeat.yml '- module: auditd
+  audit_rules: |
+    ## Define audit rules here.
+    #-w /etc/passwd -p wa -k identity'
+  run_survey
+  [ "$(key agents)" = auditbeat ]
+  [ "$(key agents_audit)" = none ]
+  put /etc/auditbeat/audit.rules.d/sample.conf '-a always,exit -F arch=b64 -S execve -k exec'
+  run_survey
+  [ "$(key agents_audit)" = auditbeat ]
+  rm "$AKIT_ROOT/etc/auditbeat/audit.rules.d/sample.conf"
+  put /etc/auditbeat/auditbeat.yml '- module: auditd
+  socket_type: "unicast"'
+  run_survey
+  [ "$(key agents_audit)" = auditbeat ]
+}
+
+@test "osquery uses audit only with disable_audit=false" {
+  put /etc/osquery/osquery.flags '--disable_audit=true'
+  run_survey
+  [ "$(key agents)" = osquery ]
+  [ "$(key agents_audit)" = none ]
+  put /etc/osquery/osquery.flags '# --disable_audit=false'
+  run_survey
+  [ "$(key agents_audit)" = none ]
+  put /etc/osquery/osquery.flags '--disable_audit false'
+  run_survey
+  [ "$(key agents_audit)" = osquery ]
+  rm "$AKIT_ROOT/etc/osquery/osquery.flags"
+  put /etc/osquery/osquery.conf '{"options": {"disable_audit": "false"}}'
+  run_survey
+  [ "$(key agents_audit)" = osquery ]
+  rm "$AKIT_ROOT/etc/osquery/osquery.conf"
+  akit_stub ps 'case "$*" in
+*args=*) echo "/opt/osquery/bin/osqueryd --disable_audit=false" ;;
+*) echo osqueryd ;;
+esac'
+  run_survey
+  [ "$(key agents_audit)" = osquery ]
+}
+
+@test "CrowdStrike and Splunk UF never use audit" {
+  mkdir -p "$AKIT_ROOT/opt/CrowdStrike" "$AKIT_ROOT/opt/splunkforwarder"
+  run_survey
+  [ "$(key agents)" = crowdstrike,splunkuf ]
+  [ "$(key agents_audit)" = none ]
 }
 
 @test "agents are detected from running process names and listed in a fixed order" {

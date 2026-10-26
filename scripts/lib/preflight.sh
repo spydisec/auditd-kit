@@ -48,10 +48,10 @@ pf_check_disk() {
   esac
 }
 
-# The override names every agent that isn't accepted yet, as a setting and as a flag, so one run
+# Only agents that use the audit system refuse (ADR 0023). The override names every agent that isn't accepted yet, as a setting and as a flag, so one run
 # with that value passes.
 pf_check_agents() {
-  pf_agents=$(pf_get agents)
+  pf_agents=$(pf_get agents_audit)
   case "$pf_agents" in none | unknown) return 0 ;; esac
   pf_new=
   for pf_a in $(printf '%s\n' "$pf_agents" | tr ',' ' '); do

@@ -9,7 +9,7 @@ preflight="$repo/scripts/lib/preflight.sh"
 survey() {
   input="$BATS_TEST_TMPDIR/survey"
   printf '%s\n' 'uid=0' 'support_tier=supported' 'auditd_installed=yes' 'audit_enabled=1' \
-    'audit_log_free_mb=5000' 'agents=none' 'rules_d_files=audit.rules:control' \
+    'audit_log_free_mb=5000' 'agents=none' 'agents_audit=none' 'rules_d_files=audit.rules:control' \
     'rules_d_control_lines=none' 'syslog_daemon=rsyslog' 'syslog_plugin_installed=yes' \
     'syslog_facilities_used=auth,authpriv' 'syslog_catchall=no' >"$input"
   for kv in "$@"; do
@@ -52,16 +52,20 @@ passes() {
   refuses "refuse=existing_rules_control override=akit_existing_rules=replace" "--existing-rules keep" \
     rules_d_files=50-cis.rules "rules_d_control_lines=50-cis.rules:-e 2"
   refuses "refuse=agent_conflict:mde override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)
-refuse=agent_conflict:wazuh override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)" "" agents=mde,wazuh
+refuse=agent_conflict:wazuh override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)" "" agents_audit=mde,wazuh
 }
 
 @test "accepted agent does not refuse" {
-  passes "--accept-agents mde" agents=mde
+  passes "--accept-agents mde" agents_audit=mde
+}
+
+@test "an agent that doesn't use audit does not refuse" {
+  passes "" agents=crowdstrike,splunkuf,wazuh agents_audit=none
 }
 
 @test "the agent override keeps the agents already accepted" {
   refuses "refuse=agent_conflict:wazuh override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)" \
-    "--accept-agents mde" agents=mde,wazuh
+    "--accept-agents mde" agents_audit=mde,wazuh
 }
 
 @test "control-only distro file does not count as existing rules" {

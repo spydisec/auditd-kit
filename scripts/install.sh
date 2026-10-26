@@ -149,7 +149,7 @@ if [ "$install_guided" = yes ]; then
   install_agents=$(printf '%s\n' "$install_out" | sed -n 's/^refuse=agent_conflict:\([^ ]*\) .*/\1/p' \
     | tr '\n' ' ' | sed 's/ $//; s/ /, /g')
   if [ -n "$install_agents" ]; then
-    install_ask "Other agents that may manage audit rules are installed: $install_agents. auditd-kit replaces every loaded audit rule, including rules these agents add. Install anyway? [y/N]:" n
+    install_ask "Other agents use the audit system on this host: $install_agents. auditd-kit replaces every loaded audit rule, including rules these agents add. Install anyway? [y/N]:" n
     case "$install_ans" in
       [yY]*)
         akit_settings_set akit_accept_agents \
@@ -365,6 +365,10 @@ else
   akit_load_apply "$install_rules" "$install_auditd" "$install_rsyslog" || install_fail "loading the rules or restarting auditd failed"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"
+  # The load deleted the who-data rules that Wazuh added at its start (ADR 0023).
+  case ",$(install_survey_get agents_audit)," in
+    *,wazuh,*) akit_log info "restart wazuh-agent so that it adds its who-data audit rules again" ;;
+  esac
 fi
 
 install_stage=finished
