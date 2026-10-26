@@ -115,7 +115,7 @@ if [ "$plan_want" != keep ] && plan_plug=$(akit_forward_plugin_file); then
 fi
 
 plan_drop=$(akit_path "$AKIT_RSYSLOG_DROPIN")
-if [ "$akit_forward" = none ]; then
+if [ "$akit_fwd_mode" = none ]; then
   if [ -e "$plan_drop" ]; then
     plan_file move "$AKIT_RSYSLOG_DROPIN" "$plan_drop" /dev/null
   fi

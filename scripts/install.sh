@@ -152,8 +152,8 @@ if [ "$install_guided" = yes ]; then
     install_ask "Other agents use the audit system on this host: $install_agents. auditd-kit replaces every loaded audit rule, including rules these agents add. Install anyway? [y/N]:" n
     case "$install_ans" in
       [yY]*)
-        akit_settings_set akit_accept_agents \
-          "$(printf '%s\n' "$install_out" | sed -n 's/^refuse=agent_conflict:[^ ]* override=akit_accept_agents=\([^ ]*\) .*/\1/p' | head -n 1)"
+        akit_settings_set akit_accept \
+          "$(printf '%s\n' "$install_out" | sed -n 's/^refuse=agent_conflict:[^ ]* override=akit_accept=\([^ ]*\) .*/\1/p' | head -n 1)"
         ;;
       *) akit_die "$AKIT_EXIT_REFUSED" "other agents are installed, and nothing changed" ;;
     esac
@@ -172,18 +172,19 @@ if [ "$install_guided" = yes ]; then
       [yY]*) akit_settings_set akit_immutable true ;;
     esac
   fi
-  if [ "$(install_survey_get syslog_daemon)" = rsyslog ] && [ "$akit_forward" = none ]; then
+  if [ "$(install_survey_get syslog_daemon)" = rsyslog ] && [ "$akit_fwd_mode" = none ]; then
     install_ask "Send audit events to a syslog server? [y/N]:" n
     case "$install_ans" in
       [yY]*)
         install_ask "Syslog server name or address:" ""
-        akit_settings_set akit_remote_host "$install_ans"
-        [ -n "$akit_remote_host" ] || akit_die "$AKIT_EXIT_REFUSED" "a syslog server is needed, and nothing changed"
-        install_ask "Port [$akit_remote_port]:" "$akit_remote_port"
-        akit_settings_set akit_remote_port "$install_ans"
-        install_ask "Protocol, tcp or udp [$akit_remote_protocol]:" "$akit_remote_protocol"
-        akit_settings_set akit_remote_protocol "$install_ans"
-        akit_settings_set akit_forward remote
+        install_host=$install_ans
+        [ -n "$install_host" ] || akit_die "$AKIT_EXIT_REFUSED" "a syslog server is needed, and nothing changed"
+        # An IPv6 address goes in brackets in the URL.
+        case "$install_host" in *:*) install_host="[$install_host]" ;; esac
+        install_ask "Port [514]:" 514
+        install_port=$install_ans
+        install_ask "Protocol, tcp or udp [tcp]:" tcp
+        akit_settings_set akit_forward "$install_ans://$install_host:$install_port"
         ;;
     esac
   fi
@@ -224,7 +225,7 @@ if [ "$install_dry_run" = no ] && [ "$install_skip_load" = no ] && ! command -v 
 fi
 # Forwarding needs the plugin's config file. Refusing here also means that forward=local or
 # remote in the state file always records a plugin that this install turned on.
-if [ "$akit_forward" != none ] && ! akit_forward_plugin_file >/dev/null; then
+if [ "$akit_fwd_mode" != none ] && ! akit_forward_plugin_file >/dev/null; then
   install_missing="${install_missing:+$install_missing
 }refuse=syslog_plugin_missing override=install the audit syslog plugin (audispd-plugins)"
 fi
@@ -340,7 +341,7 @@ install_want=$(akit_forward_plugin_want)
 if [ "$install_want" != keep ] && install_plug=$(akit_forward_plugin_file); then
   akit_forward_plugin "$(akit_path "$install_plug")" "$install_want" || install_fail "cannot set $install_plug"
 fi
-if [ "$akit_forward" != none ]; then
+if [ "$akit_fwd_mode" != none ]; then
   install_drop=$(akit_path "$AKIT_RSYSLOG_DROPIN")
   mkdir -p "$(dirname "$install_drop")" || install_fail "cannot create $(dirname "$install_drop")"
   akit_forward_render "$install_root/../config/rsyslog/40-auditd-kit.conf" "$install_work/dropin" \

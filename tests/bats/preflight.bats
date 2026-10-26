@@ -51,21 +51,28 @@ passes() {
   refuses "refuse=existing_rules override=akit_existing_rules=keep or replace" "" rules_d_files=50-cis.rules
   refuses "refuse=existing_rules_control override=akit_existing_rules=replace" "--existing-rules keep" \
     rules_d_files=50-cis.rules "rules_d_control_lines=50-cis.rules:-e 2"
-  refuses "refuse=agent_conflict:mde override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)
-refuse=agent_conflict:wazuh override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)" "" agents_audit=mde,wazuh
+  refuses "refuse=agent_conflict:mde override=akit_accept=agent_conflict:mde,agent_conflict:wazuh (flag --accept agent_conflict:mde,agent_conflict:wazuh)
+refuse=agent_conflict:wazuh override=akit_accept=agent_conflict:mde,agent_conflict:wazuh (flag --accept agent_conflict:mde,agent_conflict:wazuh)" "" agents_audit=mde,wazuh
 }
 
 @test "accepted agent does not refuse" {
-  passes "--accept-agents mde" agents_audit=mde
+  passes "--accept agent_conflict:mde" agents_audit=mde
 }
 
 @test "an agent that doesn't use audit does not refuse" {
   passes "" agents=crowdstrike,splunkuf,wazuh agents_audit=none
 }
 
-@test "the agent override keeps the agents already accepted" {
-  refuses "refuse=agent_conflict:wazuh override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)" \
-    "--accept-agents mde" agents_audit=mde,wazuh
+@test "the accept override keeps the codes already accepted" {
+  refuses "refuse=agent_conflict:wazuh override=akit_accept=agent_conflict:mde,agent_conflict:wazuh (flag --accept agent_conflict:mde,agent_conflict:wazuh)" \
+    "--accept agent_conflict:mde" agents_audit=mde,wazuh
+}
+
+@test "an agent and a catch-all refusal print one list that accepts both" {
+  want="akit_accept=agent_conflict:wazuh,catchall_forward (flag --accept agent_conflict:wazuh,catchall_forward)"
+  refuses "refuse=agent_conflict:wazuh override=$want
+refuse=catchall_forward override=$want" "--forward tcp://192.0.2.10" agents_audit=wazuh syslog_catchall=yes
+  passes "--forward tcp://192.0.2.10 --accept agent_conflict:wazuh,catchall_forward" agents_audit=wazuh syslog_catchall=yes
 }
 
 @test "control-only distro file does not count as existing rules" {
@@ -91,19 +98,19 @@ refuse=agent_conflict:wazuh override=akit_accept_agents=mde,wazuh (flag --accept
 }
 
 @test "forwarding refusals print their code and override" {
-  fl="--forward remote --remote-host 192.0.2.10"
+  fl="--forward tcp://192.0.2.10"
   refuses "refuse=no_rsyslog override=none" "$fl" syslog_daemon=journald
   refuses "refuse=syslog_plugin_missing override=install the audit syslog plugin (audispd-plugins)" "$fl" \
     syslog_plugin_installed=no
   refuses "refuse=facility_in_use override=choose another akit_syslog_facility" "$fl" \
     syslog_facilities_used=auth,local6
   refuses "refuse=facility_in_use override=choose another akit_syslog_facility" "$fl" syslog_facilities_used=unknown
-  refuses "refuse=catchall_forward override=akit_accept_catchall=true" "$fl" syslog_catchall=yes
-  refuses "refuse=catchall_forward override=akit_accept_catchall=true" "$fl" syslog_catchall=unknown
+  refuses "refuse=catchall_forward override=akit_accept=catchall_forward (flag --accept catchall_forward)" "$fl" syslog_catchall=yes
+  refuses "refuse=catchall_forward override=akit_accept=catchall_forward (flag --accept catchall_forward)" "$fl" syslog_catchall=unknown
 }
 
 @test "forwarding checks are skipped for none and an accepted catch-all passes" {
   passes "" syslog_daemon=none syslog_catchall=yes syslog_facilities_used=local6 syslog_plugin_installed=no
-  passes "--forward local --accept-catchall true" syslog_catchall=yes
+  passes "--forward local --accept catchall_forward" syslog_catchall=yes
   passes "--forward local --syslog-facility local5"
 }

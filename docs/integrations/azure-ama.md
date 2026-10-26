@@ -16,10 +16,10 @@ Use one of these layouts:
 | Layout | auditd-kit settings | Where AMA runs |
 |---|---|---|
 | AMA on each host | `akit_forward=local` | On every host |
-| Central collector | `akit_forward=remote` and `akit_remote_host=<collector>` | Only on the collector, which runs rsyslog and listens on port 514 |
+| Central collector | `akit_forward=tcp://<collector>:514` | Only on the collector, which runs rsyslog and listens on port 514 |
 
 With `local`, the auditd-kit rsyslog file keeps the events out of `/var/log/messages` and
-`/var/log/syslog`, and AMA forwards them. With `remote`, the collector must keep the facility, and
+`/var/log/syslog`, and AMA forwards them. With a `tcp://` or `udp://` URL, the collector must keep the facility, and
 it must accept messages as long as the ones the hosts send (see the message size gotcha below).
 
 ## Steps
@@ -68,7 +68,7 @@ it must accept messages as long as the ones the hosts send (see the message size
 - AMA forwards only the default rsyslog ruleset. Inputs bound to another ruleset don't reach
   AMA. On a collector, bind the port 514 input to the default ruleset.
 - Long records can be cut. An `EXECVE` record with many arguments can be longer than the
-  rsyslog message size limit, which is 8k by default. With `remote`, auditd-kit sets
+  rsyslog message size limit, which is 8k by default. With a `tcp://` or `udp://` URL, auditd-kit sets
   `maxMessageSize` to 64k on the hosts, so set the same value on the collector. With `local`,
   auditd-kit doesn't change the limit, so add `global(maxMessageSize="64k")` at the top of
   `/etc/rsyslog.conf` on each host.

@@ -45,10 +45,13 @@ the `akit_` prefix and uses dashes, so `akit_skip_keys` is `--skip-keys`.
 |---|---|---|
 | `akit_profile` | `minimal` | `minimal`, `medium`, or `heavy`. See [rules/README.md](rules/README.md). |
 | `akit_size` | `standard` | `small`, `standard`, or `large`: the backlog and the log file sizes. |
+| `akit_max_log_file`, `akit_num_logs` | from `akit_size` | Your own log file size in MB and number of log files, in place of the preset's. |
 | `akit_skip_keys` | none | Rule keys to leave out on this host. |
 | `akit_extra_rules_dir` | none | A dir of your own `50-*.rules` files to load with the profile. |
 | `akit_existing_rules` | unset | `keep` or `replace` other files in `/etc/audit/rules.d/`. Install refuses while it's unset and other rule files exist. |
-| `akit_forward` | `none` | Forward audit events through rsyslog. `remote` sends them to `akit_remote_host`. `local` sends them to the syslog facility only, for a local agent such as Azure Monitor Agent to read. |
+| `akit_forward` | `none` | Forward audit events through rsyslog. `tcp://host:port` or `udp://host:port` sends them to a syslog server, and the port defaults to 514. An IPv6 address goes in brackets, e.g. `tcp://[2001:db8::1]:514`. `local` sends them to the syslog facility only, for a local agent such as Azure Monitor Agent to read. |
+| `akit_syslog_facility` | `local6` | The syslog facility for forwarded audit events. |
+| `akit_accept` | none | Refusals to accept, as a comma list of the codes install prints, e.g. `agent_conflict:wazuh,catchall_forward`. |
 | `akit_immutable` | `false` | `true` locks the rules until reboot (`-e 2`). |
 
 ### One-line install
