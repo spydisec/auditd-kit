@@ -7,12 +7,8 @@ akit_max_log_file: ""
 akit_num_logs: ""
 akit_forward: none
 akit_syslog_facility: local6
-akit_remote_host: ""
-akit_remote_port: 514
-akit_remote_protocol: tcp
 akit_immutable: false
 akit_existing_rules: unset
 akit_extra_rules_dir: ""
-akit_accept_agents: []
-akit_accept_catchall: false
+akit_accept: ""
 akit_skip_keys: ""

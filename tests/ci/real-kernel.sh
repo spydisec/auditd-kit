@@ -170,7 +170,7 @@ sums >"$work/fwd-before"
 ls /etc/rsyslog.d >"$work/fwd-ls-before"
 sha256sum /etc/rsyslog.conf /etc/rsyslog.d/30-existing.conf >"$work/fwd-main-before"
 run_install "$work/install-fwd" --profile "$profile" --existing-rules replace \
-  --forward remote --remote-host 127.0.0.1 --remote-port 5514
+  --forward tcp://127.0.0.1:5514
 ls /etc/rsyslog.d >"$work/fwd-ls-after"
 {
   cat "$work/fwd-ls-before"

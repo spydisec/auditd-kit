@@ -15,11 +15,26 @@ pf_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 . "$pf_root/settings.sh"
 
 pf_refusals=
+pf_acceptable=
 
 # pf_refuse <code> <override-text>
 pf_refuse() {
   pf_refusals="${pf_refusals}refuse=$1 override=$2
 "
+}
+
+# pf_refuse_accept <code>: refuse with a code that akit_accept can take (ADR 0024). Every such
+# refusal prints the same override, the list that accepts all of them at once, so one run with
+# that value passes.
+pf_refuse_accept() {
+  pf_acceptable="${pf_acceptable:+$pf_acceptable,}$1"
+  pf_refuse "$1" @ACCEPT@
+}
+
+# pf_accepted <code>: succeed when akit_accept lists the code.
+pf_accepted() {
+  case ",$akit_accept," in *",$1,"*) return 0 ;; esac
+  return 1
 }
 
 # pf_get <key>: print the survey value, or "unknown" when the key is absent.
@@ -48,22 +63,12 @@ pf_check_disk() {
   esac
 }
 
-# Only agents that use the audit system refuse (ADR 0023). The override names every agent that isn't accepted yet, as a setting and as a flag, so one run
-# with that value passes.
+# Only agents that use the audit system refuse (ADR 0023).
 pf_check_agents() {
   pf_agents=$(pf_get agents_audit)
   case "$pf_agents" in none | unknown) return 0 ;; esac
-  pf_new=
   for pf_a in $(printf '%s\n' "$pf_agents" | tr ',' ' '); do
-    case ",$akit_accept_agents," in
-      *",$pf_a,"*) ;;
-      *) pf_new="${pf_new:+$pf_new }$pf_a" ;;
-    esac
-  done
-  [ -n "$pf_new" ] || return 0
-  pf_list=$(printf '%s\n' "${akit_accept_agents:+$akit_accept_agents }$pf_new" | tr ' ' ',')
-  for pf_a in $pf_new; do
-    pf_refuse "agent_conflict:$pf_a" "akit_accept_agents=$pf_list (flag --accept-agents $pf_list)"
+    pf_accepted "agent_conflict:$pf_a" || pf_refuse_accept "agent_conflict:$pf_a"
   done
 }
 
@@ -88,7 +93,7 @@ pf_check_rules() {
 # Forwarding adds one rsyslog drop-in and turns on the audit syslog plugin. A survey value that
 # is missing or unknown refuses.
 pf_check_forward() {
-  [ "$akit_forward" != none ] || return 0
+  [ "$akit_fwd_mode" != none ] || return 0
   if [ "$(pf_get syslog_daemon)" != rsyslog ]; then
     pf_refuse no_rsyslog none
     return 0
@@ -99,8 +104,8 @@ pf_check_forward() {
   case ",$pf_used," in
     *",$akit_syslog_facility,"* | *,unknown,*) pf_refuse facility_in_use "choose another akit_syslog_facility" ;;
   esac
-  if [ "$(pf_get syslog_catchall)" != no ] && [ "$akit_accept_catchall" != true ]; then
-    pf_refuse catchall_forward akit_accept_catchall=true
+  if [ "$(pf_get syslog_catchall)" != no ] && ! pf_accepted catchall_forward; then
+    pf_refuse_accept catchall_forward
   fi
 }
 
@@ -114,6 +119,7 @@ pf_check_rules
 pf_check_forward
 
 if [ -n "$pf_refusals" ]; then
-  printf '%s' "$pf_refusals"
+  pf_list=${akit_accept:+$akit_accept,}$pf_acceptable
+  printf '%s' "$pf_refusals" | sed "s|@ACCEPT@|akit_accept=$pf_list (flag --accept $pf_list)|"
   exit "$AKIT_EXIT_REFUSED"
 fi

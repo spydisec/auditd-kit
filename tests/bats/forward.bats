@@ -25,7 +25,7 @@ install() {
 
 # remote_install [flags]
 remote_install() {
-  install --forward remote --remote-host 192.0.2.10 "$@"
+  install --forward tcp://192.0.2.10 "$@"
 }
 
 # fwd <function> [arg]...: load the settings from FLAGS, then run a forward.sh function.
@@ -38,14 +38,15 @@ fwd() {
 
 @test "render matches the golden files for remote and local" {
   for mode in remote local; do
-    FLAGS="--forward $mode --remote-host 192.0.2.10" run fwd akit_forward_render "$template" "$BATS_TEST_TMPDIR/$mode.conf"
+    case $mode in remote) fl=tcp://192.0.2.10 ;; *) fl=local ;; esac
+    FLAGS="--forward $fl" run fwd akit_forward_render "$template" "$BATS_TEST_TMPDIR/$mode.conf"
     [ "$status" -eq 0 ]
     diff "$golden/$mode.conf" "$BATS_TEST_TMPDIR/$mode.conf"
   done
 }
 
 @test "udp changes only the protocol" {
-  FLAGS="--forward remote --remote-host 192.0.2.10 --remote-protocol udp" fwd akit_forward_render "$template" "$BATS_TEST_TMPDIR/udp.conf"
+  FLAGS="--forward udp://192.0.2.10" fwd akit_forward_render "$template" "$BATS_TEST_TMPDIR/udp.conf"
   [ "$(diff "$golden/remote.conf" "$BATS_TEST_TMPDIR/udp.conf" | grep -c '^[<>]')" -eq 2 ]
   grep -q 'protocol="udp"' "$BATS_TEST_TMPDIR/udp.conf"
 }
@@ -126,10 +127,10 @@ fwd() {
       ! akit_called "service rsyslog restart" || { echo "$flags: restarted"; return 1; }
     fi
   done <<'EOF'
---forward remote --remote-host 192.0.2.10|yes
---forward remote --remote-host 192.0.2.10|no
---forward remote --remote-host 192.0.2.10 --profile medium|no
---forward remote --remote-host 192.0.2.10 --remote-port 6514|yes
+--forward tcp://192.0.2.10|yes
+--forward tcp://192.0.2.10|no
+--forward tcp://192.0.2.10 --profile medium|no
+--forward tcp://192.0.2.10:6514|yes
 --forward local|yes
 --forward none|yes
 --forward none|no
@@ -167,9 +168,9 @@ EOF
   before=$(akit_sums etc)
   remote_install
   [ "$status" -eq 1 ]
-  [[ "$output" == *"refuse=catchall_forward override=akit_accept_catchall=true"* ]]
+  [[ "$output" == *"refuse=catchall_forward override=akit_accept=catchall_forward"* ]]
   [[ "$output" == *"estimate: "*" MB per day"* ]]
   [ "$(akit_sums etc)" = "$before" ]
-  remote_install --accept-catchall true
+  remote_install --accept catchall_forward
   [ "$status" -eq 0 ]
 }

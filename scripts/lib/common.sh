@@ -175,7 +175,7 @@ akit_state_write() {
     echo "version=$AKIT_VERSION"
     echo "profile=$akit_profile"
     echo "size=$akit_size"
-    echo "forward=$akit_forward"
+    echo "forward=$akit_fwd_mode"
     echo "installed_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     echo "rule_count=$state_count"
     echo "syslog_forward_targets=$state_targets"
