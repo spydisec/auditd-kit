@@ -11,8 +11,8 @@ ansible-core 2.17 and later can't manage either.
 ## Decision
 
 The collection supports ansible-core 2.16 and later. CI runs the role with 2.16 against CentOS 7,
-Rocky 8 and 9, and Ubuntu 22.04 and 24.04, and with the latest release against Rocky 9 and both
-Ubuntu versions.
+Rocky 8 and 9, and Ubuntu 18.04, 20.04, 22.04, and 24.04, and with the latest release against
+Rocky 9 and Ubuntu 22.04, 24.04, and 26.04 (ADR 0022).
 
 ## Consequences
 
