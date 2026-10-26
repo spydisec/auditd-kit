@@ -132,7 +132,7 @@ EOT
 @test "akit_accept takes agent_conflict codes and catchall_forward only" {
   run load_settings --accept agent_conflict:wazuh,catchall_forward
   [ "$status" -eq 0 ]
-  for bad in low_disk agent_conflict: 'agent_conflict:a b'; do
+  for bad in low_disk agent_conflict: 'agent_conflict:a b' 'agent_conflict:a, agent_conflict:b' 'catchall_forward,'; do
     run load_settings --accept "$bad"
     [ "$status" -eq 1 ] || { echo "$bad: $output"; false; }
   done

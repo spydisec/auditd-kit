@@ -180,7 +180,7 @@ if [ "$install_guided" = yes ]; then
         install_host=$install_ans
         [ -n "$install_host" ] || akit_die "$AKIT_EXIT_REFUSED" "a syslog server is needed, and nothing changed"
         # An IPv6 address goes in brackets in the URL.
-        case "$install_host" in *:*) install_host="[$install_host]" ;; esac
+        case "$install_host" in \[*) ;; *:*) install_host="[$install_host]" ;; esac
         install_ask "Port [514]:" 514
         install_port=$install_ans
         install_ask "Protocol, tcp or udp [tcp]:" tcp

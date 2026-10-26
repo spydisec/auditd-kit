@@ -133,7 +133,11 @@ akit_settings_set() {
       esac
       ;;
     akit_accept)
-      # Only refusals that can't be fixed on the host can be accepted.
+      # Only refusals that can't be fixed on the host can be accepted. preflight matches the list
+      # as it is, so spaces and empty entries are refused.
+      case "$set_val" in
+        *[!a-z0-9_,:-]* | ,* | *, | *,,*) akit_settings_bad "$set_key" "'$set_val' is not a comma list of codes without spaces" ;;
+      esac
       for set_code in $(printf '%s\n' "$set_val" | tr ',' ' '); do
         case "$set_code" in
           catchall_forward) ;;
