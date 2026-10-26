@@ -5,6 +5,15 @@
 # auditd is restarted with "service auditd restart", never systemctl, because the RHEL unit
 # refuses a manual stop through systemctl. Command output goes to the log.
 
+# akit_load_restart_auditd: restart auditd. An install and a rollback a few seconds apart can hit
+# systemd's start limit, which refuses the start, so the failed state is cleared first (#58).
+akit_load_restart_auditd() {
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl reset-failed auditd >/dev/null 2>&1 || true
+  fi
+  akit_load_run service auditd restart
+}
+
 # akit_load_run <command>...: run a command and keep its exit code. When it succeeds and there is
 # a log file, its output goes only to the log, because augenrules prints a note for each watch
 # rule. When it fails, or there is no log file, the output is shown too.
@@ -44,7 +53,7 @@ akit_load_apply() {
     akit_load_run augenrules --load || return 1
   fi
   if [ "$2" = yes ]; then
-    akit_load_run service auditd restart || return 1
+    akit_load_restart_auditd || return 1
   fi
   if [ "${3:-no}" = yes ]; then
     akit_load_run service rsyslog restart || return 1
@@ -78,7 +87,7 @@ akit_rollback() {
     akit_load_run service rsyslog restart || return 1
   fi
   if [ "$(akit_load_sums "$rb_auditd")" != "$rb_auditd_before" ]; then
-    akit_load_run service auditd restart || return 1
+    akit_load_restart_auditd || return 1
     # auditd's start hook runs augenrules, which can rewrite audit.rules and add audit.rules.prev,
     # so the files are restored once more.
     akit_backup_restore "$1" || return 1
