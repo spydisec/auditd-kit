@@ -138,17 +138,18 @@ printf 'version=0.2.0\nforward=remote\n' >/etc/auditd-kit/state
 echo "if \$syslogfacility-text == 'local6' then { stop }" >/etc/rsyslog.d/40-auditd-kit.conf
 sed -i 's/^active = no/active = yes/' /etc/audit/plugins.d/syslog.conf
 service rsyslog restart
-service auditd restart
 sums >"$work/old-before"
 run_install "$work/install-old" --profile "$profile" --existing-rules replace
 grep -qx 'active = no' /etc/audit/plugins.d/syslog.conf || fail "the syslog plugin is still active"
 [ ! -e /etc/rsyslog.d/40-auditd-kit.conf ] || fail "the old drop-in is still there"
+# Install and rollback each restart auditd within seconds, which can hit systemd's start limit.
+systemctl reset-failed auditd || true
 sh "$repo/scripts/rollback.sh" || fail "rollback.sh exited $? after the cleanup"
 same_sums "$work/old-before" "rollback did not restore the 0.2.0 forwarding files"
 rm -f /etc/rsyslog.d/40-auditd-kit.conf /etc/auditd-kit/state
 sed -i 's/^active = yes/active = no/' /etc/audit/plugins.d/syslog.conf
 service rsyslog restart
-service auditd restart
+systemctl reset-failed auditd || true
 
 step "A full audit disk doesn't halt the host"
 start=$(date +%s)

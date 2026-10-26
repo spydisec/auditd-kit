@@ -67,8 +67,9 @@ facility on and keeps it out of the local log files.
    args = LOG_INFO LOG_LOCAL6
    ```
 
-6. Run `sh scripts/verify.sh`. Its canary event should reach your collector, and
-   `/var/log/syslog` or `/var/log/messages` should get no `type=` records.
+6. Run `sh scripts/verify.sh`, which checks that auditd records events on the host but not that
+   they reach the collector. Then look for the `akit_canary` event at your collector, and check
+   that `/var/log/syslog` or `/var/log/messages` gets no `type=` records.
 
 `install.sh` leaves the plugin and your rsyslog file as they are on later runs. `rollback.sh`
 puts `/etc/audit` back as it was before the install it undoes, so after a rollback, set the plugin

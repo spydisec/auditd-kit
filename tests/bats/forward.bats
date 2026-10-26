@@ -5,6 +5,7 @@
 # shellcheck disable=SC2154
 
 load helpers
+bats_require_minimum_version 1.5.0
 
 repo=$(cd "$BATS_TEST_DIRNAME/../.." && pwd)
 lib="$repo/scripts/lib"
@@ -17,9 +18,9 @@ setup() {
   state="$AKIT_ROOT/etc/auditd-kit/state"
 }
 
-# install [flags]: run install.sh.
+# install: run install.sh.
 install() {
-  run sh "$repo/scripts/install.sh" "$@" </dev/null
+  run sh "$repo/scripts/install.sh" </dev/null
 }
 
 # old_forwarding: the host as auditd-kit 0.2.0 left it with forwarding on.
@@ -38,7 +39,7 @@ old_forwarding() {
   grep -qx 'active = yes' "$plugin"
   [ "$(akit_sums etc/rsyslog.d etc/rsyslog.conf)" = "$before" ]
   run ! akit_called "service rsyslog restart"
-  ! grep -q '^forward=' "$state"
+  run ! grep -q '^forward=' "$state"
 }
 
 @test "install undoes the forwarding of an earlier version, and a repeat run changes nothing" {
@@ -51,7 +52,7 @@ old_forwarding() {
   [ ! -e "$dropin" ]
   akit_called "service rsyslog restart"
   akit_called "service auditd restart"
-  ! grep -q '^forward=' "$state"
+  run ! grep -q '^forward=' "$state"
   install
   [ "$status" -eq 0 ]
   [ "${lines[${#lines[@]} - 1]}" = changes=0 ]

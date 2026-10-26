@@ -68,8 +68,9 @@ on last, so that no audit event reaches the system log files before the filters 
    args = LOG_INFO LOG_LOCAL6
    ```
 
-6. Check the result. `sh scripts/verify.sh` should pass, your collector should get `type=` audit
-   records, and `/var/log/messages` (or `/var/log/syslog`) should get none.
+6. Check the result. `sh scripts/verify.sh` should pass, which shows that auditd records events
+   on the host. Then look for the `akit_canary` event at your collector, and check that
+   `/var/log/messages` (or `/var/log/syslog`) gets no `type=` records.
 
 ## Undo
 
