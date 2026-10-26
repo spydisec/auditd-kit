@@ -13,8 +13,6 @@ set -eu
 verify_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 # shellcheck source=/dev/null
 . "$verify_root/lib/common.sh"
-# shellcheck source=/dev/null
-. "$verify_root/lib/forward.sh"
 
 PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
 export PATH
@@ -125,40 +123,12 @@ verify_lost() {
   fi
 }
 
-# The checks for forwarding run only when the state file says that install turned it on.
-verify_forward() {
-  service rsyslog status >/dev/null 2>&1 && verify_rs=pass || verify_rs=fail
-  verify_report rsyslog_active "$verify_rs" "service rsyslog status"
-  verify_want=$(sed -n 's/^syslog_forward_targets=//p' "$verify_state" | head -n 1)
-  verify_have=$(akit_forward_targets "$verify_root/lib")
-  if [ -n "$verify_want" ] && [ "$verify_have" = "$verify_want" ]; then
-    verify_report forward_targets_unchanged pass "$verify_have"
-  else
-    verify_report forward_targets_unchanged fail "recorded ${verify_want:-nothing}, found $verify_have"
-  fi
-  verify_late=
-  for verify_f in "$(akit_path /etc/rsyslog.d)"/*azuremonitoragent*; do
-    [ -f "$verify_f" ] || continue
-    verify_n=${verify_f##*/}
-    verify_first=$(printf '%s\n%s\n' "$verify_n" "${AKIT_RSYSLOG_DROPIN##*/}" | sort | head -n 1)
-    [ "$verify_first" = "$verify_n" ] || verify_late="${verify_late:+$verify_late }$verify_n"
-  done
-  if [ -z "$verify_late" ]; then
-    verify_report dropin_order pass "no local agent drop-in sorts after ${AKIT_RSYSLOG_DROPIN##*/}"
-  else
-    verify_report dropin_order fail "sorts after ${AKIT_RSYSLOG_DROPIN##*/}, whose stop hides events from it: $verify_late"
-  fi
-}
-
 verify_rule_count
 if [ -f "$verify_state" ]; then
   verify_files
   verify_lost_before=$(verify_lost_count) || verify_lost_before=
   verify_canary_check
   verify_lost
-  case "$(sed -n 's/^forward=//p' "$verify_state" | head -n 1)" in
-    local | remote) verify_forward ;;
-  esac
 fi
 
 if [ "$verify_failed" -eq 0 ]; then

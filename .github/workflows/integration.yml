@@ -14,8 +14,8 @@ jobs:
     permissions:
       contents: read
 
-  # install.sh, a second install, and rollback.sh on a real kernel, then forwarding to a TCP sink,
-  # then a full audit disk.
+  # install.sh, a second install, and rollback.sh on a real kernel, then the cleanup of 0.2.0
+  # forwarding, then a full audit disk.
   real-kernel:
     needs: changes
     # The job always runs, so each matrix entry reports under the full name that the ruleset

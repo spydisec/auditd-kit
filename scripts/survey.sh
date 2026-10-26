@@ -90,9 +90,6 @@ survey_check agents agents agents_audit
 survey_check hardening hardening_loginuid_immutable hardening_rule_files
 survey_check rules_d rules_d_files rules_d_control_lines
 survey_check syslog_daemon syslog_daemon syslog_version
-survey_check syslog_forwarding syslog_forward_targets syslog_facilities_used syslog_catchall syslog_catchall_lines
-survey_check syslog_dropins syslog_dropins
-survey_check syslog_plugin_installed syslog_plugin_installed
 survey_check audit_volume audit_volume_top_keys
 
 for survey_name in $survey_extra; do

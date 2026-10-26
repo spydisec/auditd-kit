@@ -1,26 +1,16 @@
 # Send audit events to Microsoft Sentinel with Azure Monitor Agent
 
-auditd-kit sends audit events to rsyslog on a syslog facility, `local6` by default. Azure Monitor
-Agent (AMA) reads them from rsyslog and sends them to a Log Analytics workspace, where they land in
-the `Syslog` table. This page is for reference only. Check the steps against Microsoft's docs and
-your own setup before a rollout:
+Azure Monitor Agent (AMA) collects syslog from rsyslog and sends it to a Log Analytics workspace,
+where it lands in the `Syslog` table. auditd-kit doesn't send audit events (ADR 0026), so you turn
+on the auditd syslog plugin by hand, and AMA collects the `local6` facility. This page is for
+reference only. Check the steps against Microsoft's docs and your own setup before a rollout:
 
 - [Collect Syslog events with Azure Monitor Agent](https://learn.microsoft.com/en-us/azure/azure-monitor/vm/data-collection-syslog)
 - [Forward Syslog data to Microsoft Sentinel](https://learn.microsoft.com/en-us/azure/sentinel/forward-syslog-monitor-agent)
 - [Troubleshoot syslog with Azure Monitor Agent on Linux](https://learn.microsoft.com/en-us/azure/azure-monitor/agents/azure-monitor-agent-troubleshoot-linux-vm-rsyslog)
 
-## Layouts
-
-Use one of these layouts:
-
-| Layout | auditd-kit settings | Where AMA runs |
-|---|---|---|
-| AMA on each host | `akit_forward=local` | On every host |
-| Central collector | `akit_forward=tcp://<collector>:514` | Only on the collector, which runs rsyslog and listens on port 514 |
-
-With `local`, the auditd-kit rsyslog file keeps the events out of `/var/log/messages` and
-`/var/log/syslog`, and AMA forwards them. With a `tcp://` or `udp://` URL, the collector must keep the facility, and
-it must accept messages as long as the ones the hosts send (see the message size gotcha below).
+AMA can also collect `audit.log` as a custom text log into a custom table. The steps below use the
+`Syslog` table, which Sentinel's Linux content expects.
 
 ## Steps
 
@@ -32,21 +22,26 @@ it must accept messages as long as the ones the hosts send (see the message size
 
    It reports whether AMA or the legacy Log Analytics agent is installed, the proxy, and the DNS
    and TCP 443 results for the AMA control endpoint. The region and workspace endpoints show as
-   `unknown` until AMA is installed and a DCR is associated, so run it again after step 3.
+   `unknown` until AMA is installed and a DCR is associated, so run it again after step 4.
 
-2. Install with forwarding on. Forwarding needs the auditd syslog plugin (`audispd-plugins`), and
-   install refuses with `syslog_plugin_missing` without it. For example, for AMA on each host:
+2. Install auditd-kit, e.g. `sh scripts/install.sh --profile medium`.
 
-   ```sh
-   sh scripts/install.sh --profile medium --forward local
+3. Turn on the auditd syslog plugin with the steps in
+   [send-audit-log.md](send-audit-log.md#syslog-with-rsyslog-set-up-by-hand), with one change.
+   AMA sends the events, so the rsyslog file only keeps them out of the local log files:
+
+   ```
+   if $syslogfacility-text == 'local6' then stop
    ```
 
-3. Add a Syslog data source to a data collection rule (DCR) that sends to your Sentinel workspace.
-   Set `LOG_LOCAL6`, or the facility in `akit_syslog_facility`, to minimum level `LOG_INFO`. The
-   auditd syslog plugin writes at `LOG_INFO`. Associate the DCR with the hosts, or with the
-   collector in the central layout.
+   Name it `/etc/rsyslog.d/40-audit-local.conf`, so that it sorts after AMA's own file (see the
+   gotchas).
 
-4. Check that events arrive:
+4. Add a Syslog data source to a data collection rule (DCR) that sends to your Sentinel workspace.
+   Set `LOG_LOCAL6` to minimum level `LOG_INFO`, which is the level the plugin writes at. Associate
+   the DCR with the hosts.
+
+5. Check that events arrive:
 
    ```kusto
    Syslog
@@ -61,17 +56,15 @@ it must accept messages as long as the ones the hosts send (see the message size
 
 ## Gotchas
 
-- The AMA rsyslog file must sort before `40-auditd-kit.conf`. The auditd-kit file ends with
-  `stop`, so rsyslog files that sort after it never see the events. AMA 1.28 and later writes
+- The AMA rsyslog file must sort before your `40-audit-local.conf`, which ends with `stop`, so
+  rsyslog files that sort after it never see the events. AMA 1.28 and later writes
   `/etc/rsyslog.d/10-azuremonitoragent-omfwd.conf`, which sorts first. Check the name on older AMA
   versions, which used a Unix socket instead of TCP.
 - AMA forwards only the default rsyslog ruleset. Inputs bound to another ruleset don't reach
-  AMA. On a collector, bind the port 514 input to the default ruleset.
+  AMA. With a central collector, bind its port 514 input to the default ruleset.
 - Long records can be cut. An `EXECVE` record with many arguments can be longer than the
-  rsyslog message size limit, which is 8k by default. With a `tcp://` or `udp://` URL, auditd-kit sets
-  `maxMessageSize` to 64k on the hosts, so set the same value on the collector. With `local`,
-  auditd-kit doesn't change the limit, so add `global(maxMessageSize="64k")` at the top of
-  `/etc/rsyslog.conf` on each host.
+  rsyslog message size limit, which is 8k by default, so add `global(maxMessageSize="64k")` at
+  the top of `/etc/rsyslog.conf` on each host.
 - The `Syslog` table is billed on ingestion. Measure each profile first with `stats.sh`, and
   use a DCR transformation to drop records you don't need.
 - Check the DCR definition, not the portal form. The portal clears the facility checkboxes when

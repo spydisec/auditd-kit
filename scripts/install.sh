@@ -12,10 +12,11 @@
 #   3. validate   validate.sh checks the rule syntax in that dir
 #   4. plan       plan.sh lists each change. --dry-run prints the plan and stops here
 #   5. backup     saves the files that the next stages change
-#   6. deploy     writes the rules, the auditd.conf keys, the syslog plugin setting, the rsyslog
-#                 drop-in (checked with rsyslogd -N1), the canary, the report, and the state
+#   6. deploy     writes the rules, the auditd.conf keys, the canary, the report, and the state,
+#                 and undoes the forwarding of an earlier version (ADR 0026)
 #   7. load       augenrules --load when the rules changed, service rsyslog restart when the
-#                 drop-in changed, service auditd restart when auditd.conf or the plugin changed
+#                 old drop-in was removed, service auditd restart when auditd.conf or the
+#                 plugin changed
 #   8. verify     verify.sh
 # A failure after the backup restores it. --skip-load skips load and verify, and is only for
 # tests in containers, where the kernel audit system can't be used.
@@ -172,22 +173,6 @@ if [ "$install_guided" = yes ]; then
       [yY]*) akit_settings_set akit_immutable true ;;
     esac
   fi
-  if [ "$(install_survey_get syslog_daemon)" = rsyslog ] && [ "$akit_fwd_mode" = none ]; then
-    install_ask "Send audit events to a syslog server? [y/N]:" n
-    case "$install_ans" in
-      [yY]*)
-        install_ask "Syslog server name or address:" ""
-        install_host=$install_ans
-        [ -n "$install_host" ] || akit_die "$AKIT_EXIT_REFUSED" "a syslog server is needed, and nothing changed"
-        # An IPv6 address goes in brackets in the URL.
-        case "$install_host" in \[*) ;; *:*) install_host="[$install_host]" ;; esac
-        install_ask "Port [514]:" 514
-        install_port=$install_ans
-        install_ask "Protocol, tcp or udp [tcp]:" tcp
-        akit_settings_set akit_forward "$install_ans://$install_host:$install_port"
-        ;;
-    esac
-  fi
   # A file with only control lines, such as the distro's audit.rules, is moved either way.
   install_other=$(install_survey_get rules_d_files | tr ',' '\n' \
     | { grep -v -e auditd-kit -e '^none$' -e ':control$' || true; } | tr '\n' ' ')
@@ -208,9 +193,6 @@ sh "$install_root/survey.sh" >"$install_work/survey"
 if ! install_out=$(sh "$install_lib/preflight.sh" --config "$install_work/settings.conf" \
   <"$install_work/survey" 2>&1); then
   printf '%s\n' "$install_out"
-  case "$install_out" in
-    *refuse=catchall_forward*) akit_forward_estimate "$install_root/stats.sh" ;;
-  esac
   akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
 fi
 # The backup needs tar, and the load step restarts auditd with service. A minimal RHEL 10 host
@@ -222,12 +204,6 @@ fi
 if [ "$install_dry_run" = no ] && [ "$install_skip_load" = no ] && ! command -v service >/dev/null 2>&1; then
   install_missing="${install_missing:+$install_missing
 }refuse=service_missing override=install initscripts-service"
-fi
-# Forwarding needs the plugin's config file. Refusing here also means that forward=local or
-# remote in the state file always records a plugin that this install turned on.
-if [ "$akit_fwd_mode" != none ] && ! akit_forward_plugin_file >/dev/null; then
-  install_missing="${install_missing:+$install_missing
-}refuse=syslog_plugin_missing override=install the audit syslog plugin (audispd-plugins)"
 fi
 if [ -n "$install_missing" ]; then
   printf '%s\n' "$install_missing"
@@ -323,10 +299,14 @@ while read -r install_verb install_path install_key; do
       rm -f "$(akit_path "$install_path")" || install_fail "cannot remove $(akit_path "$install_path")"
       install_rules=yes
       ;;
-    add:"$AKIT_RSYSLOG_DROPIN" | change:"$AKIT_RSYSLOG_DROPIN") install_rsyslog=yes ;;
     move:"$AKIT_RSYSLOG_DROPIN")
       rm -f "$(akit_path "$install_path")" || install_fail "cannot remove $(akit_path "$install_path")"
       install_rsyslog=yes
+      akit_log warning "auditd-kit no longer sends audit events, so the forwarding that an earlier version turned on is off now. Send audit.log with your own agent, see docs/integrations/send-audit-log.md"
+      ;;
+    set:/etc/audit/plugins.d/syslog.conf | set:/etc/audisp/plugins.d/syslog.conf)
+      akit_auditdconf_set "$(akit_path "$install_path")" active no || install_fail "cannot set $install_path"
+      install_auditd=yes
       ;;
     set:*) install_auditd=yes ;;
   esac
@@ -337,26 +317,11 @@ akit_auditdconf_wanted "$install_root/.." >"$install_work/wanted" || install_fai
 while read -r install_k install_v; do
   akit_auditdconf_set "$install_conf" "$install_k" "$install_v" || install_fail "cannot set $install_k in $install_conf"
 done <"$install_work/wanted"
-install_want=$(akit_forward_plugin_want)
-if [ "$install_want" != keep ] && install_plug=$(akit_forward_plugin_file); then
-  akit_forward_plugin "$(akit_path "$install_plug")" "$install_want" || install_fail "cannot set $install_plug"
-fi
-if [ "$akit_fwd_mode" != none ]; then
-  install_drop=$(akit_path "$AKIT_RSYSLOG_DROPIN")
-  mkdir -p "$(dirname "$install_drop")" || install_fail "cannot create $(dirname "$install_drop")"
-  akit_forward_render "$install_root/../config/rsyslog/40-auditd-kit.conf" "$install_work/dropin" \
-    || install_fail "cannot read the rsyslog template"
-  { cat "$install_work/dropin" >"$install_drop" && chmod 0644 "$install_drop"; } \
-    || install_fail "cannot write $install_drop"
-  akit_forward_check "$install_drop" || install_fail "rsyslogd -N1 rejected the drop-in"
-  set -- "$@" "$AKIT_RSYSLOG_DROPIN"
-fi
 if ! { mkdir -p "$(akit_path /var/lib/auditd-kit)" \
   && cp "$install_work/render-report.txt" "$(akit_path /var/lib/auditd-kit/render-report.txt)"; }; then
   install_fail "cannot write the render report"
 fi
-install_targets=$(akit_forward_targets "$install_lib")
-akit_state_write "$install_rule_count" "$install_targets" "$@" "$AKIT_AUDITD_CONF" \
+akit_state_write "$install_rule_count" "$@" "$AKIT_AUDITD_CONF" \
   || install_fail "cannot write $AKIT_STATE_FILE"
 
 if [ "$install_skip_load" = yes ]; then

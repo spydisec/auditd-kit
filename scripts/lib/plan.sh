@@ -10,9 +10,8 @@
 #   change <path>      a file whose content changes
 #   move <path>        a rules.d file that install removes, after the backup has saved it
 #   set <file> <key>   an auditd.conf key or a syslog plugin key whose value changes
-# With forwarding on, the rsyslog drop-in is added or changed, and the syslog plugin is set to
-# active. With forwarding off, our drop-in is moved, if there is one, and the plugin is
-# set to inactive only if auditd-kit turned it on.
+# On a host where auditd-kit 0.2.0 or earlier turned forwarding on, the rsyslog drop-in is moved
+# and the syslog plugin is set to inactive (ADR 0026).
 # Only our own files and a distro audit.rules with only control lines are moved, plus every other
 # rules.d file when akit_existing_rules is replace.
 # shellcheck disable=SC2154
@@ -99,34 +98,18 @@ if grep '^set ' "$tmp/lines" >/dev/null; then
   plan_diff "$AKIT_AUDITD_CONF" "$plan_old" "$tmp/auditd.conf"
 fi
 
-# The syslog plugin. A host without the plugin file has nothing to set.
-plan_want=$(akit_forward_plugin_want)
-if [ "$plan_want" != keep ] && plan_plug=$(akit_forward_plugin_file); then
-  plan_cur=$(akit_path "$plan_plug")
-  cp "$plan_cur" "$tmp/plugin"
-  akit_forward_plugin "$tmp/plugin" "$plan_want"
-  for plan_key in active args; do
-    [ "$(akit_auditdconf_get "$plan_cur" "$plan_key")" != "$(akit_auditdconf_get "$tmp/plugin" "$plan_key")" ] || continue
-    echo "set $plan_plug $plan_key" >>"$tmp/lines"
-  done
-  if grep "^set $plan_plug " "$tmp/lines" >/dev/null; then
-    plan_diff "$plan_plug" "$plan_cur" "$tmp/plugin"
+# The forwarding of an earlier version. Without the plugin file, only the drop-in is moved.
+if akit_forward_was_on; then
+  if plan_plug=$(akit_forward_plugin_file); then
+    plan_cur=$(akit_path "$plan_plug")
+    if [ "$(akit_auditdconf_get "$plan_cur" active)" != no ]; then
+      cp "$plan_cur" "$tmp/plugin"
+      akit_auditdconf_set "$tmp/plugin" active no
+      echo "set $plan_plug active" >>"$tmp/lines"
+      plan_diff "$plan_plug" "$plan_cur" "$tmp/plugin"
+    fi
   fi
-fi
-
-plan_drop=$(akit_path "$AKIT_RSYSLOG_DROPIN")
-if [ "$akit_fwd_mode" = none ]; then
-  if [ -e "$plan_drop" ]; then
-    plan_file move "$AKIT_RSYSLOG_DROPIN" "$plan_drop" /dev/null
-  fi
-else
-  akit_forward_render "$kit/config/rsyslog/40-auditd-kit.conf" "$tmp/dropin" \
-    || akit_die "$AKIT_EXIT_REFUSED" "plan: cannot read the rsyslog template"
-  if [ ! -e "$plan_drop" ]; then
-    plan_file add "$AKIT_RSYSLOG_DROPIN" /dev/null "$tmp/dropin"
-  elif ! akit_same_file "$plan_drop" "$tmp/dropin"; then
-    plan_file change "$AKIT_RSYSLOG_DROPIN" "$plan_drop" "$tmp/dropin"
-  fi
+  plan_file move "$AKIT_RSYSLOG_DROPIN" "$(akit_path "$AKIT_RSYSLOG_DROPIN")" /dev/null
 fi
 
 if [ ! -e "$(akit_path /etc/auditd-kit/canary)" ]; then

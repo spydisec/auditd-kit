@@ -30,7 +30,7 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0001](0001-supported-operating-systems.md) | Supported operating systems for v1 | Superseded by 0019 |
 | [0002](0002-plain-files-with-script-and-ansible-paths.md) | Plain files with a script path and an Ansible path | Accepted |
 | [0003](0003-survey-before-change.md) | Run a read-only survey before any change | Accepted |
-| [0004](0004-local-logs-by-default.md) | Keep logs local by default and forward through one added file | Accepted |
+| [0004](0004-local-logs-by-default.md) | Keep logs local by default and forward through one added file | Superseded by 0026 |
 | [0005](0005-rule-profiles.md) | Rule profiles and upstream rule sources | Superseded by 0011 |
 | [0006](0006-never-halt-the-host.md) | Never halt the host when the audit disk fills | Accepted |
 | [0007](0007-test-strategy.md) | Test strategy | Superseded by 0021 |
@@ -52,3 +52,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0023](0023-refuse-only-agents-that-use-audit.md) | Refuse only agents that use the audit system | Accepted |
 | [0024](0024-fewer-settings.md) | Fewer settings | Accepted |
 | [0025](0025-telemetry-not-detection.md) | Telemetry, not detection | Accepted |
+| [0026](0026-write-audit-log-dont-send-it.md) | Write audit.log, and don't send it | Accepted |

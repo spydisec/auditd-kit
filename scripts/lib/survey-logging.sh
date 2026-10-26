@@ -4,13 +4,8 @@
 #
 # These follow the rules in survey-host.sh: one survey_check_<name> function per check, keys
 # through akit_kv, a non-zero return when the host cannot be read, files read under AKIT_ROOT.
-# survey.sh must set survey_root before it calls the checks, because two of them run the awk
-# programs in lib/. A list with no entries is reported as "none".
-
-# survey_join: read lines from stdin and print them joined by $1 (default a comma), or "none".
-survey_join() {
-  awk -v sep="${1:-,}" 'NF {printf "%s%s", (n++ ? sep : ""), $0} END {if (!n) printf "none"; print ""}'
-}
+# survey.sh must set survey_root before it calls the checks, because audit_volume runs stats.sh.
+# A list with no entries is reported as "none".
 
 # survey_file_has <regex> <path>...: succeed when a line of a readable file matches the extended
 # regex, or when a file exists and can't be read. Missing files are skipped, and lines that start
@@ -192,61 +187,6 @@ survey_check_syslog_daemon() {
   fi
   akit_kv syslog_daemon "$survey_sd"
   akit_kv syslog_version "$survey_sv"
-}
-
-survey_check_syslog_forwarding() {
-  survey_rsmain=$(akit_path /etc/rsyslog.conf)
-  survey_rsd=$(akit_path /etc/rsyslog.d)
-  set --
-  [ -f "$survey_rsmain" ] && set -- "$survey_rsmain"
-  for survey_f in "$survey_rsd"/*.conf; do
-    [ -f "$survey_f" ] && set -- "$@" "$survey_f"
-  done
-  survey_rsout=
-  if [ $# -gt 0 ]; then
-    survey_rsout=$(awk -f "$survey_root/lib/rsyslog.awk" "$@" 2>/dev/null) || return 1
-  fi
-  survey_tg=$(printf '%s\n' "$survey_rsout" | sed -n 's/^target //p' | survey_join)
-  survey_fu=$(printf '%s\n' "$survey_rsout" | sed -n 's/^facility //p' | survey_join)
-  survey_cl=$(printf '%s\n' "$survey_rsout" | sed -n 's/^catchall //p' | survey_join ' | ')
-  survey_ca=no
-  [ "$survey_cl" != none ] && survey_ca=yes
-  # The survey can't see the forwards in a file it doesn't read, so another include fails closed.
-  if printf '%s\n' "$survey_rsout" | grep -E '^(parse_error$|include )' >/dev/null 2>&1; then
-    survey_ca=unknown
-  fi
-  akit_kv syslog_forward_targets "$survey_tg"
-  akit_kv syslog_facilities_used "$survey_fu"
-  akit_kv syslog_catchall "$survey_ca"
-  akit_kv syslog_catchall_lines "$survey_cl"
-}
-
-survey_check_syslog_dropins() {
-  survey_di=
-  survey_rsd=$(akit_path /etc/rsyslog.d)
-  if [ -d "$survey_rsd" ]; then
-    for survey_f in "$survey_rsd"/*; do
-      [ -f "$survey_f" ] || continue
-      survey_di="${survey_di:+$survey_di,}${survey_f##*/}"
-    done
-  fi
-  akit_kv syslog_dropins "${survey_di:-none}"
-}
-
-# On auditd 3.x the plugin needs the audisp-syslog binary, so a leftover config file does not
-# count. On RHEL 7 the syslog plugin is built in, and its config names builtin_syslog.
-survey_check_syslog_plugin_installed() {
-  survey_pi=no
-  for survey_p in /sbin/audisp-syslog /usr/sbin/audisp-syslog; do
-    if [ -e "$(akit_path "$survey_p")" ]; then
-      survey_pi=yes
-    fi
-  done
-  survey_bi=$(akit_path /etc/audisp/plugins.d/syslog.conf)
-  if [ -r "$survey_bi" ] && grep -E '^[[:space:]]*path[[:space:]]*=[[:space:]]*builtin_syslog' "$survey_bi" >/dev/null 2>&1; then
-    survey_pi=yes
-  fi
-  akit_kv syslog_plugin_installed "$survey_pi"
 }
 
 # AKIT_NOW pins the current time (epoch seconds), so tests need no clock.
