@@ -30,10 +30,12 @@ it must accept messages as long as the ones the hosts send (see the message size
    sh scripts/survey.sh --check azure
    ```
 
-   It reports whether AMA is installed, the proxy, and the DNS and TCP 443 results for each AMA
-   endpoint.
+   It reports whether AMA or the legacy Log Analytics agent is installed, the proxy, and the DNS
+   and TCP 443 results for the AMA control endpoint. The region and workspace endpoints show as
+   `unknown` until AMA is installed and a DCR is associated, so run it again after step 3.
 
-2. Install with forwarding on, e.g. for AMA on each host:
+2. Install with forwarding on. Forwarding needs the auditd syslog plugin (`audispd-plugins`), and
+   install refuses with `syslog_plugin_missing` without it. For example, for AMA on each host:
 
    ```sh
    sh scripts/install.sh --profile medium --forward local
@@ -66,8 +68,10 @@ it must accept messages as long as the ones the hosts send (see the message size
 - AMA forwards only the default rsyslog ruleset. Inputs bound to another ruleset don't reach
   AMA. On a collector, bind the port 514 input to the default ruleset.
 - Long records can be cut. An `EXECVE` record with many arguments can be longer than the
-  rsyslog message size limit. With `remote`, auditd-kit sets `maxMessageSize` to 64k on the hosts,
-  so set the same value on the collector.
+  rsyslog message size limit, which is 8k by default. With `remote`, auditd-kit sets
+  `maxMessageSize` to 64k on the hosts, so set the same value on the collector. With `local`,
+  auditd-kit doesn't change the limit, so add `global(maxMessageSize="64k")` at the top of
+  `/etc/rsyslog.conf` on each host.
 - The `Syslog` table is billed on ingestion. Measure each profile first with `stats.sh`, and
   use a DCR transformation to drop records you don't need.
 - Check the DCR definition, not the portal form. The portal clears the facility checkboxes when
