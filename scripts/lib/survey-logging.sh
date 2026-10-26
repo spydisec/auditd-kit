@@ -12,8 +12,9 @@ survey_join() {
   awk -v sep="${1:-,}" 'NF {printf "%s%s", (n++ ? sep : ""), $0} END {if (!n) printf "none"; print ""}'
 }
 
-# survey_file_has <regex> <path>...: succeed when a readable file matches the extended regex, or
-# when a file exists and can't be read. Missing files are skipped.
+# survey_file_has <regex> <path>...: succeed when a line of a readable file matches the extended
+# regex, or when a file exists and can't be read. Missing files are skipped, and lines that start
+# with # or <!-- don't count.
 survey_file_has() {
   survey_fh_re=$1
   shift
@@ -21,7 +22,7 @@ survey_file_has() {
     survey_fh=$(akit_path "$survey_fh")
     [ -e "$survey_fh" ] || continue
     [ -r "$survey_fh" ] || return 0
-    grep -E -q -e "$survey_fh_re" "$survey_fh" 2>/dev/null && return 0
+    grep -E -v '^[[:space:]]*(#|<!--)' "$survey_fh" 2>/dev/null | grep -E -q -e "$survey_fh_re" && return 0
   done
   return 1
 }
@@ -31,7 +32,9 @@ survey_file_has() {
 survey_agent_audit() {
   case "$1" in
     wazuh)
-      survey_file_has 'whodata=.yes' /var/ossec/etc/ossec.conf
+      # Centralized settings from the Wazuh server land in shared/agent.conf.
+      survey_file_has 'whodata[[:space:]]*=[[:space:]]*.yes' \
+        /var/ossec/etc/ossec.conf /var/ossec/etc/shared/agent.conf
       ;;
     mde)
       [ -e "$(akit_path /etc/audit/rules.d/mdatp.rules)" ] && return 0
@@ -47,12 +50,12 @@ survey_agent_audit() {
     auditbeat)
       # Rules in the config or in audit.rules.d, or unicast, make Auditbeat own the audit socket.
       # shellcheck disable=SC2046
-      survey_file_has '^[[:space:]]*socket_type:[[:space:]]*unicast|^[[:space:]]*-[aw][[:space:]]' \
+      survey_file_has '^[[:space:]]*socket_type:[[:space:]]*["'\'']?unicast|^[[:space:]]*-[aw][[:space:]]' \
         /etc/auditbeat/auditbeat.yml $(survey_glob /etc/auditbeat/modules.d '*.yml') \
         $(survey_glob /etc/auditbeat/audit.rules.d '*.conf')
       ;;
     osquery)
-      survey_file_has 'disable_audit[^a-z_]*[=:][[:space:]"]*false' \
+      survey_file_has 'disable_audit[^a-z_]*[=: ][[:space:]"]*false' \
         /etc/osquery/osquery.flags /etc/osquery/osquery.conf && return 0
       printf '%s\n' "$survey_args" | grep -E -q 'osqueryd.*disable_audit[= ]+false'
       ;;

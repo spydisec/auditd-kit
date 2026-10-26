@@ -164,7 +164,14 @@ ruleset(name="fwd") {
   run_survey
   [ "$(key agents)" = wazuh ]
   [ "$(key agents_audit)" = none ]
-  put /var/ossec/etc/ossec.conf '<directories check_all="yes" whodata="yes">/etc</directories>'
+  put /var/ossec/etc/ossec.conf '<!-- <directories whodata="yes">/etc</directories> -->'
+  run_survey
+  [ "$(key agents_audit)" = none ]
+  put /var/ossec/etc/ossec.conf '<directories check_all="yes" whodata = "yes">/etc</directories>'
+  run_survey
+  [ "$(key agents_audit)" = wazuh ]
+  put /var/ossec/etc/ossec.conf '<directories realtime="yes">/etc</directories>'
+  put /var/ossec/etc/shared/agent.conf '<directories whodata="yes">/etc</directories>'
   run_survey
   [ "$(key agents_audit)" = wazuh ]
 }
@@ -197,7 +204,7 @@ ruleset(name="fwd") {
   [ "$(key agents_audit)" = auditbeat ]
   rm "$AKIT_ROOT/etc/auditbeat/audit.rules.d/sample.conf"
   put /etc/auditbeat/auditbeat.yml '- module: auditd
-  socket_type: unicast'
+  socket_type: "unicast"'
   run_survey
   [ "$(key agents_audit)" = auditbeat ]
 }
@@ -207,7 +214,10 @@ ruleset(name="fwd") {
   run_survey
   [ "$(key agents)" = osquery ]
   [ "$(key agents_audit)" = none ]
-  put /etc/osquery/osquery.flags '--disable_audit=false'
+  put /etc/osquery/osquery.flags '# --disable_audit=false'
+  run_survey
+  [ "$(key agents_audit)" = none ]
+  put /etc/osquery/osquery.flags '--disable_audit false'
   run_survey
   [ "$(key agents_audit)" = osquery ]
   rm "$AKIT_ROOT/etc/osquery/osquery.flags"
