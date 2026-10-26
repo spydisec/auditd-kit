@@ -45,6 +45,7 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0016](0016-ansible-core-versions.md) | Supported ansible-core versions | Accepted |
 | [0017](0017-broad-rules-load-last.md) | Broad rules load last | Accepted |
 | [0018](0018-render-drops-exec-rules-on-symlinks.md) | Render drops exec rules on symlinks | Accepted |
-| [0019](0019-add-rhel-10.md) | Add RHEL 10 | Accepted |
+| [0019](0019-add-rhel-10.md) | Add RHEL 10 | Superseded by 0022 |
 | [0020](0020-releases-from-a-manual-workflow.md) | Releases from a manual workflow | Accepted |
 | [0021](0021-select-tests-from-changed-files.md) | Select tests from changed files | Accepted |
+| [0022](0022-add-ubuntu-18-04-20-04-and-26-04.md) | Add Ubuntu 18.04, 20.04, and 26.04 | Accepted |

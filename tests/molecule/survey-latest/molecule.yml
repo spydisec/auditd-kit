@@ -1,5 +1,6 @@
 ---
-# The same scenario with the latest ansible-core, which can't manage Python 2.7 or 3.6 targets.
+# The same scenario with the latest ansible-core, which can't manage Python 2.7, 3.6, or 3.8
+# targets.
 driver:
   name: docker
 # The images are used as they are. prepare.yml adds what Ansible needs.
@@ -12,6 +13,9 @@ platforms:
     pre_build_image: true
   - name: ubuntu2404
     image: ubuntu:24.04
+    pre_build_image: true
+  - name: ubuntu2604
+    image: ubuntu:26.04
     pre_build_image: true
 provisioner:
   name: ansible

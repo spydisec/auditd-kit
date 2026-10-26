@@ -73,6 +73,12 @@
             "context": "real-kernel (ubuntu-24.04, heavy)"
           },
           {
+            "context": "real-kernel (ubuntu-26.04, minimal)"
+          },
+          {
+            "context": "real-kernel (ubuntu-26.04, heavy)"
+          },
+          {
             "context": "container-install (centos:7)"
           },
           {
@@ -85,10 +91,19 @@
             "context": "container-install (rockylinux/rockylinux:10)"
           },
           {
+            "context": "container-install (ubuntu:18.04)"
+          },
+          {
+            "context": "container-install (ubuntu:20.04)"
+          },
+          {
             "context": "container-install (ubuntu:22.04)"
           },
           {
             "context": "container-install (ubuntu:24.04)"
+          },
+          {
+            "context": "container-install (ubuntu:26.04)"
           },
           {
             "context": "molecule-survey (survey, ansible-core==2.16.*)"

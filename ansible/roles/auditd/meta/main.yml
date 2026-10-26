@@ -10,8 +10,12 @@ galaxy_info:
         - "7"
         - "8"
         - "9"
+        - "10"
     - name: Ubuntu
       versions:
+        - bionic
+        - focal
         - jammy
         - noble
+        - resolute
 dependencies: []

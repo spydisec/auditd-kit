@@ -495,7 +495,7 @@ esac"
 @test "every profile renders on every OS fixture with no dropped unknown_syscall and passes validate" {
   render_setup
   for profile in minimal medium heavy; do
-    for os in centos7 rocky8 rocky9 ubuntu2204 ubuntu2404; do
+    for os in centos7 rocky8 rocky9 ubuntu1804 ubuntu2004 ubuntu2204 ubuntu2404 ubuntu2604; do
       rm -rf "$out" "$report"
       AKIT_SYSCALLS_B64="$fixtures/$os-b64.txt" AKIT_SYSCALLS_B32="$fixtures/$os-b32.txt" \
         render --profile "$profile" --immutable true

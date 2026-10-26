@@ -66,7 +66,7 @@ run_survey() {
 }
 
 @test "survey exits 0 with key=value output on each supported fixture" {
-  for pair in centos7:centos rocky8:rocky rocky9:rocky ubuntu2204:ubuntu ubuntu2404:ubuntu; do
+  for pair in centos7:centos rocky8:rocky rocky9:rocky ubuntu1804:ubuntu ubuntu2004:ubuntu ubuntu2204:ubuntu ubuntu2404:ubuntu ubuntu2604:ubuntu; do
     use_host "${pair%%:*}"
     run_survey
     [ "$status" -eq 0 ]
@@ -378,8 +378,11 @@ echo "/dev/vg-var 4194304 2097152 2097152 50% /var"'
   check_tier ol 8.10 supported
   check_tier rhel 10.0 supported
   check_tier rocky 11.0 unsupported
-  check_tier ubuntu 20.04 unsupported
+  check_tier ubuntu 16.04 unsupported
+  check_tier ubuntu 18.04 supported
   check_tier ubuntu 24.04 supported
+  check_tier ubuntu 25.10 unsupported
+  check_tier ubuntu 26.04 supported
 }
 
 @test "survey works with CDPATH exported" {
