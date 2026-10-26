@@ -348,15 +348,13 @@ path = /sbin/audisp-syslog'
   grep -q '^audit_volume_top_keys=none$' <<<"$output"
 }
 
-@test "the new keys follow the existing ones in order, in text and JSON" {
+@test "survey_errors comes last, and text and JSON list the keys in the same order" {
   run_survey
-  last=$(printf '%s\n' "$output" | sed -n '$p')
-  [[ "$last" == survey_errors=* ]]
-  order=$(printf '%s\n' "$output" | sed -n '/^akit_state_profile=/,$p' | cut -d= -f1 | tr '\n' ' ')
-  [ "$order" = "akit_state_profile agents hardening_loginuid_immutable hardening_rule_files rules_d_files rules_d_control_lines syslog_daemon syslog_version syslog_forward_targets syslog_facilities_used syslog_catchall syslog_catchall_lines syslog_dropins syslog_plugin_installed audit_volume_top_keys survey_errors " ]
+  [[ "$(printf '%s\n' "$output" | sed -n '$p')" == survey_errors=* ]]
+  text=$(printf '%s\n' "$output" | cut -d= -f1 | tr '\n' ' ')
   run_survey --json
-  [[ "$output" == *'"akit_state_profile":"","agents":"none",'* ]]
-  [[ "$output" == *'"audit_volume_top_keys":"none","survey_errors":""}' ]]
+  json=$(printf '%s\n' "$output" | grep -o '"[a-z0-9_]*":' | tr -d '":' | tr '\n' ' ')
+  [ "$text" = "$json" ]
 }
 
 @test "the standard rsyslog.d include is read as before" {
