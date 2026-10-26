@@ -5,8 +5,6 @@ akit_profile: minimal
 akit_size: standard
 akit_max_log_file: ""
 akit_num_logs: ""
-akit_forward: none
-akit_syslog_facility: local6
 akit_immutable: false
 akit_existing_rules: unset
 akit_extra_rules_dir: ""

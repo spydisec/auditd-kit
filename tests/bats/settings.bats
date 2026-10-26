@@ -11,7 +11,7 @@ load_settings() {
     . "$1/scripts/lib/settings.sh"
     shift
     akit_settings_load "$@"
-    for k in $AKIT_SETTING_KEYS akit_fwd_mode akit_fwd_proto akit_fwd_host akit_fwd_port akit_backlog akit_preset_total_mb; do
+    for k in $AKIT_SETTING_KEYS akit_backlog akit_preset_total_mb; do
       eval "printf \"%s=%s\\n\" $k \"\$$k\""
     done
     echo "args=$AKIT_ARGS"
@@ -31,17 +31,11 @@ config() {
 akit_size=standard
 akit_max_log_file=100
 akit_num_logs=8
-akit_forward=none
-akit_syslog_facility=local6
 akit_immutable=false
 akit_existing_rules=unset
 akit_extra_rules_dir=
 akit_accept=
 akit_skip_keys=
-akit_fwd_mode=none
-akit_fwd_proto=
-akit_fwd_host=
-akit_fwd_port=
 akit_backlog=16384
 akit_preset_total_mb=800
 args="
@@ -60,19 +54,19 @@ args="
 }
 
 @test "flag overrides config file, config overrides default" {
-  config '# comment' '' 'akit_profile=medium' 'akit_size=small' '  akit_syslog_facility = local3'
+  config '# comment' '' 'akit_profile=medium' 'akit_size=small' '  akit_skip_keys = T1059'
   sed -i 's/$/\r/' "$cfg"
   run load_settings --config "$cfg" --size=large extra
   [ "$status" -eq 0 ]
   echo "$output" | grep -qx 'akit_profile=medium'
   echo "$output" | grep -qx 'akit_size=large'
-  echo "$output" | grep -qx 'akit_syslog_facility=local3'
+  echo "$output" | grep -qx 'akit_skip_keys=T1059'
   echo "$output" | grep -qx 'args=extra'
 }
 
 @test "a bad key, flag, or value exits 1 and names the setting" {
   for row in 'akit_profle=minimal:akit_profle' 'akit_size=huge:akit_size' \
-    'akit_forward=tcp://h:70000:akit_forward' 'akit_immutable=yes:akit_immutable' \
+    'akit_max_log_file=0:akit_max_log_file' 'akit_immutable=yes:akit_immutable' \
     'akit_accept=low_disk:akit_accept' 'akit_skip_keys=a;b:akit_skip_keys' \
     'not a pair:not a pair'; do
     config "${row%:*}"
@@ -100,54 +94,25 @@ args="
   echo "$output" | grep -qx 'akit_preset_total_mb=400'
 }
 
-@test "a forward URL sets the mode, protocol, host, and port" {
-  while IFS='|' read -r url want; do
-    run load_settings --forward "$url"
-    [ "$status" -eq 0 ] || { echo "$url: $output"; false; }
-    got=$(printf '%s\n' "$output" | sed -n 's/^akit_fwd_[a-z]*=//p' | tr '\n' ' ')
-    [ "$got" = "$want" ] || { echo "$url: got '$got'"; false; }
-  done <<'EOT'
-local|local    |
-tcp://siem.example.com:6514|remote tcp siem.example.com 6514 |
-udp://192.0.2.10|remote udp 192.0.2.10 514 |
-tcp://[2001:db8::1]:514|remote tcp 2001:db8::1 514 |
-tcp://[2001:db8::1]|remote tcp 2001:db8::1 514 |
-EOT
-}
-
-@test "a bad forward URL exits 1 and says why" {
-  while IFS='|' read -r url want; do
-    run load_settings --forward "$url"
-    [ "$status" -eq 1 ] && [[ "$output" == *"$want"* ]] || { echo "$url: $output"; false; }
-  done <<'EOT'
-remote|use akit_forward=tcp://host:port
-ftp://h|is not none, local, or a tcp:// or udp:// URL
-tcp://2001:db8::1|put an IPv6 address in brackets
-tcp://|has no valid host name or address
-tcp://h:0|has no port from 1 to 65535
-tcp://h:514/|has no port from 1 to 65535
-EOT
-}
-
-@test "akit_accept takes agent_conflict codes and catchall_forward only" {
-  run load_settings --accept agent_conflict:wazuh,catchall_forward
+@test "akit_accept takes agent_conflict codes only" {
+  run load_settings --accept agent_conflict:wazuh,agent_conflict:mde
   [ "$status" -eq 0 ]
-  for bad in low_disk agent_conflict: 'agent_conflict:a b' 'agent_conflict:a, agent_conflict:b' 'catchall_forward,'; do
+  for bad in low_disk catchall_forward agent_conflict: 'agent_conflict:a b' 'agent_conflict:a, agent_conflict:b' 'agent_conflict:a,'; do
     run load_settings --accept "$bad"
     [ "$status" -eq 1 ] || { echo "$bad: $output"; false; }
   done
 }
 
-@test "the settings ADR 0024 removed exit 1 and name the replacement" {
+@test "removed settings exit 1 and name the replacement" {
   while IFS='|' read -r flag want; do
     run load_settings "$flag" x
     [ "$status" -eq 1 ] && [[ "$output" == *"$want"* ]] || { echo "$flag: $output"; false; }
   done <<'EOT'
---remote-host|use akit_forward=tcp://host:port
---remote-port|use akit_forward=tcp://host:port
---remote-protocol|use akit_forward=tcp://host:port
+--forward|see docs/integrations/send-audit-log.md
+--syslog-facility|see docs/integrations/send-audit-log.md
+--remote-host|see docs/integrations/send-audit-log.md
+--accept-catchall|see docs/integrations/send-audit-log.md
 --accept-agents|use akit_accept=agent_conflict:<agent>
---accept-catchall|use akit_accept=catchall_forward
 EOT
 }
 

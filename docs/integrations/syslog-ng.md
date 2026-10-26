@@ -1,9 +1,9 @@
 # Forward audit events with syslog-ng
 
-`install.sh` forwards audit events only through rsyslog (ADR 0004). On a host that runs syslog-ng,
-set it up by hand once, with these steps. They were tested on Rocky Linux 10 with syslog-ng 4.8.
+auditd-kit doesn't send audit events (ADR 0026). On a host that runs syslog-ng, set up sending by
+hand once, with these steps. They were tested on Rocky Linux 10 with syslog-ng 4.8.
 
-auditd-kit can't do this for you, for two reasons:
+The setup needs two things that a single drop-in can't do:
 
 - syslog-ng reads `conf.d/` at the end of its main config, after its own log paths, so a drop-in
   can't keep audit events out of `/var/log/messages` or `/var/log/syslog`. You need one edit in
@@ -16,14 +16,14 @@ auditd-kit can't do this for you, for two reasons:
 The auditd syslog plugin must be installed: `audispd-plugins` on RHEL and Ubuntu. Turn the plugin
 on last, so that no audit event reaches the system log files before the filters are in place.
 
-1. Install with forwarding off, which is the default:
+1. Install auditd-kit:
 
    ```sh
    sh scripts/install.sh --profile minimal
    ```
 
-   If this host ever ran `install.sh` with forwarding on, this run also turns the plugin off. Do it
-   before the next steps, and a later run with forwarding off then leaves the plugin as it is.
+   If auditd-kit 0.2.0 or earlier turned on forwarding on this host, this run turns the plugin off.
+   Do it before the next steps, and later runs leave the plugin as it is.
 
 2. Keep `local6` out of the system log files. In `/etc/syslog-ng/syslog-ng.conf`, add
    `not facility(local6) and` at the start of the expression in each catch-all filter:

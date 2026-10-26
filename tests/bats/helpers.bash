@@ -70,7 +70,6 @@ akit_sums() {
 #   lost                 the auditctl -s lost field, which grows by one on each call
 #   augenrules_fails     augenrules runs this file as a script and exits 1
 #   ausearch_fails       ausearch finds no event
-#   rsyslogd_fails       rsyslogd -N1 rejects the configuration
 # augenrules joins the rules.d files into audit.rules, and auditctl -l lists that file's rules.
 akit_host_stubs() {
   calls="$BATS_TEST_TMPDIR/calls"
@@ -100,7 +99,6 @@ cp \"\$AKIT_ROOT/etc/audit/audit.rules\" \"\$AKIT_ROOT/etc/audit/audit.rules.pre
 cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rules\""
   akit_stub service "echo \"service \$*\" >>$akit_c"
   akit_stub systemctl "echo \"systemctl \$*\" >>$akit_c"
-  akit_stub rsyslogd "echo \"rsyslogd \$*\" >>$akit_c; [ \"\$1\" != -N1 ] || [ ! -e $akit_s/rsyslogd_fails ]"
   akit_stub ausearch "echo \"ausearch \$*\" >>$akit_c; [ ! -e $akit_s/ausearch_fails ]"
 }
 

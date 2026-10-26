@@ -18,7 +18,7 @@ auditd-kit owns:
 
 - the profiles and rules, which decide what gets recorded on which hosts
 - the keys, which name each kind of event and carry a MITRE ATT&CK ID where one fits
-- rollout, verify, rollback, log volume, and forwarding
+- rollout, verify, rollback, and log volume
 
 The SIEM and the people who run it own:
 

@@ -1,6 +1,6 @@
 # 0004. Keep logs local by default and forward through one added file
 
-Status: Accepted
+Status: Superseded by 0026
 Date: 2026-10-19
 
 ## Context

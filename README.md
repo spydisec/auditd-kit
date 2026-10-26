@@ -36,6 +36,10 @@ and a person must fix the host. Every run logs to `/var/log/auditd-kit/`.
 To undo an install, run `sh scripts/rollback.sh`. To check a host later, run `sh scripts/verify.sh`.
 To see how much audit data a host writes and which rules write it, run `sh scripts/stats.sh`.
 
+auditd-kit writes audit events to `/var/log/audit/audit.log` and doesn't send them anywhere. Your
+own agent or syslog setup sends them to your SIEM. See
+[docs/integrations/send-audit-log.md](docs/integrations/send-audit-log.md).
+
 ### Settings
 
 Pass settings as flags, or as `key=value` lines in a file named with `--config FILE`. A flag drops
@@ -49,9 +53,7 @@ the `akit_` prefix and uses dashes, so `akit_skip_keys` is `--skip-keys`.
 | `akit_skip_keys` | none | Rule keys to leave out on this host. |
 | `akit_extra_rules_dir` | none | A dir of your own `50-*.rules` files to load with the profile. |
 | `akit_existing_rules` | unset | `keep` or `replace` other files in `/etc/audit/rules.d/`. Install refuses while it's unset and other rule files exist. |
-| `akit_forward` | `none` | Forward audit events through rsyslog. `tcp://host:port` or `udp://host:port` sends them to a syslog server, and the port defaults to 514. An IPv6 address goes in brackets, e.g. `tcp://[2001:db8::1]:514`. `local` sends them to the syslog facility only, for a local agent such as Azure Monitor Agent to read. |
-| `akit_syslog_facility` | `local6` | The syslog facility for forwarded audit events. |
-| `akit_accept` | none | Refusals to accept, as a comma list of the codes install prints, e.g. `agent_conflict:wazuh,catchall_forward`. |
+| `akit_accept` | none | Refusals to accept, as a comma list of the codes install prints, e.g. `agent_conflict:wazuh`. |
 | `akit_immutable` | `false` | `true` locks the rules until reboot (`-e 2`). |
 
 ### One-line install

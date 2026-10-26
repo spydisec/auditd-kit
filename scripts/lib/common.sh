@@ -163,22 +163,18 @@ akit_lock_release() {
 
 AKIT_STATE_FILE=$(akit_path /etc/auditd-kit/state)
 
-# akit_state_write <rule-count> <forward-targets> <abs-path>...: the forward targets are the
-# survey's syslog_forward_targets from before this install. The paths are host paths.
+# akit_state_write <rule-count> <abs-path>...: the paths are host paths.
 # shellcheck disable=SC2154
 akit_state_write() {
   state_tmp="$AKIT_STATE_FILE.tmp"
   state_count=$1
-  state_targets=$2
-  shift 2
+  shift
   (
     echo "version=$AKIT_VERSION"
     echo "profile=$akit_profile"
     echo "size=$akit_size"
-    echo "forward=$akit_fwd_mode"
     echo "installed_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     echo "rule_count=$state_count"
-    echo "syslog_forward_targets=$state_targets"
     for state_p in "$@"; do
       state_sum=$(sha256sum <"$(akit_path "$state_p")") || exit 1
       echo "file=${state_sum%% *} $state_p"

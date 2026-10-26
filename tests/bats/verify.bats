@@ -122,55 +122,6 @@ write_state() {
   [[ "$output" == *"check=rule_count result=fail"* ]]
 }
 
-# forward_state <targets>: a state file for an install with forwarding, and an rsyslog.d dir.
-forward_state() {
-  write_state
-  printf 'forward=remote\nsyslog_forward_targets=%s\n' "$1" >>"$AKIT_ROOT/etc/auditd-kit/state"
-  mkdir -p "$AKIT_ROOT/etc/rsyslog.d"
-  : >"$AKIT_ROOT/etc/rsyslog.d/40-auditd-kit.conf"
-  akit_stub service 'exit 0'
-}
-
-# check <name> <pass|fail>: run verify and look for the check line.
-check() {
-  run sh "$verify"
-  [[ "$output" == *"check=$1 result=$2"* ]] || { echo "$1 $2: $output"; return 1; }
-}
-
-@test "forwarding checks pass when the state shows forwarding and the host matches" {
-  forward_state 192.0.2.20:5515/tcp
-  printf '%s\n' 'action(type="omfwd" target="192.0.2.20" port="5515" protocol="tcp")' \
-    >"$AKIT_ROOT/etc/rsyslog.d/30-existing.conf"
-  : >"$AKIT_ROOT/etc/rsyslog.d/10-azuremonitoragent.conf"
-  run sh "$verify"
-  [ "$status" -eq 0 ]
-  for name in rsyslog_active forward_targets_unchanged dropin_order; do
-    check $name pass
-  done
-}
-
-@test "each forwarding check can fail" {
-  forward_state none
-  akit_stub service 'exit 3'
-  check rsyslog_active fail
-  akit_stub service 'exit 0'
-  printf '%s\n' 'action(type="omfwd" target="192.0.2.30" port="514" protocol="tcp")' \
-    >"$AKIT_ROOT/etc/rsyslog.d/30-new.conf"
-  check forward_targets_unchanged fail
-  : >"$AKIT_ROOT/etc/rsyslog.d/50-azuremonitoragent.conf"
-  check dropin_order fail
-  [ "$status" -eq 2 ]
-}
-
-@test "forwarding checks do not run without forwarding in the state" {
-  write_state
-  run sh "$verify"
-  [[ "$output" != *rsyslog_active* ]]
-  printf 'forward=none\n' >>"$AKIT_ROOT/etc/auditd-kit/state"
-  run sh "$verify"
-  [[ "$output" != *rsyslog_active* ]]
-}
-
 @test "lost events during the canary check fail the lost check" {
   write_state
   # Each auditctl -s call reports one more lost event.
