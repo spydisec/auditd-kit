@@ -36,8 +36,9 @@ defaults to change.
 
 auditd-kit suppresses only noise that it causes itself, e.g. the `auditctl -s` that `verify.sh`
 runs. Noise from a site's own software is the site's to tune, in its SIEM rules or with
-`akit_skip_keys`. An exclusion in the extra rules dir doesn't work for this, because those files
-load after the profile rules and the kernel uses the first rule that matches.
+`akit_skip_keys`. An exclusion in the extra rules dir only reaches the broad rules in the
+`90-*-last` and `91-*-last` files, because the extra files load after the `10`, `20`, and `30`
+profile files and the kernel uses the first rule that matches.
 
 ## Consequences
 
