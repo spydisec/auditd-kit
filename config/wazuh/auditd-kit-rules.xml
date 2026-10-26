@@ -297,4 +297,23 @@
     <field name="audit.key">^sudo_log$</field>
     <description>auditd-kit: sudo log changed (sudo_log).</description>
   </rule>
+  <!-- verify.sh and admins run auditctl -s and -l to read the status and the rules. Those change
+       nothing, so they get a low level instead of the T1562 level. -->
+  <rule id="100838" level="3">
+    <if_sid>100801</if_sid>
+    <field name="audit.exe">^/usr/sbin/auditctl$|^/sbin/auditctl$</field>
+    <field name="audit.execve.a1">^-s$|^-l$</field>
+    <description>auditd-kit: auditctl read the audit status or rules (T1562_Impair_Defenses).</description>
+  </rule>
+
+  <!-- More arguments after -s or -l can change settings, e.g. auditctl -s -e 0, so those keep the
+       T1562 level. -->
+  <rule id="100839" level="10">
+    <if_sid>100838</if_sid>
+    <field name="audit.execve.a2">\.+</field>
+    <description>auditd-kit: audit, firewall, or MAC settings changed (T1562_Impair_Defenses).</description>
+    <mitre>
+      <id>T1562</id>
+    </mitre>
+  </rule>
 </group>

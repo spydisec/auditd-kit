@@ -45,7 +45,7 @@ To test one event on the manager without a host, paste an audit line into
 | 10 | `T1562` impair defenses, `T1556` authentication, `T1574` library hijack, `T1070` indicator removal, `T1505` service started a program, `exec_from_tmp` |
 | 8 | Accounts, scheduled jobs, services, kernel modules, shell startup files, boot scripts, sniffing, `power_abuse` |
 | 5 | `T1548` privilege elevation, time, sysctl, mounts, `fstab`, swap, network settings, containers, bpf |
-| 3 | `T1059` commands by logged-in users, package tools, network connections, and the canary, plus the low-risk `heavy` keys, e.g. permission changes and login records |
+| 3 | `T1059` commands by logged-in users, package tools, network connections, `auditctl -s` and `-l` (which `verify.sh` runs), and the canary, plus the low-risk `heavy` keys, e.g. permission changes and login records |
 
 Change a level in the file to suit your SOC. Keep in mind that the rules don't change how much the
 agent ships. The agent sends every line of `audit.log`, so the profile you install sets the volume.
