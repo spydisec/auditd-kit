@@ -90,6 +90,9 @@ akit_settings_set() {
       esac
       for set_code in $(printf '%s\n' "$set_val" | tr ',' ' '); do
         case "$set_code" in
+          catchall_forward)
+            akit_settings_bad "$set_key" "catchall_forward was removed, because auditd-kit no longer sends audit events. See docs/integrations/send-audit-log.md"
+            ;;
           agent_conflict:*)
             case "${set_code#agent_conflict:}" in
               '' | *[!a-z0-9_-]*) akit_settings_bad "$set_key" "'$set_code' has no valid agent id" ;;

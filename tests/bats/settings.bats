@@ -116,6 +116,12 @@ args="
 EOT
 }
 
+@test "akit_accept=catchall_forward names the forwarding doc" {
+  run load_settings --accept agent_conflict:wazuh,catchall_forward
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"catchall_forward was removed"*"send-audit-log.md"* ]]
+}
+
 @test "old names exit 1 and name the new value" {
   run load_settings --profile standard
   [ "$status" -eq 1 ]

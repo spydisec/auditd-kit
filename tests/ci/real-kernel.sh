@@ -151,8 +151,9 @@ same_sums "$work/old-before" "rollback did not restore the 0.2.0 forwarding file
 rm -f /etc/rsyslog.d/40-auditd-kit.conf
 sed -i '/^forward=/d' /etc/auditd-kit/state
 sed -i 's/^active = yes/active = no/' /etc/audit/plugins.d/syslog.conf
-service rsyslog restart
 systemctl reset-failed auditd || true
+service auditd restart
+service rsyslog restart
 
 step "A full audit disk doesn't halt the host"
 start=$(date +%s)

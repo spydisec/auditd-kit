@@ -35,19 +35,19 @@ akit_load_run() {
 }
 
 # akit_load_apply <rules yes|no> <auditd yes|no> <rsyslog yes|no>: load the rules with augenrules
-# when they changed, then restart rsyslog when our drop-in changed, then restart auditd when
-# auditd.conf or the syslog plugin changed. Loading first means a rule that the kernel rejects
-# fails here, with its error, and not later in auditd's start hook. rsyslog restarts before
-# auditd so that the drop-in is in effect when the plugin starts to write.
+# when they changed, then restart auditd when auditd.conf or the syslog plugin changed, then
+# restart rsyslog when the old drop-in was removed. Loading first means a rule that the kernel
+# rejects fails here, with its error, and not later in auditd's start hook. auditd restarts
+# before rsyslog so that the syslog plugin has stopped before the drop-in's stop rule goes.
 akit_load_apply() {
   if [ "$1" = yes ]; then
     akit_load_run augenrules --load || return 1
   fi
-  if [ "${3:-no}" = yes ]; then
-    akit_load_run service rsyslog restart || return 1
-  fi
   if [ "$2" = yes ]; then
     akit_load_run service auditd restart || return 1
+  fi
+  if [ "${3:-no}" = yes ]; then
+    akit_load_run service rsyslog restart || return 1
   fi
 }
 
@@ -62,9 +62,10 @@ akit_load_sums() {
   return 0
 }
 
-# akit_rollback <backup-id> <skip-load yes|no>: restore the backup, then restart auditd when its
-# config or plugin files changed, load the restored audit.rules, restart rsyslog when our drop-in
-# changed, and run verify.sh. Fails when any step fails, which leaves the host for a person.
+# akit_rollback <backup-id> <skip-load yes|no>: restore the backup, then restart rsyslog when the
+# old drop-in changed, restart auditd when its config or plugin files changed, load the restored
+# audit.rules, and run verify.sh. rsyslog goes first, so that a restored drop-in is in effect
+# before a restored plugin starts to write. Fails when any step fails, which leaves the host for a person.
 akit_rollback() {
   rb_auditd='/etc/audit/auditd.conf /etc/audit/plugins.d /etc/audisp'
   rb_rsyslog=/etc/rsyslog.d/40-auditd-kit.conf
@@ -73,6 +74,9 @@ akit_rollback() {
   akit_log info "restoring backup $1"
   akit_backup_restore "$1" || return 1
   [ "$2" = no ] || return 0
+  if [ "$(akit_load_sums "$rb_rsyslog")" != "$rb_rsyslog_before" ]; then
+    akit_load_run service rsyslog restart || return 1
+  fi
   if [ "$(akit_load_sums "$rb_auditd")" != "$rb_auditd_before" ]; then
     akit_load_run service auditd restart || return 1
     # auditd's start hook runs augenrules, which can rewrite audit.rules and add audit.rules.prev,
@@ -82,8 +86,5 @@ akit_rollback() {
   # The restored audit.rules is loaded as it is. augenrules could rebuild it from rules.d.
   akit_load_run auditctl -D || return 1
   akit_load_run auditctl -R "$(akit_path /etc/audit/audit.rules)" || return 1
-  if [ "$(akit_load_sums "$rb_rsyslog")" != "$rb_rsyslog_before" ]; then
-    akit_load_run service rsyslog restart || return 1
-  fi
   sh "$AKIT_SCRIPTS_DIR/verify.sh" || return 1
 }

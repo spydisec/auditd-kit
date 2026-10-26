@@ -302,6 +302,11 @@ while read -r install_verb install_path install_key; do
     move:"$AKIT_RSYSLOG_DROPIN")
       rm -f "$(akit_path "$install_path")" || install_fail "cannot remove $(akit_path "$install_path")"
       install_rsyslog=yes
+      akit_log warning "auditd-kit no longer sends audit events, so the forwarding that an earlier version turned on is off now. Send audit.log with your own agent, see docs/integrations/send-audit-log.md"
+      ;;
+    set:/etc/audit/plugins.d/syslog.conf | set:/etc/audisp/plugins.d/syslog.conf)
+      akit_auditdconf_set "$(akit_path "$install_path")" active no || install_fail "cannot set $install_path"
+      install_auditd=yes
       ;;
     set:*) install_auditd=yes ;;
   esac
@@ -312,9 +317,6 @@ akit_auditdconf_wanted "$install_root/.." >"$install_work/wanted" || install_fai
 while read -r install_k install_v; do
   akit_auditdconf_set "$install_conf" "$install_k" "$install_v" || install_fail "cannot set $install_k in $install_conf"
 done <"$install_work/wanted"
-if install_plug=$(akit_forward_plugin_file) && grep -qx "set $install_plug active" "$install_work/changes"; then
-  akit_auditdconf_set "$(akit_path "$install_plug")" active no || install_fail "cannot set $install_plug"
-fi
 if ! { mkdir -p "$(akit_path /var/lib/auditd-kit)" \
   && cp "$install_work/render-report.txt" "$(akit_path /var/lib/auditd-kit/render-report.txt)"; }; then
   install_fail "cannot write the render report"

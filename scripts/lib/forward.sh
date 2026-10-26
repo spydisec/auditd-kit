@@ -1,7 +1,6 @@
 # Undo the forwarding that auditd-kit 0.2.0 and earlier could turn on (ADR 0026). Source this
 # file after common.sh and auditdconf.sh, don't run it.
 # shellcheck shell=sh
-# shellcheck disable=SC2034
 #
 # Those versions wrote the drop-in below and set the auditd syslog plugin to active, and recorded
 # forward=local or forward=remote in the state file. plan.sh moves the drop-in and lists the
@@ -21,8 +20,10 @@ akit_forward_plugin_file() {
   return 1
 }
 
-# akit_forward_was_on: succeed when the state file shows that auditd-kit turned forwarding on. A
-# plugin that a person or another agent turned on is left as it is.
+# akit_forward_was_on: succeed when the state file shows that auditd-kit turned forwarding on and
+# the drop-in is still there. A plugin that a person or another agent turned on, or that the
+# operator already cleaned up by hand, is left as it is.
 akit_forward_was_on() {
-  grep -Eq '^forward=(local|remote)$' "$(akit_path /etc/auditd-kit/state)" 2>/dev/null
+  [ -e "$(akit_path "$AKIT_RSYSLOG_DROPIN")" ] \
+    && grep -Eq '^forward=(local|remote)$' "$(akit_path /etc/auditd-kit/state)" 2>/dev/null
 }

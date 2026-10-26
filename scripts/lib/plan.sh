@@ -98,19 +98,18 @@ if grep '^set ' "$tmp/lines" >/dev/null; then
   plan_diff "$AKIT_AUDITD_CONF" "$plan_old" "$tmp/auditd.conf"
 fi
 
-# The forwarding of an earlier version. A host without the plugin file has nothing to set.
-if akit_forward_was_on && plan_plug=$(akit_forward_plugin_file); then
-  plan_cur=$(akit_path "$plan_plug")
-  if [ "$(akit_auditdconf_get "$plan_cur" active)" != no ]; then
-    cp "$plan_cur" "$tmp/plugin"
-    akit_auditdconf_set "$tmp/plugin" active no
-    echo "set $plan_plug active" >>"$tmp/lines"
-    plan_diff "$plan_plug" "$plan_cur" "$tmp/plugin"
+# The forwarding of an earlier version. Without the plugin file, only the drop-in is moved.
+if akit_forward_was_on; then
+  if plan_plug=$(akit_forward_plugin_file); then
+    plan_cur=$(akit_path "$plan_plug")
+    if [ "$(akit_auditdconf_get "$plan_cur" active)" != no ]; then
+      cp "$plan_cur" "$tmp/plugin"
+      akit_auditdconf_set "$tmp/plugin" active no
+      echo "set $plan_plug active" >>"$tmp/lines"
+      plan_diff "$plan_plug" "$plan_cur" "$tmp/plugin"
+    fi
   fi
-fi
-plan_drop=$(akit_path "$AKIT_RSYSLOG_DROPIN")
-if [ -e "$plan_drop" ]; then
-  plan_file move "$AKIT_RSYSLOG_DROPIN" "$plan_drop" /dev/null
+  plan_file move "$AKIT_RSYSLOG_DROPIN" "$(akit_path "$AKIT_RSYSLOG_DROPIN")" /dev/null
 fi
 
 if [ ! -e "$(akit_path /etc/auditd-kit/canary)" ]; then

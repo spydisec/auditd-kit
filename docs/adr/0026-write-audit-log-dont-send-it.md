@@ -30,8 +30,10 @@ auditd-kit still owns what makes `audit.log` easy to ship: the log file size and
 and the agents, so an operator can see what could ship the logs.
 
 A host where an earlier version turned forwarding on gets cleaned up. When the state file shows
-`forward=local` or `forward=remote`, install sets the syslog plugin to inactive and removes
-`/etc/rsyslog.d/40-auditd-kit.conf`, after the backup, and lists both changes in the plan.
+`forward=local` or `forward=remote` and `/etc/rsyslog.d/40-auditd-kit.conf` is still there, install
+sets the syslog plugin to inactive and removes the drop-in, after the backup. The plan lists both
+changes, and install logs a warning that names `docs/integrations/send-audit-log.md`. A plugin
+that the operator set up again by hand is left as it is.
 
 ## Consequences
 

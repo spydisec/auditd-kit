@@ -59,6 +59,24 @@ old_forwarding() {
   [ "${lines[${#lines[@]} - 1]}" = changes=0 ]
 }
 
+@test "a forward= line without the old drop-in leaves the plugin as it is" {
+  old_forwarding
+  rm "$dropin"
+  install
+  [ "$status" -eq 0 ]
+  grep -qx 'active = yes' "$plugin"
+  run ! akit_called "service rsyslog restart"
+}
+
+@test "the cleanup warns that forwarding is off, and restarts auditd before rsyslog" {
+  old_forwarding
+  install
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no longer sends audit events"*"send-audit-log.md"* ]]
+  order=$(grep -E '^service (auditd|rsyslog) restart' "$calls" | tr '\n' ' ')
+  [ "$order" = "service auditd restart service rsyslog restart " ]
+}
+
 @test "rollback after the cleanup brings back the drop-in and the plugin setting" {
   old_forwarding
   before=$(akit_sums etc/rsyslog.d etc/audit)
