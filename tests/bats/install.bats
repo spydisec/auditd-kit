@@ -171,7 +171,7 @@ refuse=not_root||echo 1000 >"$stub_state/uid"
 refuse=unsupported_os||cp "$fx/hosts/debian12/etc/os-release" "$AKIT_ROOT/etc/os-release"
 refuse=immutable||echo 2 >"$stub_state/enabled"
 refuse=low_disk||echo 1000 >"$stub_state/free"
-refuse=agent_conflict:mde||mkdir -p "$AKIT_ROOT/opt/microsoft/mdatp"
+refuse=agent_conflict:wazuh||mkdir -p "$AKIT_ROOT/var/ossec/etc" && echo '<directories whodata="yes">/etc</directories>' >"$AKIT_ROOT/var/ossec/etc/ossec.conf"
 refuse=existing_rules||echo '-w /etc/hosts -p wa -k hosts' >"$rules_d/50-site.rules"
 refuse=existing_rules_control|--existing-rules keep|echo '-e 2' >"$rules_d/50-site.rules"
 invalid setting akit_size|--size huge|:

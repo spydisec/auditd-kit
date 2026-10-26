@@ -86,7 +86,7 @@ survey_check interactive_users interactive_users
 survey_check container_runtime container_runtime
 survey_check akit_state_version akit_state_version
 survey_check akit_state_profile akit_state_profile
-survey_check agents agents
+survey_check agents agents agents_audit
 survey_check hardening hardening_loginuid_immutable hardening_rule_files
 survey_check rules_d rules_d_files rules_d_control_lines
 survey_check syslog_daemon syslog_daemon syslog_version

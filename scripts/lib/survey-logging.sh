@@ -12,8 +12,68 @@ survey_join() {
   awk -v sep="${1:-,}" 'NF {printf "%s%s", (n++ ? sep : ""), $0} END {if (!n) printf "none"; print ""}'
 }
 
+# survey_file_has <regex> <path>...: succeed when a readable file matches the extended regex, or
+# when a file exists and can't be read. Missing files are skipped.
+survey_file_has() {
+  survey_fh_re=$1
+  shift
+  for survey_fh in "$@"; do
+    survey_fh=$(akit_path "$survey_fh")
+    [ -e "$survey_fh" ] || continue
+    [ -r "$survey_fh" ] || return 0
+    grep -E -q -e "$survey_fh_re" "$survey_fh" 2>/dev/null && return 0
+  done
+  return 1
+}
+
+# survey_agent_audit <agent>: succeed when the agent uses the audit system in a way that conflicts
+# with auditd-kit (ADR 0023). Splunk UF and CrowdStrike don't.
+survey_agent_audit() {
+  case "$1" in
+    wazuh)
+      survey_file_has 'whodata=.yes' /var/ossec/etc/ossec.conf
+      ;;
+    mde)
+      [ -e "$(akit_path /etc/audit/rules.d/mdatp.rules)" ] && return 0
+      command -v mdatp >/dev/null 2>&1 || return 1
+      if command -v timeout >/dev/null 2>&1; then
+        survey_mde=$(timeout 10 mdatp health --field supplementary_events_subsystem 2>/dev/null) || return 1
+      else
+        survey_mde=$(mdatp health --field supplementary_events_subsystem 2>/dev/null) || return 1
+      fi
+      case "$survey_mde" in *auditd*) return 0 ;; esac
+      return 1
+      ;;
+    auditbeat)
+      # Rules in the config or in audit.rules.d, or unicast, make Auditbeat own the audit socket.
+      # shellcheck disable=SC2046
+      survey_file_has '^[[:space:]]*socket_type:[[:space:]]*unicast|^[[:space:]]*-[aw][[:space:]]' \
+        /etc/auditbeat/auditbeat.yml $(survey_glob /etc/auditbeat/modules.d '*.yml') \
+        $(survey_glob /etc/auditbeat/audit.rules.d '*.conf')
+      ;;
+    osquery)
+      survey_file_has 'disable_audit[^a-z_]*[=:][[:space:]"]*false' \
+        /etc/osquery/osquery.flags /etc/osquery/osquery.conf && return 0
+      printf '%s\n' "$survey_args" | grep -E -q 'osqueryd.*disable_audit[= ]+false'
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# survey_glob <dir> <pattern>: print the files in dir that match the pattern, without AKIT_ROOT.
+survey_glob() {
+  survey_gd=$(akit_path "$1")
+  [ -d "$survey_gd" ] || return 0
+  for survey_gf in "$survey_gd"/$2; do
+    [ -e "$survey_gf" ] && printf '%s\n' "$1/${survey_gf##*/}"
+  done
+  return 0
+}
+
 survey_check_agents() {
   survey_ag=
+  survey_aa=
+  survey_args=$(ps -e -o args= 2>/dev/null) || survey_args=
   survey_procs=
   if survey_psout=$(ps -e -o comm= 2>/dev/null) && [ -n "$survey_psout" ]; then
     survey_procs=$survey_psout
@@ -36,6 +96,9 @@ survey_check_agents() {
     done
     if [ "$survey_hit" = yes ]; then
       survey_ag="${survey_ag:+$survey_ag,}$survey_name"
+      if survey_agent_audit "$survey_name"; then
+        survey_aa="${survey_aa:+$survey_aa,}$survey_name"
+      fi
     fi
   done <<EOF
 mde wdavdaemon /opt/microsoft/mdatp
@@ -46,6 +109,7 @@ splunkuf splunkd /opt/splunkforwarder
 osquery osqueryd /opt/osquery /etc/osquery
 EOF
   akit_kv agents "${survey_ag:-none}"
+  akit_kv agents_audit "${survey_aa:-none}"
 }
 
 survey_check_hardening() {
