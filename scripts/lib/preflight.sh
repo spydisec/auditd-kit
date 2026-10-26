@@ -48,14 +48,22 @@ pf_check_disk() {
   esac
 }
 
+# The override names every agent that isn't accepted yet, as a setting and as a flag, so one run
+# with that value passes.
 pf_check_agents() {
   pf_agents=$(pf_get agents)
   case "$pf_agents" in none | unknown) return 0 ;; esac
+  pf_new=
   for pf_a in $(printf '%s\n' "$pf_agents" | tr ',' ' '); do
     case ",$akit_accept_agents," in
       *",$pf_a,"*) ;;
-      *) pf_refuse "agent_conflict:$pf_a" akit_accept_agents ;;
+      *) pf_new="${pf_new:+$pf_new }$pf_a" ;;
     esac
+  done
+  [ -n "$pf_new" ] || return 0
+  pf_list=$(printf '%s\n' "${akit_accept_agents:+$akit_accept_agents }$pf_new" | tr ' ' ',')
+  for pf_a in $pf_new; do
+    pf_refuse "agent_conflict:$pf_a" "akit_accept_agents=$pf_list (flag --accept-agents $pf_list)"
   done
 }
 

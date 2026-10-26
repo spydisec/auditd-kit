@@ -105,7 +105,15 @@ akit_log info "install $AKIT_VERSION started: $*"
 
 install_work=$(mktemp -d) || akit_die "$AKIT_EXIT_REFUSED" "cannot create a temp dir"
 
-# preflight.sh and plan.sh get the same settings through a config file.
+# install_write_settings: write the current settings to the config file that preflight.sh and
+# plan.sh read, so that they get the same settings.
+install_write_settings() {
+  for install_k in $AKIT_SETTING_KEYS; do
+    eval "install_v=\$$install_k"
+    [ -z "$install_v" ] || printf '%s=%s\n' "$install_k" "$install_v"
+  done >"$install_work/settings.conf"
+}
+
 # install_ask <question> <default>: ask on the terminal, and set install_ans to the answer or
 # to the default when the answer is empty.
 install_ask() {
@@ -127,6 +135,29 @@ if [ "$install_guided" = yes ]; then
     echo "auditd-kit $AKIT_VERSION on $(install_survey_get os_id) $(install_survey_get os_version): $(install_survey_get support_tier)"
     echo "  auditd $(install_survey_get auditd_version), $(install_survey_get audit_log_free_mb) MB free for logs, other agents: $(install_survey_get agents)"
   } >/dev/tty
+  # Stop on a refusal that no question can fix before asking anything. Other agents get a
+  # question instead of a refusal, and the rules.d question below fixes existing_rules.
+  install_write_settings
+  install_out=$(sh "$install_lib/preflight.sh" --config "$install_work/settings.conf" \
+    <"$install_work/survey" 2>&1) || true
+  install_hard=$(printf '%s\n' "$install_out" \
+    | { grep -v -e '^$' -e '^refuse=agent_conflict:' -e '^refuse=existing_rules ' || true; })
+  if [ -n "$install_hard" ]; then
+    printf '%s\n' "$install_hard"
+    akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
+  fi
+  install_agents=$(printf '%s\n' "$install_out" | sed -n 's/^refuse=agent_conflict:\([^ ]*\) .*/\1/p' \
+    | tr '\n' ' ' | sed 's/ $//; s/ /, /g')
+  if [ -n "$install_agents" ]; then
+    install_ask "Other agents that may manage audit rules are installed: $install_agents. auditd-kit replaces every loaded audit rule, including rules these agents add. Install anyway? [y/N]:" n
+    case "$install_ans" in
+      [yY]*)
+        akit_settings_set akit_accept_agents \
+          "$(printf '%s\n' "$install_out" | sed -n 's/^refuse=agent_conflict:[^ ]* override=akit_accept_agents=\([^ ]*\) .*/\1/p' | head -n 1)"
+        ;;
+      *) akit_die "$AKIT_EXIT_REFUSED" "other agents are installed, and nothing changed" ;;
+    esac
+  fi
   case "$akit_profile" in minimal) install_d=1 ;; medium) install_d=2 ;; *) install_d=3 ;; esac
   install_ask "Profile? 1) minimal, for every server  2) medium, for critical servers  3) heavy, for CIS or STIG [$install_d]:" "$install_d"
   case "$install_ans" in
@@ -169,10 +200,7 @@ if [ "$install_guided" = yes ]; then
   fi
 fi
 
-for install_k in $AKIT_SETTING_KEYS; do
-  eval "install_v=\$$install_k"
-  [ -z "$install_v" ] || printf '%s=%s\n' "$install_k" "$install_v"
-done >"$install_work/settings.conf"
+install_write_settings
 
 # 1. Preflight
 sh "$install_root/survey.sh" >"$install_work/survey"

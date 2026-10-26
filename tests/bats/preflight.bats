@@ -51,12 +51,17 @@ passes() {
   refuses "refuse=existing_rules override=akit_existing_rules=keep or replace" "" rules_d_files=50-cis.rules
   refuses "refuse=existing_rules_control override=akit_existing_rules=replace" "--existing-rules keep" \
     rules_d_files=50-cis.rules "rules_d_control_lines=50-cis.rules:-e 2"
-  refuses "refuse=agent_conflict:mde override=akit_accept_agents
-refuse=agent_conflict:wazuh override=akit_accept_agents" "" agents=mde,wazuh
+  refuses "refuse=agent_conflict:mde override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)
+refuse=agent_conflict:wazuh override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)" "" agents=mde,wazuh
 }
 
 @test "accepted agent does not refuse" {
   passes "--accept-agents mde" agents=mde
+}
+
+@test "the agent override keeps the agents already accepted" {
+  refuses "refuse=agent_conflict:wazuh override=akit_accept_agents=mde,wazuh (flag --accept-agents mde,wazuh)" \
+    "--accept-agents mde" agents=mde,wazuh
 }
 
 @test "control-only distro file does not count as existing rules" {
