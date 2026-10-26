@@ -1,10 +1,13 @@
-# Raise Wazuh alerts for auditd-kit events
+# Make auditd-kit events visible in Wazuh
 
 A Wazuh agent that reads `audit.log` sends every audit event to the manager, and the manager
 decodes it. But Wazuh's own rules only raise alerts for its `audit-wazuh-*` keys. Every other audit
 event matches rule 80700 at level 0, so it raises no alert and doesn't show in the dashboard unless
 the archives are on. `config/wazuh/auditd-kit-rules.xml` adds one rule for each auditd-kit key, with
-an alert level and, where one applies, a MITRE ATT&CK ID. Tested with Wazuh 4.12.
+a default alert level and, where one applies, a MITRE ATT&CK ID. Tested with Wazuh 4.12.
+
+The file only labels auditd-kit events. Deciding what is malicious, and tuning alerts for your
+environment, stay with your SOC (ADR 0025).
 
 ## Steps
 
@@ -47,8 +50,25 @@ To test one event on the manager without a host, paste an audit line into
 | 5 | `T1548` privilege elevation, time, sysctl, mounts, `fstab`, swap, network settings, containers, bpf |
 | 3 | `T1059` commands by logged-in users, package tools, network connections, `auditctl -s` and `-l` (which `verify.sh` runs), and the canary, plus the low-risk `heavy` keys, e.g. permission changes and login records |
 
-Change a level in the file to suit your SOC. Keep in mind that the rules don't change how much the
-agent ships. The agent sends every line of `audit.log`, so the profile you install sets the volume.
+The levels are defaults based on each key's risk. Change them to suit your SOC. The rules don't
+change how much the agent ships, because the agent sends every line of `audit.log`, so the profile
+you install sets the volume.
+
+## Quiet your own software
+
+The file lowers only the noise that auditd-kit causes itself, e.g. the `auditctl -s` that
+`verify.sh` runs. To quiet a program of your own, add a child rule at level 0 in
+`/var/ossec/etc/rules/local_rules.xml` on the manager, with an ID outside 100800 to 100899:
+
+```xml
+<rule id="100900" level="0">
+  <if_sid>100817</if_sid>
+  <field name="audit.exe">^/usr/local/bin/backup-job$</field>
+  <description>Site: commands from the backup job.</description>
+</rule>
+```
+
+To stop recording a key on a host at all, set `akit_skip_keys` and run install again.
 
 ## Notes
 
