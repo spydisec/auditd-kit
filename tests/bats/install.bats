@@ -217,7 +217,17 @@ EOF
   install
   [ "$status" -eq 0 ]
   akit_called "service auditd restart"
-  run ! grep -E '^systemctl (restart|stop|start|reload)' "$calls"
+  run ! grep -E '^systemctl (restart|stop|start|reload) auditd' "$calls"
+}
+
+@test "each auditd restart waits for audit-rules.service" {
+  install
+  [ "$status" -eq 0 ]
+  run sh "$repo/scripts/rollback.sh"
+  [ "$status" -eq 0 ]
+  restarts=$(grep -c '^service auditd restart' "$calls")
+  run grep -A2 '^service auditd restart' "$calls"
+  [ "$(printf '%s\n' "$output" | grep -c '^systemctl start audit-rules.service')" -eq "$restarts" ]
 }
 
 @test "the auditd start limit is cleared before each restart" {
