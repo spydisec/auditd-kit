@@ -50,5 +50,4 @@ fi
 
 run yamllint -s .
 
-
 exit "$status"
