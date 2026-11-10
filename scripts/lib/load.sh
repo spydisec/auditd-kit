@@ -7,11 +7,21 @@
 
 # akit_load_restart_auditd: restart auditd. An install and a rollback a few seconds apart can hit
 # systemd's start limit, which refuses the start, so the failed state is cleared first (#58).
+#
+# With audit 4, auditd.service pulls in audit-rules.service, which runs augenrules --load after
+# auditd starts. The restart doesn't wait for it, so the next auditctl call would race it. Starting
+# audit-rules.service joins the queued start and waits until it ends. Its result isn't checked here,
+# because verify.sh checks the loaded rules.
 akit_load_restart_auditd() {
   if command -v systemctl >/dev/null 2>&1; then
     systemctl reset-failed auditd >/dev/null 2>&1 || true
   fi
-  akit_load_run service auditd restart
+  akit_load_run service auditd restart || return 1
+  if command -v systemctl >/dev/null 2>&1 \
+    && systemctl cat audit-rules.service >/dev/null 2>&1; then
+    akit_load_run systemctl start audit-rules.service || true
+  fi
+  return 0
 }
 
 # akit_load_run <command>...: run a command and keep its exit code. When it succeeds and there is

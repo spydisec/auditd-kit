@@ -150,6 +150,8 @@ sed -i '/^forward=/d' /etc/auditd-kit/state
 sed -i 's/^active = yes/active = no/' /etc/audit/plugins.d/syslog.conf
 systemctl reset-failed auditd || true
 service auditd restart
+# With audit 4 the rules load in audit-rules.service after the restart. Wait for it.
+! systemctl cat audit-rules.service >/dev/null 2>&1 || systemctl start audit-rules.service || true
 service rsyslog restart
 
 step "A full audit disk doesn't halt the host"
