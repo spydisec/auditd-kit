@@ -4,7 +4,6 @@ set -euo pipefail
 lint=false
 bats=false
 runtime=false
-molecule=false
 packaging=false
 rules=false
 full=false
@@ -20,27 +19,21 @@ else
         full=true ;;
       tests/ci/real-kernel.sh | tests/ci/container-install.sh)
         lint=true; runtime=true ;;
-      tests/molecule/*)
-        lint=true; molecule=true ;;
       tests/bats/* | tests/fixtures/*)
         lint=true; bats=true ;;
       scripts/dev/*)
-        lint=true; bats=true; packaging=true; molecule=true ;;
+        lint=true; bats=true; packaging=true ;;
       scripts/* | config/*)
         full=true ;;
       rules/README.md)
         rules=true; packaging=true ;;
       rules/*)
         full=true ;;
-      ansible/*.md)
-        packaging=true ;;
-      ansible/*)
-        lint=true; molecule=true; packaging=true ;;
       README.md | LICENSE)
         packaging=true ;;
-      tests/requirements.txt | .ansible-lint | .yamllint.yml | .editorconfig)
+      tests/requirements.txt | .yamllint.yml | .editorconfig)
         lint=true ;;
-      *.sh | *.bash | *.awk | *.rules | *.conf | *.j2)
+      *.sh | *.bash | *.awk | *.rules | *.conf)
         full=true ;;
       *.yml | *.yaml)
         lint=true ;;
@@ -56,10 +49,9 @@ if [[ $full == true ]]; then
   lint=true
   bats=true
   runtime=true
-  molecule=true
   packaging=true
   rules=true
 fi
 
-printf 'lint=%s\nbats=%s\nruntime=%s\nmolecule=%s\npackaging=%s\nrules=%s\n' \
-  "$lint" "$bats" "$runtime" "$molecule" "$packaging" "$rules"
+printf 'lint=%s\nbats=%s\nruntime=%s\npackaging=%s\nrules=%s\n' \
+  "$lint" "$bats" "$runtime" "$packaging" "$rules"

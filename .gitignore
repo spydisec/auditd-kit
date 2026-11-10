@@ -4,12 +4,8 @@ docs/design/
 # Claude Code files. The plain-writing skill under .claude/skills/ is already tracked, so it stays.
 .claude/
 
-# Ansible
-*.retry
-
 # Python virtualenv for lint tools
 .venv/
 
-# Collection build: the role gets a copy of rules/, config/, and scripts/.
-ansible/roles/auditd/files/
+# Release build output.
 dist/

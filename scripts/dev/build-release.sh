@@ -1,10 +1,9 @@
 #!/bin/sh
-# Build the files of one release: the offline bundle, the collection tarball, get.sh, and
-# SHA256SUMS.
+# Build the files of one release: the offline bundle, get.sh, and SHA256SUMS.
 #
 # Usage: build-release.sh <version> <out-dir>
 #
-# The version is X.Y.Z. It is written into both tarballs, so the repo itself stays at 0.0.0. The
+# The version is X.Y.Z. It is written into the bundle, so the repo itself stays at 0.0.0. The
 # out dir must be missing or empty.
 set -eu
 
@@ -43,13 +42,6 @@ cp -R "$repo/rules" "$repo/config" "$repo/scripts" "$repo/README.md" "$repo/LICE
 rm -rf "$tmp/$name/scripts/dev"
 stamp "$tmp/$name/scripts/lib/common.sh" "s/^AKIT_VERSION=.*/AKIT_VERSION=$version/"
 tar -C "$tmp" -czf "$out/$name.tar.gz" "$name"
-
-# The collection, with the same stamped scripts in its role.
-sh "$repo/scripts/dev/sync-collection.sh"
-cp -R "$repo/ansible" "$tmp/ansible"
-stamp "$tmp/ansible/galaxy.yml" "s/^version: .*/version: $version/"
-stamp "$tmp/ansible/roles/auditd/files/scripts/lib/common.sh" "s/^AKIT_VERSION=.*/AKIT_VERSION=$version/"
-ansible-galaxy collection build "$tmp/ansible" --output-path "$out" >/dev/null
 
 cp "$repo/scripts/get.sh" "$out/get.sh"
 (cd "$out" && sha256sum ./*.tar.gz ./get.sh | sed 's| \./| |' >SHA256SUMS)

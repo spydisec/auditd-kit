@@ -24,8 +24,7 @@ survey ──> preflight ──> render ──> plan ──> backup ──> inst
   the backup if a check fails
 - 🐚 Runs as plain POSIX shell scripts, with nothing left running in the background
 
-auditd-kit is at `0.x`, so settings can still change between releases. The Ansible collection can
-survey hosts and collect stats, but it can't install yet.
+auditd-kit is at `0.x`, so settings can still change between releases.
 
 ## 🚀 Quick start
 

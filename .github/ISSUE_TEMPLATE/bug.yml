@@ -35,7 +35,7 @@ body:
       label: How you ran auditd-kit
       options:
         - Shell scripts
-        - Ansible
+        - get.sh
         - Other
     validations:
       required: true

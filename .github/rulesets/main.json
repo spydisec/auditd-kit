@@ -104,12 +104,6 @@
           },
           {
             "context": "container-install (ubuntu:26.04)"
-          },
-          {
-            "context": "molecule-survey (survey, ansible-core==2.16.*)"
-          },
-          {
-            "context": "molecule-survey (survey-latest, ansible-core)"
           }
         ]
       }

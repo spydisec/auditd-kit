@@ -1,6 +1,6 @@
 # 0002. Plain files with a script path and an Ansible path
 
-Status: Accepted
+Status: Superseded by 0027
 Date: 2026-10-19
 
 ## Context
