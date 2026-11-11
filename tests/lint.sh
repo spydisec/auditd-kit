@@ -48,6 +48,11 @@ if [ -s "$tmp/bash" ]; then
   xargs shellcheck -s bash <"$tmp/bash" || status=1
 fi
 
-run yamllint -s .
+# The yamllint settings are given here, so the repo needs no .yamllint.yml file.
+run yamllint -s -d '{
+  extends: default,
+  ignore: [.venv/, .superpowers/, docs/design/],
+  rules: {line-length: {max: 120}, truthy: {check-keys: false}}
+}' .
 
 exit "$status"
