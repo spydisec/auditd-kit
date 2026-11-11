@@ -1,6 +1,6 @@
 # 0021. Select tests from changed files
 
-Status: Accepted
+Status: Superseded by 0027
 Date: 2026-10-21
 
 ## Context
@@ -20,19 +20,17 @@ directories select the full suite. Other YAML files select lint. Unknown files s
 | Changes | Tests |
 |---|---|
 | Ordinary Markdown | No runtime tests |
-| Root README, licence, Ansible Markdown | Collection and release packaging |
+| Root README, licence | Release packaging |
 | Rules README | Rules content tests and packaging |
 | Runtime scripts, rules, configuration | Full suite |
-| Ansible files | Lint, Molecule, packaging |
 | Bats tests and fixtures | Lint, Bats, portability |
 | Kernel or container test scripts | Lint, kernel and container matrices |
-| Molecule files | Lint and Molecule |
-| Development scripts | Lint, Bats, portability, packaging, Molecule |
+| Development scripts | Lint, Bats, portability, packaging |
 | Workflow or routing changes | Full suite |
 | Linter settings and tool requirements | Lint |
 
 Semgrep, Gitleaks, and Zizmor still run on every PR and weekly. PR-title validation is unchanged.
-Pushes to `main` run the full suite. Packaging tests install Ansible rather than silently skipping.
+Pushes to `main` run the full suite.
 
 Workflows always start, and jobs select their work only after change detection succeeds. The
 required `lint` check fails if detection fails. Integration jobs also fail on detection errors.

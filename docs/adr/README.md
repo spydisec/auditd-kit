@@ -38,7 +38,7 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0009](0009-verify-with-a-canary-watch-rule.md) | Verify with a canary watch rule | Accepted |
 | [0010](0010-render-trims-unknown-syscalls.md) | Render trims unknown syscalls and strips control lines | Accepted |
 | [0011](0011-our-own-layered-rule-profiles.md) | Our own layered rule profiles | Accepted |
-| [0012](0012-settings-flags-and-exit-codes.md) | Settings, flags, and exit codes | Accepted |
+| [0012](0012-settings-flags-and-exit-codes.md) | Settings, flags, and exit codes | Superseded by 0027 |
 | [0013](0013-no-package-installs.md) | auditd-kit doesn't install packages | Accepted |
 | [0014](0014-files-auditd-kit-writes.md) | Files auditd-kit writes | Accepted |
 | [0015](0015-role-runs-shared-scripts.md) | The role runs the shared scripts on targets | Superseded by 0027 |
@@ -46,9 +46,9 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0017](0017-broad-rules-load-last.md) | Broad rules load last | Accepted |
 | [0018](0018-render-drops-exec-rules-on-symlinks.md) | Render drops exec rules on symlinks | Accepted |
 | [0019](0019-add-rhel-10.md) | Add RHEL 10 | Superseded by 0022 |
-| [0020](0020-releases-from-a-manual-workflow.md) | Releases from a manual workflow | Accepted |
-| [0021](0021-select-tests-from-changed-files.md) | Select tests from changed files | Accepted |
-| [0022](0022-add-ubuntu-18-04-20-04-and-26-04.md) | Add Ubuntu 18.04, 20.04, and 26.04 | Accepted |
+| [0020](0020-releases-from-a-manual-workflow.md) | Releases from a manual workflow | Superseded by 0027 |
+| [0021](0021-select-tests-from-changed-files.md) | Select tests from changed files | Superseded by 0027 |
+| [0022](0022-add-ubuntu-18-04-20-04-and-26-04.md) | Add Ubuntu 18.04, 20.04, and 26.04 | Superseded by 0027 |
 | [0023](0023-refuse-only-agents-that-use-audit.md) | Refuse only agents that use the audit system | Accepted |
 | [0024](0024-fewer-settings.md) | Fewer settings | Accepted |
 | [0025](0025-telemetry-not-detection.md) | Telemetry, not detection | Accepted |
