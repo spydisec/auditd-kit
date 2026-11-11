@@ -14,6 +14,12 @@ This replaces the every-PR test selection in ADR 0007. Its static, Bats, real ke
 layers still apply. ADR 0027 removed the Molecule layer, and the VM layer (`tests/vm`) was never
 built, so no RHEL host loads the rules on a real kernel in CI.
 
+Note, 2026-11-11: the test layers are lint, Bats with stubbed host tools, a real kernel job on
+Ubuntu 22.04, 24.04, and 26.04, and a container job for each image in the README's tested list
+plus Debian 12, which checks that an untested system installs with a warning (ADR 0029). The
+RHEL family is tested in containers only. Before a release that changes how rules load, run the
+install, verify, and rollback by hand on a RHEL-family VM.
+
 PRs select test groups through `scripts/dev/ci-changes.bash`. It reads the complete Git diff
 as NUL-delimited paths, including deleted paths and both sides of renames. Directory rules
 select the owning tests. Shell, AWK, rule, configuration, and template extensions outside known

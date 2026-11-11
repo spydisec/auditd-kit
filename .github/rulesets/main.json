@@ -104,6 +104,9 @@
           },
           {
             "context": "container-install (ubuntu:26.04)"
+          },
+          {
+            "context": "container-install (debian:12)"
           }
         ]
       }

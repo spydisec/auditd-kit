@@ -77,6 +77,13 @@ inside() {
   grep -q 'disk_full_action = SUSPEND' /etc/audit/auditd.conf || fail "auditd.conf was not set"
   grep -q '^profile=minimal$' /etc/auditd-kit/state || fail "no state file"
   [ -f /etc/audit/rules.d/10-auditd-kit-minimal.rules ] || fail "no rules file"
+  # Debian is the one image that isn't in the tested list of hostcheck.sh. It gets the warning,
+  # and no other image does, which keeps that list in step with the CI images.
+  if grep -q '^ID=debian' /etc/os-release; then
+    grep -q "isn't tested on debian" "$work/install1" || fail "no warning on an untested system"
+  elif grep -q "isn't tested on" "$work/install1"; then
+    fail "a tested system got the untested warning"
+  fi
 
   step "A second install has nothing to change"
   run_kit "$work/install2" install.sh --skip-load --existing-rules replace
