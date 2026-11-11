@@ -3,13 +3,10 @@
 [![Release](https://img.shields.io/github/v/release/spydisec/auditd-kit?sort=semver)](https://github.com/spydisec/auditd-kit/releases/latest)
 [![Integration tests](https://github.com/spydisec/auditd-kit/actions/workflows/integration.yml/badge.svg?branch=main)](https://github.com/spydisec/auditd-kit/actions/workflows/integration.yml)
 [![Security scans](https://github.com/spydisec/auditd-kit/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/spydisec/auditd-kit/actions/workflows/security.yml)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/spydisec/auditd-kit)
 
 auditd-kit installs a tested set of Linux audit rules (auditd) with one command. It keeps the
 rules and agents that are already on the host, checks that events are recorded, and can undo the
 change. It is plain POSIX shell, and it adds no packages and leaves nothing running.
-
-auditd-kit is at `0.x`, so settings can still change between releases.
 
 ## Install
 
