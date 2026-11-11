@@ -38,8 +38,7 @@ To change an earlier decision, write a new record and mark the old one as supers
 ## Writing style
 
 Write prose in plain words and complete sentences. Don't use em dashes, en dashes, or curly quotes, write
-headings in sentence case, and keep code comments sparse. The rules are in
-`.claude/skills/plain-writing/SKILL.md`.
+headings in sentence case, and keep code comments sparse.
 
 ## Licence
 

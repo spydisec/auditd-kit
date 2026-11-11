@@ -1,16 +1,17 @@
 # Local design notes and specs. Decisions that should be public go in docs/adr/.
 docs/design/
 
-# Claude Code files. The plain-writing skill under .claude/skills/ is already tracked, so it stays.
+# Files for AI coding tools. They are local settings, not part of auditd-kit.
 .claude/
+CLAUDE.md
+AGENTS.md
+docs/agents/
 
 # Python virtualenv for lint tools
 .venv/
 
 # Release build output.
 dist/
-
-.claude/skills/plain-writing
 
 # yamllint settings are in tests/lint.sh.
 .yamllint.yml
