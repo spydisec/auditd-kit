@@ -28,3 +28,7 @@ A test checks that no other rule file holds an execve rule without a path.
 
 A profile now writes up to two more files to `/etc/audit/rules.d/`. A new specific rule can go in
 any profile file or overlay file and keeps its own key. A new broad rule goes in a last file.
+
+Note, 2026-11-11: since ADR 0029, files that auditd-kit didn't write stay in `rules.d` and load in
+name order with ours. A rule in such a file takes the key for the events it matches when its file
+sorts before the kit file that holds our rule.

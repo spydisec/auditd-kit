@@ -75,17 +75,13 @@ write_state() {
   [[ "$output" == *"check=files result=fail detail=cannot read"* ]]
 }
 
-@test "rule count compares against auditctl output" {
-  for n in 1 3; do
+@test "rule count fails when fewer rules are loaded than audit.rules holds" {
+  for n in 1 0; do
     stub_auditctl "$n"
     run sh "$verify"
     [ "$status" -eq 2 ]
-    [[ "$output" == *"check=rule_count result=fail"* ]]
+    [[ "$output" == *"check=rule_count result=fail detail=loaded $n, expected at least 2"* ]]
   done
-  stub_auditctl 0
-  run sh "$verify"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"check=rule_count result=fail detail=loaded 0, expected 2"* ]]
 }
 
 @test "canary not found in 10 s fails" {
@@ -137,4 +133,38 @@ write_state() {
   run sh "$verify"
   [ "$status" -eq 0 ]
   [[ "$output" == *"check=lost result=pass"* ]]
+}
+
+# state_count <n>: a state file that says install saw n rules loaded.
+state_count() {
+  write_state
+  echo "loaded_count=$1" >>"$AKIT_ROOT/etc/auditd-kit/state"
+}
+
+@test "rule_count passes when more rules are loaded than install saw" {
+  state_count 3
+  stub_auditctl 5
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"check=rule_count result=pass detail=5 rules loaded"* ]]
+}
+
+@test "rule_count fails when fewer rules are loaded than install saw" {
+  state_count 5
+  stub_auditctl 3
+  run sh "$verify"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"check=rule_count result=fail detail=loaded 3, expected at least 5"* ]]
+}
+
+@test "with no loaded_count, rule_count compares with audit.rules" {
+  write_state
+  stub_auditctl 3
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"check=rule_count result=pass detail=3 rules loaded"* ]]
+  stub_auditctl 1
+  run sh "$verify"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"check=rule_count result=fail detail=loaded 1, expected at least 2"* ]]
 }

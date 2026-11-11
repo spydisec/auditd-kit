@@ -28,21 +28,29 @@ verify_report() {
   [ "$2" = pass ] || verify_failed=1
 }
 
+# The loaded rules can be more than install loaded, because agents add rules at run time. So the
+# check passes on at least the count that install saved in the state file. A state file from
+# before 0.4.0 has no count, and then the rules in audit.rules are counted.
 verify_rule_count() {
-  verify_expected=$(awk '/^-[aw][ \t]/ { n++ } END { print n + 0 }' "$verify_rules" 2>/dev/null) || verify_expected=
-  if [ -z "$verify_expected" ] || [ ! -r "$verify_rules" ]; then
-    verify_report rule_count fail "cannot read $verify_rules"
-    return
-  fi
+  verify_expected=$(sed -n 's/^loaded_count=//p' "$verify_state" 2>/dev/null | head -n 1)
+  case "$verify_expected" in
+    '' | *[!0-9]*)
+      verify_expected=$(awk '/^-[aw][ \t]/ { n++ } END { print n + 0 }' "$verify_rules" 2>/dev/null) || verify_expected=
+      if [ -z "$verify_expected" ] || [ ! -r "$verify_rules" ]; then
+        verify_report rule_count fail "cannot read $verify_rules"
+        return
+      fi
+      ;;
+  esac
   if ! verify_listed=$(auditctl -l 2>/dev/null); then
     verify_report rule_count fail "auditctl -l failed"
     return
   fi
   verify_loaded=$(printf '%s\n' "$verify_listed" | awk '/^-[aw][ \t]/ { n++ } END { print n + 0 }')
-  if [ "$verify_loaded" -eq "$verify_expected" ]; then
+  if [ "$verify_loaded" -ge "$verify_expected" ]; then
     verify_report rule_count pass "$verify_loaded rules loaded"
   else
-    verify_report rule_count fail "loaded $verify_loaded, expected $verify_expected"
+    verify_report rule_count fail "loaded $verify_loaded, expected at least $verify_expected"
   fi
 }
 

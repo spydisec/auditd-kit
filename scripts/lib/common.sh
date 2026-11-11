@@ -183,3 +183,13 @@ akit_state_write() {
   rm -f "$state_tmp"
   return 1
 }
+
+# akit_state_set_loaded <count>: record how many rules were loaded after the install, which is
+# what verify.sh compares with later.
+akit_state_set_loaded() {
+  state_tmp="$AKIT_STATE_FILE.tmp"
+  { grep -v '^loaded_count=' "$AKIT_STATE_FILE" && echo "loaded_count=$1"; } >"$state_tmp" \
+    && chmod 0644 "$state_tmp" && mv -f "$state_tmp" "$AKIT_STATE_FILE" && return 0
+  rm -f "$state_tmp"
+  return 1
+}

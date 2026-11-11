@@ -32,7 +32,7 @@ akit_size=standard
 akit_max_log_file=100
 akit_num_logs=8
 akit_immutable=false
-akit_existing_rules=unset
+akit_existing_rules=keep
 akit_extra_rules_dir=
 akit_skip_keys=
 akit_backlog=16384
@@ -126,4 +126,10 @@ EOT
   echo "$output" | grep -qx 'args=--dry-run --skip-load file'
   AKIT_EXTRA_FLAGS="--dry-run" run load_settings --skip-load
   [ "$status" -eq 1 ]
+}
+
+@test "unset is no longer a value of akit_existing_rules" {
+  run load_settings --existing-rules unset
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"'unset' is not keep or replace"* ]]
 }

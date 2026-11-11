@@ -59,7 +59,7 @@ with `--config FILE`.
 | `akit_max_log_file`, `akit_num_logs` | from `akit_size` | Your own log file size in MB and number of log files. |
 | `akit_skip_keys` | none | Rule keys to leave out on this host. |
 | `akit_extra_rules_dir` | none | A dir of your own `50-*.rules` files to load with the profile. |
-| `akit_existing_rules` | unset | `keep` or `replace` other files in `/etc/audit/rules.d/`. Install refuses while it's unset and other rule files exist, and `keep` still refuses when one of them has a control line such as `-D` or `-e`. |
+| `akit_existing_rules` | `keep` | `keep` leaves other files in `/etc/audit/rules.d/` as they are and loads them with ours. `replace` removes them, after the backup. |
 | `akit_immutable` | `false` | `true` locks the rules until reboot (`-e 2`), so a later change or rollback needs a reboot. |
 
 ## 📡 Send events to your SIEM
@@ -89,6 +89,14 @@ Tested on each change:
   keys, programs, and users write the most events.
 - **Without install.sh:** you can render the rules and load them yourself. See
   [rules/README.md](rules/README.md#load-the-rules-without-installsh).
+- **Existing rules:** install keeps rule files it didn't write, under any name, so your own rules
+  go in `/etc/audit/rules.d/` too. The files load in name order, and the kernel gives an event the
+  key of the first rule that matches it, so a file that sorts before `10-` wins over our profile
+  rules. A rule that is a copy of a loaded rule is skipped. A line of yours that can't load gets
+  a warning, and a line of ours that can't load rolls the install back. Install refuses a kept
+  file that sets `-f 2`, because that would panic the host when auditing fails.
+- **After a reboot or a kernel update:** run `sh scripts/verify.sh`. The rules load with `-i`, so
+  a rule that stops loading doesn't stop the others, and verify is what reports it.
 - **Other agents:** install never restarts or changes another agent. It refuses only when an
   agent has taken the audit system for itself, which is osquery with `disable_audit=false`, or
   Auditbeat with its own audit rules or a unicast socket. With Wazuh who-data on, install warns

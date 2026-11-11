@@ -19,7 +19,7 @@ akit_settings_defaults() {
   akit_max_log_file=
   akit_num_logs=
   akit_immutable=false
-  akit_existing_rules="unset"
+  akit_existing_rules=keep
   akit_extra_rules_dir=
   akit_skip_keys=
 }
@@ -71,8 +71,8 @@ akit_settings_set() {
       ;;
     akit_existing_rules)
       case "$set_val" in
-        unset | keep | replace) ;;
-        *) akit_settings_bad "$set_key" "'$set_val' is not unset, keep, or replace" ;;
+        keep | replace) ;;
+        *) akit_settings_bad "$set_key" "'$set_val' is not keep or replace" ;;
       esac
       ;;
     akit_extra_rules_dir)

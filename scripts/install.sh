@@ -173,9 +173,8 @@ if [ "$install_guided" = yes ]; then
     echo "auditd-kit $AKIT_VERSION on $(install_host_get os_id) $(install_host_get os_version)"
     echo "  auditd $(install_host_get auditd_version), $(install_host_get audit_log_free_mb) MB free for logs"
   } >/dev/tty
-  # Stop on a refusal that no question can fix before asking anything. The rules.d question
-  # below fixes existing_rules.
-  install_refused '^refuse=existing_rules '
+  # Stop on a refusal before asking anything.
+  install_refused '^$'
   install_locked_refuse
   case "$akit_profile" in minimal) install_d=1 ;; medium) install_d=2 ;; *) install_d=3 ;; esac
   install_ask "Profile? 1) minimal, for every server  2) medium, for critical servers  3) heavy, for CIS or STIG [$install_d]:" "$install_d"
@@ -189,17 +188,6 @@ if [ "$install_guided" = yes ]; then
     install_ask "Lock the rules until reboot (-e 2), as CIS and STIG expect? Every later rule change, rollback too, then needs a reboot. [y/N]:" n
     case "$install_ans" in
       [yY]*) akit_settings_set akit_immutable true ;;
-    esac
-  fi
-  # A file with only control lines, such as the distro's audit.rules, is moved either way.
-  install_other=$(install_host_get rules_d_foreign | tr ',' ' ')
-  [ "$install_other" != none ] || install_other=
-  if [ "$akit_existing_rules" = unset ] && [ -n "$install_other" ]; then
-    install_ask "Other files in /etc/audit/rules.d: $install_other k) keep them  r) replace them, with a backup [r]:" r
-    case "$install_ans" in
-      k | keep) akit_settings_set akit_existing_rules keep ;;
-      r | replace) akit_settings_set akit_existing_rules replace ;;
-      *) akit_settings_set akit_existing_rules "$install_ans" ;;
     esac
   fi
 fi
@@ -323,6 +311,26 @@ if [ "$install_skip_load" = yes ]; then
 else
   # 7. Load
   akit_load_apply "$install_rules" "$install_auditd" || install_fail "loading the rules or restarting auditd failed"
+  # The base file holds -i, so the load went on past each line that failed. A copy of a loaded
+  # rule is fine, and so is a bad line in a file that auditd-kit didn't write, which failed
+  # before the install too. Any other error is ours.
+  install_bad=no
+  if [ "$install_rules" = yes ]; then
+    printf '%s\n' "$akit_load_output" | akit_load_errors >"$install_work/load-errors"
+    while read -r install_class install_src install_rule; do
+      case "$install_class" in
+        copy) akit_log info "already loaded, skipped: $install_rule" ;;
+        kept) akit_log warning "$install_src has a rule that didn't load: $install_rule" ;;
+        *)
+          akit_log error "$install_src has a rule that didn't load: $install_rule"
+          install_bad=yes
+          ;;
+      esac
+    done <"$install_work/load-errors"
+  fi
+  [ "$install_bad" = no ] || install_fail "an auditd-kit rule failed to load"
+  install_loaded=$(auditctl -l 2>/dev/null | awk '/^-[aw][ \t]/ { n++ } END { print n + 0 }')
+  akit_state_set_loaded "$install_loaded" || install_fail "cannot write $AKIT_STATE_FILE"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"
 fi
