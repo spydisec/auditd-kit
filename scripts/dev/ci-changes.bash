@@ -31,7 +31,7 @@ else
         full=true ;;
       README.md | LICENSE)
         packaging=true ;;
-      tests/requirements.txt | .yamllint.yml | .editorconfig)
+      tests/requirements.txt | .editorconfig)
         lint=true ;;
       *.sh | *.bash | *.awk | *.rules | *.conf)
         full=true ;;

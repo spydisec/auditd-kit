@@ -9,3 +9,8 @@ docs/design/
 
 # Release build output.
 dist/
+
+.claude/skills/plain-writing
+
+# yamllint settings are in tests/lint.sh.
+.yamllint.yml
