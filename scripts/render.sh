@@ -171,9 +171,10 @@ rules_file() {
   fi
 }
 
-# all_sources <mode>: the profile files, then each 50-*.rules file in the extra dir. Control
-# lines are stripped from the extra files only. rules/10-minimal.rules is written as
-# 10-auditd-kit-minimal.rules.
+# all_sources <mode>: the profile files, then each 50-*.rules file in the extra dir. Only the
+# tests and a manual render use the extra dir, because install keeps the files in rules.d as they
+# are. Control lines are stripped from the extra files only. rules/10-minimal.rules is written
+# as 10-auditd-kit-minimal.rules.
 all_sources() {
   for f in $profile_rules; do
     name=$(basename "$f")

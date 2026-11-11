@@ -11,7 +11,7 @@
 # in AKIT_EXTRA_FLAGS (space separated). Those go to AKIT_ARGS as they are, and no value is read.
 
 AKIT_SETTING_KEYS='akit_profile akit_size akit_max_log_file akit_num_logs akit_immutable
-  akit_existing_rules akit_extra_rules_dir akit_skip_keys'
+  akit_existing_rules akit_skip_keys'
 
 akit_settings_defaults() {
   akit_profile=minimal
@@ -20,7 +20,6 @@ akit_settings_defaults() {
   akit_num_logs=
   akit_immutable=false
   akit_existing_rules=keep
-  akit_extra_rules_dir=
   akit_skip_keys=
 }
 
@@ -37,6 +36,9 @@ akit_settings_set() {
   case "$set_key" in
     akit_accept | akit_accept_agents)
       akit_settings_bad "$set_key" "removed, install no longer needs it. Install goes ahead next to other agents (ADR 0029)"
+      ;;
+    akit_extra_rules_dir)
+      akit_settings_bad "$set_key" "removed, put your rule files in /etc/audit/rules.d, where install keeps them (ADR 0029)"
       ;;
   esac
   case " $(printf '%s' "$AKIT_SETTING_KEYS" | tr '\n' ' ' | tr -s ' ') " in
@@ -73,11 +75,6 @@ akit_settings_set() {
       case "$set_val" in
         keep | replace) ;;
         *) akit_settings_bad "$set_key" "'$set_val' is not keep or replace" ;;
-      esac
-      ;;
-    akit_extra_rules_dir)
-      case "$set_val" in
-        *[!A-Za-z0-9/._@+-]*) akit_settings_bad "$set_key" "path has characters other than A-Z a-z 0-9 / . _ @ + -" ;;
       esac
       ;;
     akit_skip_keys)

@@ -19,7 +19,6 @@ auditd-kit writes these files, and no others:
 |---|---|
 | `/etc/audit/rules.d/00-auditd-kit-base.rules` and the profile files `10-`, `20-`, `30-`, `90-`, `91-auditd-kit-*.rules` | Writes the rendered rules |
 | `/etc/audit/rules.d/99-auditd-kit-finalize.rules` | Writes it only when `akit_immutable` is true |
-| `/etc/audit/rules.d/50-*.rules` | Copies the overlay files from `akit_extra_rules_dir` |
 | `/etc/audit/auditd.conf` | Sets the keys in `config/auditd/<size>.conf` and leaves every other line alone |
 | `/etc/auditd-kit/canary` | Creates it once, for `verify.sh` |
 | `/etc/auditd-kit/state` | Records the version, profile, size, install time, rule count, loaded rule count, and a checksum line for each file above, except the canary |

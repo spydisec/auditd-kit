@@ -58,7 +58,6 @@ with `--config FILE`.
 | `akit_size` | `standard` | `small`, `standard`, or `large`: the backlog and the log file sizes. |
 | `akit_max_log_file`, `akit_num_logs` | from `akit_size` | Your own log file size in MB and number of log files. |
 | `akit_skip_keys` | none | Rule keys to leave out on this host. |
-| `akit_extra_rules_dir` | none | A dir of your own `50-*.rules` files to load with the profile. |
 | `akit_existing_rules` | `keep` | `keep` leaves other files in `/etc/audit/rules.d/` as they are and loads them with ours. `replace` removes them, after the backup. |
 | `akit_immutable` | `false` | `true` locks the rules until reboot (`-e 2`), so a later change or rollback needs a reboot. |
 

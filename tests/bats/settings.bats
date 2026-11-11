@@ -33,7 +33,6 @@ akit_max_log_file=100
 akit_num_logs=8
 akit_immutable=false
 akit_existing_rules=keep
-akit_extra_rules_dir=
 akit_skip_keys=
 akit_backlog=16384
 akit_preset_total_mb=800
@@ -100,6 +99,7 @@ args="
   done <<'EOT'
 --accept-agents|removed, install no longer needs it
 --accept|removed, install no longer needs it
+--extra-rules-dir|removed, put your rule files in /etc/audit/rules.d
 EOT
 }
 

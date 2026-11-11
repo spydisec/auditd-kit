@@ -40,4 +40,4 @@ Anything that wraps the scripts can rely on code 1 meaning that the host is unto
 a check fails, and it doesn't roll back, because install does that. ADR 0027 removed the Ansible
 role, so only the scripts read these settings. ADR 0029 removed `akit_accept`, and a refusal now
 prints `refuse=<code> detail=<text>`. It also made `keep` the default of `akit_existing_rules`
-and removed the `unset` value.
+and removed the `unset` value and the `akit_extra_rules_dir` setting.
