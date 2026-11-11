@@ -109,7 +109,7 @@ hc_check_auditd() {
         hc_av=$hc_v
         hc_major=${hc_v%%.*}
         hc_minor=${hc_v#*.}
-        hc_minor=${hc_minor%%.*}
+        hc_minor=${hc_minor%%[!0-9]*}
         if [ "$hc_major" -lt 2 ] || { [ "$hc_major" -eq 2 ] && [ "$hc_minor" -lt 8 ]; }; then
           hc_refuse auditd_missing "auditd $hc_v is older than 2.8"
         fi

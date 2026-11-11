@@ -150,6 +150,21 @@ install_refused() {
   akit_die "$AKIT_EXIT_REFUSED" "the host check refused this host, and nothing changed"
 }
 
+# install_locked_refuse: until install can write the files and ask for a reboot, a host with
+# locked rules is refused.
+install_locked_refuse() {
+  [ "$(install_host_get audit_enabled)" = 2 ] || return 0
+  echo "refuse=immutable detail=the rules are locked until reboot (-e 2), so reboot without -e 2"
+  akit_die "$AKIT_EXIT_REFUSED" "the host check refused this host, and nothing changed"
+}
+
+# install_warnings: log the warnings of the host check.
+install_warnings() {
+  sed -n 's/^warn=[^ ]* detail=//p' "$install_work/hostcheck" | while IFS= read -r install_w; do
+    akit_log warning "$install_w"
+  done
+}
+
 # Guided mode: show the host, then ask only what applies to it.
 if [ "$install_guided" = yes ]; then
   (: </dev/tty) 2>/dev/null || akit_die "$AKIT_EXIT_REFUSED" "--guided needs a terminal"
@@ -161,6 +176,7 @@ if [ "$install_guided" = yes ]; then
   # Stop on a refusal that no question can fix before asking anything. The rules.d question
   # below fixes existing_rules.
   install_refused '^refuse=existing_rules '
+  install_locked_refuse
   case "$akit_profile" in minimal) install_d=1 ;; medium) install_d=2 ;; *) install_d=3 ;; esac
   install_ask "Profile? 1) minimal, for every server  2) medium, for critical servers  3) heavy, for CIS or STIG [$install_d]:" "$install_d"
   case "$install_ans" in
@@ -190,18 +206,13 @@ fi
 
 # 1. Host check
 if ! install_hostcheck; then
+  install_warnings
   install_refused '^$'
   cat "$install_work/hostcheck"
   akit_die "$AKIT_EXIT_REFUSED" "the host check failed, and nothing changed"
 fi
-sed -n 's/^warn=[^ ]* detail=//p' "$install_work/hostcheck" | while IFS= read -r install_w; do
-  akit_log warning "$install_w"
-done
-# Until install can write the files and ask for a reboot, a host with locked rules is refused.
-if [ "$(install_host_get audit_enabled)" = 2 ]; then
-  echo "refuse=immutable detail=the rules are locked until reboot (-e 2), so reboot without -e 2"
-  akit_die "$AKIT_EXIT_REFUSED" "the host check refused this host, and nothing changed"
-fi
+install_warnings
+install_locked_refuse
 
 # 2. Render, into a temp dir with its report next to it.
 set -- --profile "$akit_profile" --size "$akit_size" --immutable "$akit_immutable" \

@@ -178,3 +178,9 @@ passes() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"invalid setting akit_size"* ]]
 }
+
+@test "an odd auditd version string is compared by its numbers" {
+  akit_stub auditctl 'case "$1" in -v) echo "auditctl version 2.8x" ;; -s) echo "enabled 1" ;; esac'
+  passes
+  [[ "$output" != *"Illegal number"* ]]
+}
