@@ -1,7 +1,9 @@
 #!/bin/sh
 # Boot a cloud image in a VM on a GitHub Ubuntu runner and run real-kernel.sh inside it.
 #
-# Usage: sh tests/ci/vm-run.sh <image-url> <checksums-url> <minimal|medium|heavy>
+# Usage: sh tests/ci/vm-run.sh <image-url> <minimal|medium|heavy> [checksums-url]
+#
+# The checksums URL is the image URL with .CHECKSUM added when it is not given or empty.
 #
 # GitHub has no RHEL-family runners, so this is how the rules get loaded into such a kernel. The
 # image is checked against the checksum file from the same server. That catches a broken
@@ -9,8 +11,8 @@
 set -eu
 
 image_url=$1
-sums_url=$2
-profile=$3
+profile=$2
+sums_url=${3:-$image_url.CHECKSUM}
 repo=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." >/dev/null && pwd)
 work=$(mktemp -d)
 cd "$work"
