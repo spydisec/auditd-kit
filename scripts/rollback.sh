@@ -5,7 +5,8 @@
 #
 # Restores the newest backup when no id is given. It restarts auditd when auditd.conf or a plugin
 # file changed, loads the restored audit.rules, restarts rsyslog when our drop-in changed, and runs
-# verify.sh. --list prints the backup ids, newest first, and changes nothing. --skip-load restores
+# verify.sh. When the rules are locked until reboot (-e 2), it restores only the files, prints
+# reboot=required, and a reboot loads them. --list prints the backup ids, newest first, and changes nothing. --skip-load restores
 # only the files, and is only for tests in containers.
 #
 # Exits 0 when done, 1 when there is no such backup and nothing changed, and 3 when the restore
@@ -67,6 +68,7 @@ fi
 if akit_rollback "$rollback_id" "$rollback_skip_load"; then
   akit_log info "backup $rollback_id restored"
   echo "restored=$rollback_id"
+  [ "$akit_reboot_needed" = no ] || echo "reboot=required"
   exit "$AKIT_EXIT_OK"
 fi
 akit_log error "rollback to backup $rollback_id failed, and the host needs a person to fix it"
