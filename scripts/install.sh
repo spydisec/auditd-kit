@@ -196,7 +196,9 @@ install_warnings
 # With locked rules (-e 2) nothing can be loaded until a reboot. Install then writes the files,
 # and the reboot loads them.
 install_locked=no
-[ "$(install_host_get audit_enabled)" != 2 ] || install_locked=yes
+if [ "$install_skip_load" = no ] && [ "$(install_host_get audit_enabled)" = 2 ]; then
+  install_locked=yes
+fi
 
 # 2. Render, into a temp dir with its report next to it.
 set -- --profile "$akit_profile" --size "$akit_size" --immutable "$akit_immutable" \
@@ -311,10 +313,11 @@ if [ "$install_skip_load" = yes ]; then
 elif [ "$install_locked" = yes ]; then
   # The reboot will skip each rule of ours that a kept file also holds, so those don't count.
   install_copies=0
+  install_others=$(install_host_get rules_d_foreign | tr ',' ' ')
   for install_f in "$install_work/rendered"/*.rules; do
     while IFS= read -r install_rule; do
       case "$install_rule" in -a* | -w*) ;; *) continue ;; esac
-      for install_o in $(install_host_get rules_d_foreign | tr ',' ' '); do
+      for install_o in $install_others; do
         if grep -q -x -F -e "$install_rule" "$(akit_path "$AKIT_RULES_D/$install_o")" 2>/dev/null; then
           install_copies=$((install_copies + 1))
           break
@@ -323,7 +326,7 @@ elif [ "$install_locked" = yes ]; then
     done <"$install_f"
   done
   akit_state_set_loaded "$((install_rule_count - install_copies))" || install_fail "cannot write $AKIT_STATE_FILE"
-  akit_log warning "the audit rules are locked until reboot (-e 2), so the new files are written but not loaded or checked. Reboot, then run verify.sh. If the new rules fail after the reboot, run rollback.sh and reboot again"
+  akit_log warning "the audit rules are locked until reboot (-e 2), so the new rule files and auditd.conf are written but not loaded or checked. Reboot, then run verify.sh. If the new rules fail after the reboot, run rollback.sh and reboot again"
 else
   # 7. Load
   akit_load_apply "$install_rules" "$install_auditd" || install_fail "loading the rules or restarting auditd failed"

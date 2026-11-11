@@ -74,6 +74,7 @@ every rule after it.
 `verify.sh` passes when at least as many rules are loaded as after the install, because copies
 are skipped and agents add rules at run time.
 
-On a host with locked rules, a problem in the new rule set shows only after the reboot, when
-install can't roll back by itself. The install summary says so.
+On a host with locked rules, the new rules and the `auditd.conf` changes take effect at the
+reboot. A problem in the new rule set shows only then, when install can't roll back by itself.
+The install summary says so.
 

@@ -449,3 +449,24 @@ cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rul
   [ "$status" -eq 1 ]
   [ "$(config_sums)" = "$before" ]
 }
+
+@test "with --skip-load, locked rules change nothing about the run" {
+  echo 2 >"$stub_state/enabled"
+  install --skip-load
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"reboot=required"* ]]
+  [[ "$output" == *"skipping load and verify"* ]]
+}
+
+@test "a deploy failure on locked rules restores the files and asks for a reboot" {
+  echo 2 >"$stub_state/enabled"
+  before=$(akit_sums etc/audit)
+  # The state file can't be written, so deploy fails after it wrote the rules.
+  mkdir -p "$AKIT_ROOT/etc/auditd-kit/state.tmp"
+  install
+  [ "$status" -eq 2 ]
+  [ "$(akit_sums etc/audit)" = "$before" ]
+  [[ "$output" == *"locked until reboot"* ]]
+  run ! akit_called "augenrules"
+  run ! akit_called "auditctl -R"
+}
