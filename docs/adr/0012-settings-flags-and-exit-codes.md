@@ -1,6 +1,6 @@
 # 0012. Settings, flags, and exit codes
 
-Status: Superseded by 0027
+Status: Accepted
 Date: 2026-10-20
 
 ## Context
@@ -14,7 +14,7 @@ a config file must not be able to run code.
 Each setting has one name, e.g. `akit_profile`. The config file uses that exact name, one
 `key=value` per line, with `#` comments and blank lines. The scripts parse the file and never
 source it. A flag drops the `akit_` prefix and uses dashes, so `akit_profile` is `--profile` and
-`akit_syslog_facility` is `--syslog-facility`. The order of precedence is defaults, then the
+`akit_existing_rules` is `--existing-rules`. The order of precedence is defaults, then the
 config file, then flags.
 
 An unknown key, an unknown flag, or a bad value stops the script before it changes anything. The
@@ -35,3 +35,7 @@ Every script uses the same exit codes:
 The Ansible role and the script path read the same names, so one inventory variable works for
 both. Adding a setting means adding it to `scripts/lib/settings.sh`, which checks its value.
 Anything that wraps the scripts can rely on code 1 meaning that the host is untouched.
+
+`render.sh` exits 1 for any failure, because it only writes to a temp dir. `verify.sh` exits 2 when
+a check fails, and it doesn't roll back, because install does that. ADR 0027 removed the Ansible
+role, so only the scripts read these settings.

@@ -1,6 +1,6 @@
 # 0020. Releases from a manual workflow
 
-Status: Superseded by 0027
+Status: Accepted
 Date: 2026-10-20
 
 ## Context

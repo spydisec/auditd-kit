@@ -22,11 +22,14 @@ auditd-kit writes these files, and no others:
 | `/etc/audit/rules.d/50-*.rules` | Copies the overlay files from `akit_extra_rules_dir` |
 | `/etc/audit/auditd.conf` | Sets the keys in `config/auditd/<size>.conf` and leaves every other line alone |
 | `/etc/auditd-kit/canary` | Creates it once, for `verify.sh` |
-| `/etc/auditd-kit/state` | Records the settings, the rule count, and a checksum line for each file above, except the canary |
+| `/etc/auditd-kit/state` | Records the version, profile, size, install time, rule count, and a checksum line for each file above, except the canary |
 | `/var/lib/auditd-kit/render-report.txt` | Lists each rule that render dropped and why |
 | `/var/lib/auditd-kit/backups/<id>.tgz` | Keeps the newest 5 backups |
 | `/var/log/auditd-kit/install-<time>.log` and `rollback-<time>.log` | Logs each run, including dry runs and refusals |
 | `/run/auditd-kit.lock` | Holds the PID of the running script |
+| `/etc/audit/plugins.d/syslog.conf`, or `/etc/audisp/plugins.d/syslog.conf` on older auditd | Sets `active = no` only on a host where an earlier version turned forwarding on (ADR 0026) |
+| `/etc/rsyslog.d/40-auditd-kit.conf` | Removes the drop-in that an earlier version wrote (ADR 0026) |
+| `/opt/auditd-kit/auditd-kit-<version>/` | `get.sh` unpacks each release here, or under `AKIT_DIR` |
 
 A file in `rules.d` belongs to auditd-kit when its name contains `auditd-kit` or the state file lists
 it. auditd-kit always removes a distro `audit.rules` that holds only control lines. Every other

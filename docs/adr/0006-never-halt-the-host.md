@@ -20,6 +20,6 @@ auditd-kit doesn't change kernel boot parameters.
 
 ## Consequences
 
-When the disk fills, events are lost until space is freed. `docs/risks.md` explains the trade-off,
-and operators who must meet a stricter standard can override the actions. The sizing guide helps
-operators size `/var/log/audit` so that the disk rarely fills.
+When the disk fills, events are lost until space is freed. Operators who must meet a stricter
+standard can override the actions. `scripts/stats.sh` shows how much a host logs each day, so
+operators can size `/var/log/audit` so that the disk rarely fills.

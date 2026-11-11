@@ -72,8 +72,8 @@ facility on and keeps it out of the local log files.
    that `/var/log/syslog` or `/var/log/messages` gets no `type=` records.
 
 `install.sh` leaves the plugin and your rsyslog file as they are on later runs. `rollback.sh`
-puts `/etc/audit` back as it was before the install it undoes, so after a rollback, set the plugin
-again.
+puts `/etc/audit`, and `/etc/audisp` where the host has it, back as it was before the install it
+undoes, so after a rollback, set the plugin again.
 
 To undo, set `active = no` in the plugin file and run `service auditd restart`, then remove the
 rsyslog file and restart rsyslog.

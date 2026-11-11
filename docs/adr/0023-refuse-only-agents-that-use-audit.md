@@ -40,3 +40,5 @@ vendor changes how its agent uses audit, the survey check for that agent must ch
 Confirm the CrowdStrike row with CrowdStrike support.
 
 Adding auditd-kit's rules next to an agent's rules, without `-D`, is still open (#47).
+
+ADR 0024 later replaced `akit_accept_agents` with `akit_accept=agent_conflict:<agent>`.
