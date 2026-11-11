@@ -16,6 +16,8 @@
 #   7. load       augenrules --load when the rules changed, service auditd restart when
 #                 auditd.conf changed
 #   8. verify     verify.sh
+# When the rules are locked until reboot (-e 2), stages 7 and 8 are skipped, the last line is
+# reboot=required, and a reboot loads the new files.
 # A failure after the backup restores it. --skip-load skips load and verify, and is only for
 # tests in containers, where the kernel audit system can't be used.
 #
@@ -150,14 +152,6 @@ install_refused() {
   akit_die "$AKIT_EXIT_REFUSED" "the host check refused this host, and nothing changed"
 }
 
-# install_locked_refuse: until install can write the files and ask for a reboot, a host with
-# locked rules is refused.
-install_locked_refuse() {
-  [ "$(install_host_get audit_enabled)" = 2 ] || return 0
-  echo "refuse=immutable detail=the rules are locked until reboot (-e 2), so reboot without -e 2"
-  akit_die "$AKIT_EXIT_REFUSED" "the host check refused this host, and nothing changed"
-}
-
 # install_warnings: log the warnings of the host check.
 install_warnings() {
   sed -n 's/^warn=[^ ]* detail=//p' "$install_work/hostcheck" | while IFS= read -r install_w; do
@@ -175,7 +169,6 @@ if [ "$install_guided" = yes ]; then
   } >/dev/tty
   # Stop on a refusal before asking anything.
   install_refused '^$'
-  install_locked_refuse
   case "$akit_profile" in minimal) install_d=1 ;; medium) install_d=2 ;; *) install_d=3 ;; esac
   install_ask "Profile? 1) minimal, for every server  2) medium, for critical servers  3) heavy, for CIS or STIG [$install_d]:" "$install_d"
   case "$install_ans" in
@@ -200,7 +193,10 @@ if ! install_hostcheck; then
   akit_die "$AKIT_EXIT_REFUSED" "the host check failed, and nothing changed"
 fi
 install_warnings
-install_locked_refuse
+# With locked rules (-e 2) nothing can be loaded until a reboot. Install then writes the files,
+# and the reboot loads them.
+install_locked=no
+[ "$(install_host_get audit_enabled)" != 2 ] || install_locked=yes
 
 # 2. Render, into a temp dir with its report next to it.
 set -- --profile "$akit_profile" --size "$akit_size" --immutable "$akit_immutable" \
@@ -258,7 +254,9 @@ if [ "$install_changes" -eq 0 ]; then
 fi
 
 # The rules that are loaded now, some of which an agent may have added at run time.
-[ "$install_skip_load" = yes ] || akit_load_runtime_save "$install_work"
+if [ "$install_skip_load" = no ] && [ "$install_locked" = no ]; then
+  akit_load_runtime_save "$install_work"
+fi
 
 # 5. Backup
 install_backup=$(akit_backup_create) || akit_die "$AKIT_EXIT_REFUSED" "backup failed, and nothing changed"
@@ -310,6 +308,22 @@ akit_state_write "$install_rule_count" "$@" "$AKIT_AUDITD_CONF" \
 
 if [ "$install_skip_load" = yes ]; then
   akit_log info "skipping load and verify"
+elif [ "$install_locked" = yes ]; then
+  # The reboot will skip each rule of ours that a kept file also holds, so those don't count.
+  install_copies=0
+  for install_f in "$install_work/rendered"/*.rules; do
+    while IFS= read -r install_rule; do
+      case "$install_rule" in -a* | -w*) ;; *) continue ;; esac
+      for install_o in $(install_host_get rules_d_foreign | tr ',' ' '); do
+        if grep -q -x -F -e "$install_rule" "$(akit_path "$AKIT_RULES_D/$install_o")" 2>/dev/null; then
+          install_copies=$((install_copies + 1))
+          break
+        fi
+      done
+    done <"$install_f"
+  done
+  akit_state_set_loaded "$((install_rule_count - install_copies))" || install_fail "cannot write $AKIT_STATE_FILE"
+  akit_log warning "the audit rules are locked until reboot (-e 2), so the new files are written but not loaded or checked. Reboot, then run verify.sh. If the new rules fail after the reboot, run rollback.sh and reboot again"
 else
   # 7. Load
   akit_load_apply "$install_rules" "$install_auditd" || install_fail "loading the rules or restarting auditd failed"
@@ -353,3 +367,4 @@ install_stage=finished
 akit_log info "install done with $install_changes changes, backup $install_backup"
 echo "backup=$install_backup"
 echo "changes=$install_changes"
+[ "$install_locked" = no ] || echo "reboot=required"

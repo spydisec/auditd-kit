@@ -8,7 +8,8 @@ repo=$(cd "$BATS_TEST_DIRNAME/../.." && pwd)
 get="$repo/scripts/get.sh"
 
 # A mirror dir with a fake 9.9.9 bundle. Its install.sh prints its arguments and changes=3, prints
-# refuse=low_disk and exits with FAKE_RC when that is set.
+# refuse=low_disk and exits with FAKE_RC when that is set, and prints reboot=required when
+# FAKE_REBOOT is set.
 setup() {
   akit_stub id 'echo 0'
   # The test dirs belong to the test user, so stat reports them as root's.
@@ -16,7 +17,8 @@ setup() {
   mirror="$BATS_TEST_TMPDIR/mirror"
   mkdir -p "$mirror" "$BATS_TEST_TMPDIR/b/auditd-kit-9.9.9/scripts"
   printf '%s\n' 'echo "install ran: $*"' '[ -z "${FAKE_RC:-}" ] || { echo "refuse=low_disk override=x"; exit "$FAKE_RC"; }' \
-    'echo changes=3' >"$BATS_TEST_TMPDIR/b/auditd-kit-9.9.9/scripts/install.sh"
+    'echo changes=3' '[ -z "${FAKE_REBOOT:-}" ] || echo reboot=required' \
+    >"$BATS_TEST_TMPDIR/b/auditd-kit-9.9.9/scripts/install.sh"
   tar -C "$BATS_TEST_TMPDIR/b" -czf "$mirror/auditd-kit-9.9.9.tar.gz" auditd-kit-9.9.9
   (cd "$mirror" && sha256sum auditd-kit-9.9.9.tar.gz >SHA256SUMS)
   export AKIT_MIRROR="file://$mirror" AKIT_DIR="$BATS_TEST_TMPDIR/opt"
@@ -91,4 +93,10 @@ get() {
   get
   [ "$status" -eq 1 ]
   [[ "$output" == *"run it as root"* ]]
+}
+
+@test "an install on locked rules ends with reboot=required on the result line" {
+  FAKE_REBOOT=1 get --yes
+  [ "$status" -eq 0 ]
+  [[ "${lines[${#lines[@]} - 1]}" == "result=installed version=9.9.9 host="*" reboot=required" ]]
 }

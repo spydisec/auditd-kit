@@ -77,5 +77,3 @@ are skipped and agents add rules at run time.
 On a host with locked rules, a problem in the new rule set shows only after the reboot, when
 install can't roll back by itself. The install summary says so.
 
-The changes land over several releases of `main`. The existing-rules default, the put-back of
-agent rules, and the install on locked rules follow the host check.

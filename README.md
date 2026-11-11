@@ -96,6 +96,10 @@ Tested on each change:
   sorts before `00-auditd-kit-base.rules` is the exception. A bad line there stops the whole load,
   and install rolls back. Install refuses a kept file that sets `-f 2`, because that would panic
   the host when auditing fails, and it warns when a kept file sets `-e 2`.
+- **Locked rules:** when the rules are locked until reboot (`-e 2`), install and rollback can't
+  load anything. They write the files, print `reboot=required`, and the reboot loads them. The
+  new rules are not checked until then, so run `sh scripts/verify.sh` after the reboot. If it
+  fails, run `sh scripts/rollback.sh` and reboot again.
 - **After a reboot or a kernel update:** run `sh scripts/verify.sh`. The rules load with `-i`, so
   a rule that stops loading doesn't stop the others, and verify is what reports it. It fails when
   fewer rules are loaded than auditd-kit loaded at the install.

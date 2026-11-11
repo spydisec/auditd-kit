@@ -8,6 +8,7 @@
 # terminal, as from ssh or a config tool, it only prints the host check and the plan. --yes runs
 # install with the given settings and no questions. The last line is a result line for the host:
 #   result=<installed|unchanged|planned|cancelled|refused|rolled_back|rollback_failed> version=X.Y.Z host=<name>
+# A refusal adds codes=<code,...>. An install on locked rules (-e 2) adds reboot=required.
 #
 # AKIT_VERSION=X.Y.Z picks a release instead of the latest one. AKIT_MIRROR is a URL to download
 # from instead of GitHub, e.g. a dir on your own web server that holds one release's
@@ -126,5 +127,8 @@ case "$get_rc" in
   *) get_result=rollback_failed ;;
 esac
 get_codes=$(sed -n 's/^refuse=\([^ ]*\).*/\1/p' "$get_tmp/out" | paste -sd, -)
-printf 'result=%s version=%s host=%s%s\n' "$get_result" "$get_version" "$(uname -n)" "${get_codes:+ codes=$get_codes}"
+get_reboot=
+! grep -qx reboot=required "$get_tmp/out" || get_reboot=' reboot=required'
+printf 'result=%s version=%s host=%s%s%s\n' "$get_result" "$get_version" "$(uname -n)" \
+  "${get_codes:+ codes=$get_codes}" "$get_reboot"
 exit "$get_rc"
