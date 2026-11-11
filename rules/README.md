@@ -14,24 +14,29 @@ The kernel gives an event the key of the first rule that matches it. So the broa
 sit in the two `-last` files, which load after every rule that names a program (ADR 0017).
 `99-finalize.rules` turns on immutable mode, and render adds it only when `akit_immutable` is true.
 
-## Overlay rules
+## Your own rules
 
-You can add your own rules without editing these files. Put them in a directory of your own, and
-set `akit_extra_rules_dir` (flag `--extra-rules-dir`) to it. Name each file `50-*.rules`, e.g.
-`50-site.rules`, so it loads after the profile files and before the `-last` files. A broad rule in
-an overlay file, such as one for every command, takes the key of the events that the `-last` files
-would have keyed.
+Put your own rule files in `/etc/audit/rules.d/`, under any name that ends in `.rules`. Install
+keeps every file there that it didn't write, and loads it with the kit's files. Don't edit the
+kit's files, because the next install overwrites them.
 
-Overlay files must not hold control lines, which are `-D`, `-b`, `-f`, `-e`, `-r`, `-i`,
-`--backlog_wait_time`, and `--loginuid-immutable`. Render removes them from overlay files and lists
-each one in the render report.
+The files load in name order, and the first rule that matches an event sets its key:
+
+- A file that sorts before `10-auditd-kit-minimal.rules`, e.g. `05-site.rules`, wins over the
+  profile rules. Put a rule that excludes a noisy program there.
+- A file that sorts between the profile files and `90-`, e.g. `50-site.rules`, adds rules, and
+  still loads before the broad command rules in the `-last` files.
+
+Install doesn't check your files before the load. The kit loads with `-i`, so a line of yours that
+the kernel rejects is skipped, and install logs a warning that names the file and the rule. A rule
+that is a copy of a loaded rule is skipped too.
 
 ## Skip rules on a host
 
 To leave kit rules out on a host, list their keys in `akit_skip_keys` (flag `--skip-keys`), e.g.
 `akit_skip_keys=exec_from_tmp,network_connect`. Render drops every rule with those keys from the
 profile files and lists each one in the render report as `skipped`. It never skips the rules in
-`00-base.rules`, which verify needs, or rules in overlay files.
+`00-base.rules`, which verify needs, or rules in your own files.
 
 Render refuses a key that no profile rule uses, so a typo can't pass for a skipped rule. A key from
 a bigger profile is accepted, so one setting can serve hosts on different profiles.
@@ -50,8 +55,7 @@ sh scripts/render.sh --profile minimal --size standard \
   --out-dir /tmp/akit-rules --report /tmp/akit-report.txt
 ```
 
-Then move any other files out of `/etc/audit/rules.d/`, copy the rendered files in, and run
-`augenrules --load`. `install.sh` does all of this for you. It also backs up the files it changes,
+Then copy the rendered files into `/etc/audit/rules.d/` and run `augenrules --load`. `install.sh` does all of this for you. It also backs up the files it changes,
 checks the result, and rolls back if a check fails.
 
 Write each rule on one line. Rule files have no line continuation, so a rule split with `\` fails

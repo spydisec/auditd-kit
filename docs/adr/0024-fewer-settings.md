@@ -58,4 +58,5 @@ Guided mode still asks for the server, port, and protocol, and builds the URL fr
 
 ADR 0026 later removed `akit_forward` and `akit_syslog_facility`, and the guided questions for
 forwarding, which leaves 9 settings. ADR 0029 removed `akit_accept`, because no refusal has an
-override any more, and made `keep` the default of `akit_existing_rules`.
+override any more, made `keep` the default of `akit_existing_rules`, and removed `akit_extra_rules_dir`, which
+leaves 7 settings.

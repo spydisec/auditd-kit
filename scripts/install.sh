@@ -205,7 +205,6 @@ install_locked_refuse
 # 2. Render, into a temp dir with its report next to it.
 set -- --profile "$akit_profile" --size "$akit_size" --immutable "$akit_immutable" \
   --out-dir "$install_work/rendered" --report "$install_work/render-report.txt"
-[ -z "$akit_extra_rules_dir" ] || set -- "$@" --extra-dir "$akit_extra_rules_dir"
 [ -z "$akit_skip_keys" ] || set -- "$@" --skip-keys "$akit_skip_keys"
 install_out=$(sh "$install_root/render.sh" "$@") || akit_die "$AKIT_EXIT_REFUSED" "render failed, and nothing changed"
 install_rule_count=$(printf '%s\n' "$install_out" | sed -n 's/^rule_count=//p')
