@@ -165,7 +165,10 @@ same_sums "$work/before" "the keep step left a changed file"
 
 step "backup.sh and rollback.sh undo an edit on a host with no install"
 backup_out=$(sh "$repo/scripts/backup.sh") || fail "backup.sh exited $?"
-echo '-w /srv -p wa -k ci_edit' >/etc/audit/rules.d/40-ci-edit.rules
+# A restore puts back the files that the backup holds, so the edit is to a file that exists.
+set -- /etc/audit/rules.d/*.rules
+[ -f "$1" ] || fail "no rules file to edit"
+echo '-w /srv -p wa -k ci_edit' >>"$1"
 sh "$repo/scripts/rollback.sh" "${backup_out#backup=}" || fail "rollback.sh exited $? after backup.sh"
 same_sums "$work/before" "rollback did not undo the edit"
 

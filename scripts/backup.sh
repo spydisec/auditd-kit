@@ -5,8 +5,10 @@
 #
 # Makes the same backup that install.sh makes before it changes a host: a copy of /etc/audit and
 # /etc/audisp in /var/lib/auditd-kit/backups. It works on a host that never ran install.sh, so
-# you can back up, edit your own rules, and run rollback.sh to undo the edit. The newest 5
-# backups are kept, and the first one on a host that has no install is also kept as "original".
+# you can back up, edit your own rules, and run rollback.sh to undo the edit. rollback.sh puts
+# back the files that the backup holds, and keeps a file that was added after it, with a
+# warning. The newest 5 backups are kept, and the first one on a host that has no install is
+# also kept as "original".
 #
 # Prints backup=<id>. Exits 0 when done and 1 when it can't make the backup.
 # shellcheck disable=SC2034

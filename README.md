@@ -104,7 +104,8 @@ backup from before the first install, so `rollback.sh --original` puts the host 
 A backup holds all of `/etc/audit`, so it covers the rules of other tools too.
 `sh scripts/backup.sh` makes one without installing anything. You can run it before you edit
 your own rules, and `rollback.sh` then undoes the edit, even on a host that has no auditd-kit
-rules.
+rules. A rollback puts back each file that the backup holds. It doesn't remove a file that you
+added after the backup, and it names that file in a warning.
 
 Rollback exits 0 when done, 1 when there is no such backup, and 3 when a person must fix the
 host. It doesn't restore rules that an agent added at run time, so restart that agent if its
@@ -146,9 +147,9 @@ command on each host and copies your own rule files to `/etc/audit/rules.d/`.
 - **After a reboot or a kernel update:** run `sh scripts/verify.sh`. The rules load with `-i`, so
   a rule that stops loading doesn't stop the others, and verify is what reports it. It checks
   that auditd is running, compares the rules in `/etc/audit/rules.d/` with the loaded rules by
-  key, and records a test event. It exits 2 when an auditd-kit rule isn't loaded or the test
-  event isn't recorded. A rule of another file that isn't loaded prints as `result=warn` and
-  doesn't change the exit code.
+  key, and records a test event. It exits 2 when auditd isn't running, an auditd-kit rule isn't
+  loaded, or the test event isn't recorded. A rule of another file that isn't loaded, e.g. a bad
+  line or a copy of a loaded rule, prints as `result=warn` and doesn't change the exit code.
 - **Log volume:** `sh scripts/stats.sh` shows the bytes and events written each day, and which rule
   keys, programs, and users write the most events.
 - **A rule file that sorts before ours:** a bad line in a file that sorts before
