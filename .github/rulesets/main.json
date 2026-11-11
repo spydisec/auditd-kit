@@ -79,6 +79,18 @@
             "context": "real-kernel (ubuntu-26.04, heavy)"
           },
           {
+            "context": "real-kernel-vm (centos-7)"
+          },
+          {
+            "context": "real-kernel-vm (rocky-8)"
+          },
+          {
+            "context": "real-kernel-vm (rocky-9)"
+          },
+          {
+            "context": "real-kernel-vm (rocky-10)"
+          },
+          {
             "context": "container-install (centos:7)"
           },
           {

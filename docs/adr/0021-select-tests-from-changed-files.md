@@ -16,9 +16,12 @@ built, so no RHEL host loads the rules on a real kernel in CI.
 
 Note, 2026-11-11: the test layers are lint, Bats with stubbed host tools, a real kernel job on
 Ubuntu 22.04, 24.04, and 26.04, and a container job for each image in the README's tested list
-plus Debian 12, which checks that an untested system installs with a warning (ADR 0029). The
-RHEL family is tested in containers only. Before a release that changes how rules load, run the
-install, verify, and rollback by hand on a RHEL-family VM.
+plus Debian 12, which checks that an untested system installs with a warning (ADR 0029).
+
+Note, 2026-11-11: a `real-kernel-vm` job now runs the real kernel test on CentOS 7 and Rocky
+Linux 8, 9, and 10. GitHub has no runners for those systems, so the job boots each system's cloud
+image as a VM with KVM on an Ubuntu runner (`tests/ci/vm-run.sh`), and the rules load into that
+system's own kernel.
 
 PRs select test groups through `scripts/dev/ci-changes.bash`. It reads the complete Git diff
 as NUL-delimited paths, including deleted paths and both sides of renames. Directory rules
