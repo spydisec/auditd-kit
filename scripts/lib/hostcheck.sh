@@ -124,7 +124,7 @@ hc_check_auditd() {
         }')
         hc_ae=${hc_en:-unknown}
       elif [ "${HOSTCHECK_NEED_KERNEL:-yes}" = yes ]; then
-        hc_refuse audit_off "auditctl -s failed, so boot the kernel with audit on (no audit=0)"
+        hc_refuse audit_off "auditctl -s failed. Boot the kernel with audit on (no audit=0). In a container, audit rules can't be loaded, so install on the host itself"
       fi
     fi
   fi

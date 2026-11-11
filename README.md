@@ -85,7 +85,7 @@ Install refuses only when auditd-kit can't work on the host.
 |---|---|
 | `not_root` | Install isn't running as root. |
 | `auditd_missing` | `auditctl` or `augenrules` isn't installed, or auditd is older than 2.8. |
-| `audit_off` | The kernel has audit turned off. |
+| `audit_off` | The kernel has audit turned off, or the host is a container, where audit rules can't be loaded. |
 | `low_disk` | The audit log filesystem has less than 1.5 times the chosen log size free. |
 | `tar_missing`, `service_missing` | The `tar` or `service` command isn't installed. |
 | `agent_needs_audit:<agent>` | An agent reads the audit events itself, so auditd gets none: osquery with `disable_audit=false`, or Auditbeat with its own audit rules or a unicast socket. |
