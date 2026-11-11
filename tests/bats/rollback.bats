@@ -107,7 +107,7 @@ install_by_hand() {
   [ "$status" -eq 0 ]
   run sh "$repo/scripts/rollback.sh" --list
   [ "$status" -eq 0 ]
-  [ "$output" = "$(cd "$backups" && ls -- *Z*.tgz | sed 's/[.]tgz$//')
+  [ "$output" = "$(cd "$backups" && printf '%s\n' *Z*.tgz | sed 's/[.]tgz$//')
 original" ]
   : >"$calls"
   run sh "$repo/scripts/rollback.sh"
@@ -143,7 +143,8 @@ original" ]
     run sh "$repo/scripts/install.sh" --profile "$p" </dev/null
     [ "$status" -eq 0 ]
   done
-  [ "$(cd "$backups" && ls -- *Z*.tgz | wc -l)" -eq 5 ]
+  set -- "$backups"/*Z*.tgz
+  [ $# -eq 5 ]
   run sh "$repo/scripts/rollback.sh" --list
   [ "${#lines[@]}" -eq 6 ]
   [ "${lines[5]}" = original ]
