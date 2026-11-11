@@ -1,9 +1,9 @@
 #!/bin/sh
-# Test the script path on a real kernel, on a GitHub Ubuntu runner.
+# Test the script path on a real kernel, on a GitHub Ubuntu runner or in a RHEL-family VM.
 #
 # Usage: sudo AKIT_CI_OK=yes sh tests/ci/real-kernel.sh <minimal|medium|heavy>
 #
-# This changes the host. It installs auditd with apt, which is test setup and not part of
+# This changes the host. It installs auditd with apt or dnf, which is test setup and not part of
 # auditd-kit, and it mounts a small loop file at /var/log/audit and fills it. Run it only on a
 # runner or VM that is thrown away after the run, which is why it needs AKIT_CI_OK=yes.
 #
@@ -97,12 +97,25 @@ run_install() {
   [ "$rc" -eq 0 ] || fail "install.sh $* exited $rc"
 }
 
-step "Test setup: install auditd with apt"
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -q
-apt-get install -y -q --no-install-recommends auditd audispd-plugins rsyslog
+step "Test setup: install auditd"
+if command -v apt-get >/dev/null 2>&1; then
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -q
+  apt-get install -y -q --no-install-recommends auditd audispd-plugins rsyslog
+  service rsyslog start || true
+else
+  # The RHEL family. The service command is in initscripts-service on RHEL 10 and in initscripts
+  # before that. CentOS 7 has no package repos left, so a failed install is fine when its image
+  # already holds the tools, which the loop below checks.
+  pkg=dnf
+  command -v dnf >/dev/null 2>&1 || pkg=yum
+  "$pkg" install -y -q audit tar diffutils e2fsprogs || true
+  "$pkg" install -y -q initscripts-service || "$pkg" install -y -q initscripts || true
+  for tool in auditctl augenrules tar diff mkfs.ext4 service; do
+    command -v "$tool" >/dev/null 2>&1 || fail "test setup: $tool is not installed"
+  done
+fi
 service auditd start || true
-service rsyslog start || true
 auditctl -s
 
 step "Record checksums of /etc/audit and /etc/rsyslog.d"
@@ -177,7 +190,12 @@ start=$(date +%s)
 img=/var/tmp/auditd-kit-test.img
 dd if=/dev/zero of="$img" bs=1M count=128 2>/dev/null
 mkfs.ext4 -q -F -m 0 "$img"
-mount -o loop "$img" /var/log/audit
+# With SELinux on, auditd can only write to a filesystem that has the audit log label.
+mount_opts=loop
+if command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled; then
+  mount_opts="loop,context=system_u:object_r:auditd_log_t:s0"
+fi
+mount -o "$mount_opts" "$img" /var/log/audit
 chmod 0750 /var/log/audit
 df -h /var/log/audit
 run_install "$work/install3" --profile "$profile" --existing-rules replace \

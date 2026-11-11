@@ -17,7 +17,7 @@ else
     case "$path" in
       .github/workflows/* | scripts/dev/ci-changes.bash | tests/bats/ci-changes.bats)
         full=true ;;
-      tests/ci/real-kernel.sh | tests/ci/container-install.sh)
+      tests/ci/real-kernel.sh | tests/ci/container-install.sh | tests/ci/vm-run.sh)
         lint=true; runtime=true ;;
       tests/bats/* | tests/fixtures/*)
         lint=true; bats=true ;;
