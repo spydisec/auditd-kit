@@ -108,18 +108,15 @@ args="
     run load_settings "$flag" x
     [ "$status" -eq 1 ] && [[ "$output" == *"$want"* ]] || { echo "$flag: $output"; false; }
   done <<'EOT'
---forward|see docs/integrations/send-audit-log.md
---syslog-facility|see docs/integrations/send-audit-log.md
---remote-host|see docs/integrations/send-audit-log.md
---accept-catchall|see docs/integrations/send-audit-log.md
 --accept-agents|use akit_accept=agent_conflict:<agent>
 EOT
 }
 
-@test "akit_accept=catchall_forward names the forwarding doc" {
-  run load_settings --accept agent_conflict:wazuh,catchall_forward
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"catchall_forward was removed"*"send-audit-log.md"* ]]
+@test "a setting from before 0.3.0 is an unknown setting" {
+  for flag in --forward --syslog-facility --remote-host --accept-catchall; do
+    run load_settings "$flag" x
+    [ "$status" -eq 1 ] && [[ "$output" == *"unknown setting"* ]] || { echo "$flag: $output"; false; }
+  done
 }
 
 @test "old names exit 1 and name the new value" {

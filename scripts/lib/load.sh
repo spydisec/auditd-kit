@@ -53,20 +53,15 @@ akit_load_run() {
   return "$load_rc"
 }
 
-# akit_load_apply <rules yes|no> <auditd yes|no> <rsyslog yes|no>: load the rules with augenrules
-# when they changed, then restart auditd when auditd.conf or the syslog plugin changed, then
-# restart rsyslog when the old drop-in was removed. Loading first means a rule that the kernel
-# rejects fails here, with its error, and not later in auditd's start hook. auditd restarts
-# before rsyslog so that the syslog plugin has stopped before the drop-in's stop rule goes.
+# akit_load_apply <rules yes|no> <auditd yes|no>: load the rules with augenrules when they
+# changed, then restart auditd when auditd.conf changed. Loading first means a rule that the
+# kernel rejects fails here, with its error, and not later in auditd's start hook.
 akit_load_apply() {
   if [ "$1" = yes ]; then
     akit_load_run augenrules --load || return 1
   fi
   if [ "$2" = yes ]; then
     akit_load_restart_auditd || return 1
-  fi
-  if [ "${3:-no}" = yes ]; then
-    akit_load_run service rsyslog restart || return 1
   fi
 }
 
@@ -91,19 +86,16 @@ akit_load_locked() {
   [ "$load_en" = 2 ]
 }
 
-# akit_rollback <backup-id> <skip-load yes|no>: restore the backup, then restart rsyslog when the
-# old drop-in changed, restart auditd when its config or plugin files changed, load the restored
-# audit.rules, and run verify.sh. rsyslog goes first, so that a restored drop-in is in effect
-# before a restored plugin starts to write. Fails when any step fails, which leaves the host for a person.
+# akit_rollback <backup-id> <skip-load yes|no>: restore the backup, then restart auditd when its
+# config or plugin files changed, load the restored audit.rules, and run verify.sh. Fails when any
+# step fails, which leaves the host for a person.
 # When the rules are locked, it restores only the files, sets akit_reboot_needed=yes, and logs that
 # a reboot loads them, because restarting auditd or loading rules would fail.
 akit_rollback() {
   # shellcheck disable=SC2034
   akit_reboot_needed=no
   rb_auditd='/etc/audit/auditd.conf /etc/audit/plugins.d /etc/audisp'
-  rb_rsyslog=/etc/rsyslog.d/40-auditd-kit.conf
   rb_auditd_before=$(akit_load_sums "$rb_auditd")
-  rb_rsyslog_before=$(akit_load_sums "$rb_rsyslog")
   akit_log info "restoring backup $1"
   akit_backup_restore "$1" || return 1
   [ "$2" = no ] || return 0
@@ -112,9 +104,6 @@ akit_rollback() {
     akit_reboot_needed=yes
     akit_log warning "the audit rules are locked until reboot (-e 2), so backup $1 is restored on disk and takes effect after a reboot"
     return 0
-  fi
-  if [ "$(akit_load_sums "$rb_rsyslog")" != "$rb_rsyslog_before" ]; then
-    akit_load_run service rsyslog restart || return 1
   fi
   if [ "$(akit_load_sums "$rb_auditd")" != "$rb_auditd_before" ]; then
     akit_load_restart_auditd || return 1
