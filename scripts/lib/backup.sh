@@ -6,6 +6,9 @@
 # YYYYmmddTHHMMSSZ, with -1, -2, and so on added when that id exists. It holds /etc/audit, the
 # RHEL 7 plugin dir /etc/audisp, our rsyslog drop-in, and the state file, when each exists.
 # Paths in the archive are relative to /, so a restore under AKIT_ROOT works the same way.
+#
+# The first backup on a host that has no state file, which is the host before the first install,
+# is also kept as original.tgz. Install never removes it, so rollback can always go back to it.
 
 AKIT_BACKUP_DIR=$(akit_path /var/lib/auditd-kit/backups)
 AKIT_BACKUP_KEEP=5
@@ -35,7 +38,12 @@ akit_backup_valid_id() {
   esac
 }
 
-# akit_backup_ids: print the backup ids, oldest first.
+# akit_backup_known_id <id>: succeed for a backup id or for original.
+akit_backup_known_id() {
+  [ "$1" = original ] || akit_backup_valid_id "$1"
+}
+
+# akit_backup_ids: print the backup ids, oldest first. original isn't in the list.
 akit_backup_ids() {
   [ -d "$AKIT_BACKUP_DIR" ] || return 0
   for backup_f in "$AKIT_BACKUP_DIR"/*.tgz; do
@@ -55,7 +63,8 @@ akit_backup_ids() {
   }' | sort | awk '{ print $3 }'
 }
 
-# akit_backup_create: write a new backup, remove all but the newest 5, and print the new id.
+# akit_backup_create: write a new backup, keep it as original.tgz when it is the first one from
+# before an install, remove all but the newest 5, and print the new id.
 akit_backup_create() {
   backup_members=$(akit_backup_existing "$AKIT_BACKUP_PATHS")
   if [ ! -d "$(akit_path /etc/audit)" ]; then
@@ -78,6 +87,14 @@ akit_backup_create() {
     rm -f "$backup_tmp"
     akit_log error "cannot write backup $AKIT_BACKUP_DIR/$backup_id.tgz"
     return 1
+  fi
+  if [ ! -e "$(akit_path /etc/auditd-kit/state)" ] && [ ! -e "$AKIT_BACKUP_DIR/original.tgz" ]; then
+    if ! cp "$AKIT_BACKUP_DIR/$backup_id.tgz" "$AKIT_BACKUP_DIR/.original.tmp" \
+      || ! mv -f "$AKIT_BACKUP_DIR/.original.tmp" "$AKIT_BACKUP_DIR/original.tgz"; then
+      rm -f "$AKIT_BACKUP_DIR/.original.tmp"
+      akit_log error "cannot write backup $AKIT_BACKUP_DIR/original.tgz"
+      return 1
+    fi
   fi
   backup_all=$(akit_backup_ids)
   backup_count=$(printf '%s\n' "$backup_all" | grep -c .) || true
@@ -112,7 +129,7 @@ akit_backup_ours() {
 # unpacks the archive. A file added after the backup by something else stays, with a warning.
 # The canary stays, unless the backup is from before the first install.
 akit_backup_restore() {
-  if ! akit_backup_valid_id "$1"; then
+  if ! akit_backup_known_id "$1"; then
     akit_log error "not a backup id: $1"
     return 1
   fi

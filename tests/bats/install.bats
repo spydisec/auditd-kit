@@ -148,7 +148,7 @@ move /etc/audit/rules.d/91-auditd-kit-medium-last.rules" ]
   install
   [ "$status" -eq 0 ]
   [ "${lines[${#lines[@]} - 1]}" = changes=0 ]
-  set -- "$AKIT_ROOT"/var/lib/auditd-kit/backups/*.tgz
+  set -- "$AKIT_ROOT"/var/lib/auditd-kit/backups/*Z*.tgz
   [ $# -eq 1 ]
 }
 
@@ -207,7 +207,7 @@ EOF
 @test "rollback failure exits 3" {
   echo 'chmod 000 "$AKIT_ROOT"/var/lib/auditd-kit/backups/*.tgz' >"$stub_state/augenrules_fails"
   install
-  archive=$(echo "$AKIT_ROOT"/var/lib/auditd-kit/backups/*.tgz)
+  archive=$(echo "$AKIT_ROOT"/var/lib/auditd-kit/backups/*Z*.tgz)
   [ -r "$archive" ] && skip "running as root"
   [ "$status" -eq 3 ]
   [[ "$output" == *"rollback failed"* ]]

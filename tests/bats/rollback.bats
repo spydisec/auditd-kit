@@ -42,7 +42,18 @@ install_by_hand() {
     [ "$status" -eq 0 ]
   done
   [ "$output" = 20261020T120000Z-6 ]
-  [ "$(cd "$backups" && echo *)" = "20261020T120000Z-2.tgz 20261020T120000Z-3.tgz 20261020T120000Z-4.tgz 20261020T120000Z-5.tgz 20261020T120000Z-6.tgz" ]
+  [ "$(cd "$backups" && echo *)" = "20261020T120000Z-2.tgz 20261020T120000Z-3.tgz 20261020T120000Z-4.tgz 20261020T120000Z-5.tgz 20261020T120000Z-6.tgz original.tgz" ]
+}
+
+@test "the first backup before an install is kept as original, and a later one is not" {
+  backup akit_backup_create
+  first=$output
+  cmp "$backups/$first.tgz" "$backups/original.tgz"
+  mkdir -p "$AKIT_ROOT/etc/auditd-kit"
+  echo 'version=0.0.0' >"$AKIT_ROOT/etc/auditd-kit/state"
+  rm "$backups/original.tgz"
+  backup akit_backup_create
+  [ ! -e "$backups/original.tgz" ]
 }
 
 @test "two backups in the same second get distinct ids" {
@@ -96,7 +107,8 @@ install_by_hand() {
   [ "$status" -eq 0 ]
   run sh "$repo/scripts/rollback.sh" --list
   [ "$status" -eq 0 ]
-  [ "$output" = "$(cd "$backups" && echo *.tgz | sed 's/[.]tgz$//')" ]
+  [ "$output" = "$(cd "$backups" && ls -- *Z*.tgz | sed 's/[.]tgz$//')
+original" ]
   : >"$calls"
   run sh "$repo/scripts/rollback.sh"
   [ "$status" -eq 0 ]
@@ -123,6 +135,20 @@ install_by_hand() {
   run ! akit_called "auditctl -R"
   run ! akit_called "service"
   run ! akit_called augenrules
+}
+
+@test "rollback --original goes back to the host before the first install" {
+  before=$(akit_sums etc/audit etc/rsyslog.d)
+  for p in minimal heavy medium minimal heavy medium; do
+    run sh "$repo/scripts/install.sh" --profile "$p" </dev/null
+    [ "$status" -eq 0 ]
+  done
+  [ "$(cd "$backups" && ls -- *Z*.tgz | wc -l)" -eq 5 ]
+  run sh "$repo/scripts/rollback.sh" --original
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"restored=original"* ]]
+  [ "$(akit_sums etc/audit etc/rsyslog.d)" = "$before" ]
+  [ ! -e "$AKIT_ROOT/etc/auditd-kit" ]
 }
 
 @test "rollback refuses an unknown backup id and changes nothing" {

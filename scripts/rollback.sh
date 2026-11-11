@@ -1,13 +1,14 @@
 #!/bin/sh
 # Restore a backup that install.sh made.
 #
-# Usage: rollback.sh [--list] [--skip-load] [backup-id]
+# Usage: rollback.sh [--list] [--skip-load] [--original | backup-id]
 #
-# Restores the newest backup when no id is given. It restarts auditd when auditd.conf or a plugin
+# Restores the newest backup when no id is given. --original, or the id original, restores the
+# backup from before the first install, which install never removes. It restarts auditd when auditd.conf or a plugin
 # file changed, loads the restored audit.rules, restarts rsyslog when our drop-in changed, and runs
 # verify.sh. When the rules are locked until reboot (-e 2), it restores only the files, prints
 # reboot=required, and a reboot loads them. --list prints the backup ids, newest first, and
-# changes nothing. --skip-load restores only the files, and is only for tests in containers.
+# changes nothing, with original last when it exists. --skip-load restores only the files, and is only for tests in containers.
 #
 # Exits 0 when done, 1 when there is no such backup and nothing changed, and 3 when the restore
 # or verify failed and a person must fix the host. Each run logs to
@@ -33,6 +34,10 @@ for rollback_a in "$@"; do
   case "$rollback_a" in
     --list) rollback_list=yes ;;
     --skip-load) rollback_skip_load=yes ;;
+    --original)
+      [ -z "$rollback_id" ] || akit_die "$AKIT_EXIT_REFUSED" "give at most one backup id"
+      rollback_id=original
+      ;;
     -*) akit_die "$AKIT_EXIT_REFUSED" "unknown argument: $rollback_a" ;;
     *)
       [ -z "$rollback_id" ] || akit_die "$AKIT_EXIT_REFUSED" "give at most one backup id"
@@ -43,6 +48,7 @@ done
 
 if [ "$rollback_list" = yes ]; then
   akit_backup_ids | awk '{ id[NR] = $0 } END { for (i = NR; i > 0; i--) print id[i] }'
+  [ ! -f "$AKIT_BACKUP_DIR/original.tgz" ] || echo original
   exit "$AKIT_EXIT_OK"
 fi
 
@@ -54,7 +60,7 @@ if [ -z "$rollback_id" ]; then
   rollback_id=$(akit_backup_ids | tail -n 1)
   [ -n "$rollback_id" ] || akit_die "$AKIT_EXIT_REFUSED" "no backups in $AKIT_BACKUP_DIR"
 fi
-if ! akit_backup_valid_id "$rollback_id" || [ ! -f "$AKIT_BACKUP_DIR/$rollback_id.tgz" ]; then
+if ! akit_backup_known_id "$rollback_id" || [ ! -f "$AKIT_BACKUP_DIR/$rollback_id.tgz" ]; then
   akit_die "$AKIT_EXIT_REFUSED" "no backup $rollback_id in $AKIT_BACKUP_DIR"
 fi
 
