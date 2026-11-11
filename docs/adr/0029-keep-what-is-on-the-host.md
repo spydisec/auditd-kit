@@ -71,8 +71,11 @@ With `-i`, a load at boot succeeds even when a line fails, so a rule that stops 
 kernel change is silent until someone runs `verify.sh`. Without `-i` the same line would drop
 every rule after it.
 
-`verify.sh` passes when at least as many rules are loaded as after the install, because copies
-are skipped and agents add rules at run time.
+`verify.sh` compares the rules in the `rules.d` files with the loaded rules, key by key, because
+the kernel prints a rule differently from how a file writes it. A missing auditd-kit rule fails
+verify, and a missing rule of another file is a warning. Install saves the copies that the load
+skipped in the state file, so verify doesn't expect them. Verify misses a lost auditd-kit rule
+when an agent or another file has a loaded rule with the same key.
 
 On a host with locked rules, the new rules and the `auditd.conf` changes take effect at the
 reboot. A problem in the new rule set shows only then, when install can't roll back by itself.

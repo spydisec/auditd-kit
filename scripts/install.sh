@@ -311,21 +311,21 @@ akit_state_write "$install_rule_count" "$@" "$AKIT_AUDITD_CONF" \
 if [ "$install_skip_load" = yes ]; then
   akit_log info "skipping load and verify"
 elif [ "$install_locked" = yes ]; then
-  # The reboot will skip each rule of ours that a kept file also holds, so those don't count.
-  install_copies=0
+  # The reboot will skip each rule of ours that a kept file also holds, so verify must not
+  # expect those. Only word for word copies can be found without a load.
   install_others=$(install_host_get rules_d_foreign | tr ',' ' ')
   for install_f in "$install_work/rendered"/*.rules; do
     while IFS= read -r install_rule; do
       case "$install_rule" in -a* | -w*) ;; *) continue ;; esac
       for install_o in $install_others; do
         if grep -q -x -F -e "$install_rule" "$(akit_path "$AKIT_RULES_D/$install_o")" 2>/dev/null; then
-          install_copies=$((install_copies + 1))
+          echo "copy $install_o $install_rule"
           break
         fi
       done
     done <"$install_f"
-  done
-  akit_state_set_loaded "$((install_rule_count - install_copies))" || install_fail "cannot write $AKIT_STATE_FILE"
+  done >"$install_work/load-errors"
+  akit_state_set_skips "$install_work/load-errors" || install_fail "cannot write $AKIT_STATE_FILE"
   akit_log warning "the audit rules are locked until reboot (-e 2), so the new rule files and auditd.conf are written but not loaded or checked. Reboot, then run verify.sh. If the new rules fail after the reboot, run rollback.sh and reboot again"
 else
   # 7. Load
@@ -334,15 +334,12 @@ else
   # rule is fine, and so is a bad line in a file that auditd-kit didn't write, which failed
   # before the install too. Any other error is ours.
   install_bad=no
-  install_copies=0
+  : >"$install_work/load-errors"
   if [ "$install_rules" = yes ]; then
     printf '%s\n' "$akit_load_output" | akit_load_errors >"$install_work/load-errors"
     while read -r install_class install_src install_rule; do
       case "$install_class" in
-        copy)
-          akit_log info "already loaded, skipped: $install_rule"
-          install_copies=$((install_copies + 1))
-          ;;
+        copy) akit_log info "already loaded, skipped: $install_rule" ;;
         kept) akit_log warning "$install_src has a rule that didn't load: $install_rule" ;;
         *)
           akit_log error "$install_src has a rule that didn't load: $install_rule"
@@ -352,15 +349,8 @@ else
     done <"$install_work/load-errors"
   fi
   [ "$install_bad" = no ] || install_fail "an auditd-kit rule failed to load"
-  # verify.sh later passes on at least our own rule count, less the copies that were skipped. The
-  # rules of other files don't count, so that removing one of them later doesn't fail verify.
-  install_floor=$((install_rule_count - install_copies))
-  install_loaded=$(auditctl -l 2>/dev/null | awk '/^-[aw][ \t]/ { n++ } END { print n + 0 }')
-  [ "$install_loaded" -ge "$install_floor" ] && [ "$install_loaded" -gt 0 ] \
-    || install_fail "$install_loaded rules are loaded, and at least $install_floor were expected"
-  akit_state_set_loaded "$install_floor" || install_fail "cannot write $AKIT_STATE_FILE"
-  # The rules are counted before the put-back, so a rule that is put back never makes up for a
-  # rule of ours that didn't load.
+  # verify.sh doesn't expect the rules that this load skipped.
+  akit_state_set_skips "$install_work/load-errors" || install_fail "cannot write $AKIT_STATE_FILE"
   [ "$install_rules" = no ] || akit_load_runtime_restore "$install_work"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"

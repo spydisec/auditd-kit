@@ -184,11 +184,28 @@ akit_state_write() {
   return 1
 }
 
-# akit_state_set_loaded <count>: record how many of our rules the install loaded, which is the
-# least that verify.sh accepts later.
-akit_state_set_loaded() {
+# akit_rule_keys: print one line for each audit rule on stdin, with the rule's first key, or -
+# for a rule with no key. A key is written as "-k name" or as "-F key=name".
+akit_rule_keys() {
+  awk '/^[ \t]*-[aAw][ \t]/ {
+    k = "-"
+    for (i = 1; i <= NF; i++) {
+      if ($i == "-k" && i < NF) { k = $(i + 1); break }
+      if ($i ~ /^key=/) { k = substr($i, 5); break }
+    }
+    print k
+  }'
+}
+
+# akit_state_set_skips <file>: record the copies that the load skipped, from the output of
+# akit_load_errors, as "skip=copy <key>" lines. verify.sh doesn't expect those rules.
+akit_state_set_skips() {
   state_tmp="$AKIT_STATE_FILE.tmp"
-  { grep -v '^loaded_count=' "$AKIT_STATE_FILE" && echo "loaded_count=$1"; } >"$state_tmp" \
+  {
+    grep -v -e '^skip=' -e '^loaded_count=' "$AKIT_STATE_FILE" && while read -r state_class _ state_rule; do
+      [ "$state_class" != copy ] || echo "skip=copy $(printf '%s\n' "$state_rule" | akit_rule_keys)"
+    done <"$1"
+  } >"$state_tmp" \
     && chmod 0644 "$state_tmp" && mv -f "$state_tmp" "$AKIT_STATE_FILE" && return 0
   rm -f "$state_tmp"
   return 1

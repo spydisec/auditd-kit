@@ -204,6 +204,11 @@ hc_check_rules() {
   [ "$akit_existing_rules" = keep ] || return 0
   for hc_n in $(printf '%s\n' "$hc_foreign" | tr ',' ' '); do
     [ -r "$(akit_path "$AKIT_RULES_D/$hc_n")" ] || continue
+    # Our base file holds -i, which makes the load skip a line that fails. A file that loads
+    # before it doesn't have that yet.
+    if [ "$(printf '%s\n' "$hc_n" 00-auditd-kit-base.rules | LC_ALL=C sort | sed -n 1p)" = "$hc_n" ]; then
+      hc_warn existing_rules_first "$hc_n loads before 00-auditd-kit-base.rules, so a line in it that fails stops the whole load, and install rolls back. Give it a name that sorts after 00-auditd-kit-base.rules"
+    fi
     hc_found=$(awk -v want="$akit_backlog" '
       { sub(/^[ \t]+/, "") }
       /^-f[ \t]*2([ \t]|$)/ { print "panic " NR }

@@ -148,10 +148,29 @@ auditctl -l | grep -q 'ci_other' || fail "the other tool's rule is not loaded"
 auditctl -l | grep -q 'akit_canary' || fail "the kit's rules are not loaded"
 grep -q "40-ci-other.rules has a rule that didn't load" "$work/install-keep" \
   || fail "install didn't warn about the rule that can't load"
-sh "$repo/scripts/verify.sh" || fail "verify.sh exited $? next to the other file"
+sh "$repo/scripts/verify.sh" >"$work/verify-keep" || fail "verify.sh exited $? next to the other file"
+cat "$work/verify-keep"
+grep -q 'check=other_rules result=warn detail=.*ci_gone (0 of 1)' "$work/verify-keep" \
+  || fail "verify didn't warn about the other file's rule that isn't loaded"
+# Delete one kit rule from the kernel. Verify must fail and name its key.
+auditctl -W /etc/auditd-kit/canary -p wa -k akit_canary
+if sh "$repo/scripts/verify.sh" >"$work/verify-missing"; then
+  fail "verify passed with a kit rule missing"
+fi
+grep -q 'check=rules result=fail detail=.*akit_canary (0 of 1)' "$work/verify-missing" \
+  || fail "verify didn't name the missing rule's key"
 rm -f /etc/audit/rules.d/40-ci-other.rules
 sh "$repo/scripts/rollback.sh" --original || fail "rollback.sh --original exited $?"
 same_sums "$work/before" "the keep step left a changed file"
+
+step "backup.sh and rollback.sh undo an edit on a host with no install"
+backup_out=$(sh "$repo/scripts/backup.sh") || fail "backup.sh exited $?"
+# A restore puts back the files that the backup holds, so the edit is to a file that exists.
+set -- /etc/audit/rules.d/*.rules
+[ -f "$1" ] || fail "no rules file to edit"
+echo '-w /srv -p wa -k ci_edit' >>"$1"
+sh "$repo/scripts/rollback.sh" "${backup_out#backup=}" || fail "rollback.sh exited $? after backup.sh"
+same_sums "$work/before" "rollback did not undo the edit"
 
 step "A full audit disk doesn't halt the host"
 start=$(date +%s)

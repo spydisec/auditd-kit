@@ -21,7 +21,7 @@ auditd-kit writes these files, and no others:
 | `/etc/audit/rules.d/99-auditd-kit-finalize.rules` | Writes it only when `akit_immutable` is true |
 | `/etc/audit/auditd.conf` | Sets the keys in `config/auditd/<size>.conf` and leaves every other line alone |
 | `/etc/auditd-kit/canary` | Creates it once, for `verify.sh` |
-| `/etc/auditd-kit/state` | Records the version, profile, size, install time, rule count, loaded rule count, and a checksum line for each file above, except the canary |
+| `/etc/auditd-kit/state` | Records the version, profile, size, install time, rule count, the keys of the rules that the load skipped, and a checksum line for each file above, except the canary |
 | `/var/lib/auditd-kit/render-report.txt` | Lists each rule that render dropped and why |
 | `/var/lib/auditd-kit/backups/<id>.tgz` | Keeps the newest 5 backups |
 | `/var/lib/auditd-kit/backups/original.tgz` | Keeps the first backup on a host with no state file, which is the host before the first install, and never removes it |

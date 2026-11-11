@@ -186,6 +186,14 @@ passes() {
   [[ "$output" == *"warn=existing_rules_lock detail=50-site.rules:1 "* ]]
 }
 
+@test "a kept file that loads before our base file warns" {
+  echo '-w /opt/app -p wa -k org_app' >"$rules_d/00-a.rules"
+  echo '-w /opt/app -p wa -k org_app' >"$rules_d/05-b.rules"
+  passes
+  [[ "$output" == *"warn=existing_rules_first detail=00-a.rules "* ]]
+  [[ "$output" != *"detail=05-b.rules"* ]]
+}
+
 @test "a kept file with a smaller backlog warns" {
   echo '-b 320' >"$rules_d/50-site.rules"
   passes
