@@ -45,11 +45,37 @@ route() {
   [[ "$output" == *"runtime=true"* ]]
 }
 
-@test "workflow and routing changes select all tests" {
-  for path in .github/workflows/lint.yml scripts/dev/ci-changes.bash tests/bats/ci-changes.bats; do
+@test "routing changes select all tests" {
+  for path in .github/workflows/changes.yml scripts/dev/ci-changes.bash tests/bats/ci-changes.bats; do
     run route "$path"
     [[ "$output" != *"=false"* ]]
   done
+}
+
+@test "a workflow selects the tests it runs" {
+  run route .github/workflows/integration.yml
+  [[ "$output" == *"runtime=true"* ]]
+  [[ "$output" == *"bats=false"* ]]
+  run route .github/workflows/lint.yml
+  [[ "$output" == *"bats=true"* ]]
+  [[ "$output" == *"runtime=false"* ]]
+  run route .github/workflows/release.yml
+  [[ "$output" == *"packaging=true"* ]]
+  [[ "$output" == *"runtime=false"* ]]
+  run route .github/workflows/security.yml
+  [[ "$output" == *"lint=true"* ]]
+  [[ "$output" == *"runtime=false"* ]]
+}
+
+@test "repo settings files and Wazuh content select no VM tests" {
+  run route .gitignore .github/rulesets/main.json
+  [[ "$output" != *"=true"* ]]
+  run route config/wazuh/auditd-kit-rules.xml
+  [[ "$output" == *"bats=true"* ]]
+  [[ "$output" == *"runtime=false"* ]]
+  run route tests/lint.sh
+  [[ "$output" == *"lint=true"* ]]
+  [[ "$output" == *"runtime=false"* ]]
 }
 
 @test "YAML extensions select lint outside known directories" {

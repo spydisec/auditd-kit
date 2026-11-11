@@ -5,6 +5,10 @@ on:
   pull_request:
   push:
     branches: [main]
+  # A weekly run of every test, because a push now runs only the tests for what it changed.
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
 
 permissions: {}
 

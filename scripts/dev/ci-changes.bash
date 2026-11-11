@@ -15,13 +15,27 @@ elif [[ $# != 0 ]]; then
 else
   while IFS= read -r -d '' path; do
     case "$path" in
-      .github/workflows/* | scripts/dev/ci-changes.bash | tests/bats/ci-changes.bats)
+      .github/workflows/changes.yml | scripts/dev/ci-changes.bash | tests/bats/ci-changes.bats)
         full=true ;;
+      .github/workflows/integration.yml)
+        lint=true; runtime=true ;;
+      .github/workflows/lint.yml)
+        lint=true; bats=true; packaging=true; rules=true ;;
+      .github/workflows/release.yml)
+        lint=true; packaging=true ;;
+      .github/workflows/*)
+        lint=true ;;
+      .github/rulesets/* | .gitignore | .gitattributes)
+        ;;
+      tests/lint.sh)
+        lint=true ;;
       tests/ci/real-kernel.sh | tests/ci/container-install.sh | tests/ci/vm-run.sh)
         lint=true; runtime=true ;;
       tests/bats/* | tests/fixtures/*)
         lint=true; bats=true ;;
       scripts/dev/*)
+        lint=true; bats=true; packaging=true ;;
+      config/wazuh/*)
         lint=true; bats=true; packaging=true ;;
       scripts/* | config/*)
         full=true ;;
