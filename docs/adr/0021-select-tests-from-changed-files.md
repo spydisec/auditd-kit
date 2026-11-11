@@ -52,3 +52,9 @@ Existing required check names stay the same.
 Documentation changes avoid host tests. Mixed changes run the union of their test groups.
 New file types run all tests until we add a narrower rule and a regression test for it.
 Local validation commands remain unchanged.
+
+Note, 2026-11-12: a push to `main` no longer runs the full suite. It is routed by the files that
+the push changed, like a PR, because every merge is a squash of a PR that already ran those
+tests. The integration and lint workflows run everything once a week and when started by hand.
+A workflow file now selects only the tests it runs, and only `changes.yml` and the routing script
+select the full suite. `.gitignore`, the ruleset files, and `config/wazuh/` select no kernel tests.

@@ -40,14 +40,21 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$EVENT_NAME" != pull_request ]]; then
-            bash scripts/dev/ci-changes.bash --all >"$GITHUB_OUTPUT"
-          else
+          # A PR is routed by its diff, and a push by the commits it added. A scheduled run, a
+          # manual run, and a push whose earlier commit is unknown run everything.
+          if [[ "$EVENT_NAME" == pull_request ]]; then
             git diff --no-renames --name-only -z "$BASE_SHA...$HEAD_SHA" \
               | bash scripts/dev/ci-changes.bash >"$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == push ]] && git cat-file -e "${PUSH_BEFORE}^{commit}" 2>/dev/null; then
+            git diff --no-renames --name-only -z "$PUSH_BEFORE" "$PUSH_AFTER" \
+              | bash scripts/dev/ci-changes.bash >"$GITHUB_OUTPUT"
+          else
+            bash scripts/dev/ci-changes.bash --all >"$GITHUB_OUTPUT"
           fi
           for group in lint bats runtime packaging rules; do
             grep -Eq "^${group}=(true|false)$" "$GITHUB_OUTPUT"
