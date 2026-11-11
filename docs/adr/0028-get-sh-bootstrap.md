@@ -6,8 +6,8 @@ Date: 2026-11-11
 ## Context
 
 An operator who tries auditd-kit on one host had to download the bundle, check it, unpack it, and
-run `install.sh` by hand. Fleets run the same steps from ssh or a config tool, where nobody can
-answer a question, so one script has to work both ways and must never change a host that nobody
+run `install.sh` by hand. To set up many hosts, an operator runs the same steps from a script,
+where nobody can answer a question, so one script has to work both ways and must never change a host that nobody
 approved.
 
 ## Decision
@@ -21,8 +21,8 @@ checks the bundle, unpacks it into `/opt/auditd-kit` (or `AKIT_DIR`), and runs t
 - With no terminal it runs only the survey and the plan, and changes nothing.
 - With `--yes` it installs with the given settings and asks no questions.
 
-The last line is `result=<outcome> version=X.Y.Z host=<name>`, so a fleet tool can collect one line
-per host. `AKIT_VERSION` pins a release, and `AKIT_MIRROR` downloads from a server that the
+The last line is `result=<outcome> version=X.Y.Z host=<name>`, followed by `codes=<codes>` when
+install refused, so a script that runs it on many hosts can collect one line per host. `AKIT_VERSION` pins a release, and `AKIT_MIRROR` downloads from a server that the
 operator runs, for hosts without internet access.
 
 ## Consequences
