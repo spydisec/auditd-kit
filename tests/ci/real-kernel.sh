@@ -9,8 +9,7 @@
 #
 # It checks that the survey changes nothing, that an install loads and verifies, that a second
 # install has nothing to change, that a rollback gives back checksum-identical /etc/audit and
-# /etc/rsyslog.d, that install undoes the forwarding of auditd-kit 0.2.0, and that a full audit disk
-# doesn't halt the host.
+# /etc/rsyslog.d, and that a full audit disk doesn't halt the host.
 set -eu
 LC_ALL=C
 export LC_ALL
@@ -129,30 +128,6 @@ run_install "$work/install2" --profile "$profile" --existing-rules replace
 step "Rollback gives back the files from before the install"
 sh "$repo/scripts/rollback.sh" || fail "rollback.sh exited $?"
 same_sums "$work/before" "rollback did not restore /etc/audit and /etc/rsyslog.d"
-
-step "Install undoes the forwarding of auditd-kit 0.2.0"
-# The host as 0.2.0 left it with forwarding on: our rules, an active syslog plugin, our drop-in,
-# and forward=remote in the state file.
-run_install "$work/install-old0" --profile "$profile" --existing-rules replace
-echo forward=remote >>/etc/auditd-kit/state
-echo "if \$syslogfacility-text == 'local6' then { stop }" >/etc/rsyslog.d/40-auditd-kit.conf
-sed -i 's/^active = no/active = yes/' /etc/audit/plugins.d/syslog.conf
-service rsyslog restart
-sums >"$work/old-before"
-run_install "$work/install-old" --profile "$profile" --existing-rules replace
-grep -qx 'active = no' /etc/audit/plugins.d/syslog.conf || fail "the syslog plugin is still active"
-[ ! -e /etc/rsyslog.d/40-auditd-kit.conf ] || fail "the old drop-in is still there"
-grep -q '^forward=' /etc/auditd-kit/state && fail "the state file still has forward="
-sh "$repo/scripts/rollback.sh" || fail "rollback.sh exited $? after the cleanup"
-same_sums "$work/old-before" "rollback did not restore the 0.2.0 forwarding files"
-rm -f /etc/rsyslog.d/40-auditd-kit.conf
-sed -i '/^forward=/d' /etc/auditd-kit/state
-sed -i 's/^active = yes/active = no/' /etc/audit/plugins.d/syslog.conf
-systemctl reset-failed auditd || true
-service auditd restart
-# With audit 4 the rules load in audit-rules.service after the restart. Wait for it.
-! systemctl cat audit-rules.service >/dev/null 2>&1 || systemctl start audit-rules.service || true
-service rsyslog restart
 
 step "A full audit disk doesn't halt the host"
 start=$(date +%s)

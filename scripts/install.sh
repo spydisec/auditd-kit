@@ -12,11 +12,9 @@
 #   3. validate   validate.sh checks the rule syntax in that dir
 #   4. plan       plan.sh lists each change. --dry-run prints the plan and stops here
 #   5. backup     saves the files that the next stages change
-#   6. deploy     writes the rules, the auditd.conf keys, the canary, the report, and the state,
-#                 and undoes the forwarding of an earlier version (ADR 0026)
-#   7. load       augenrules --load when the rules changed, service rsyslog restart when the
-#                 old drop-in was removed, service auditd restart when auditd.conf or the
-#                 plugin changed
+#   6. deploy     writes the rules, the auditd.conf keys, the canary, the report, and the state
+#   7. load       augenrules --load when the rules changed, service auditd restart when
+#                 auditd.conf changed
 #   8. verify     verify.sh
 # A failure after the backup restores it. --skip-load skips load and verify, and is only for
 # tests in containers, where the kernel audit system can't be used.
@@ -30,7 +28,7 @@ set -eu
 
 install_root=$(CDPATH='' cd -- "$(dirname -- "$0")" >/dev/null && pwd)
 install_lib=$install_root/lib
-for install_l in common settings backup auditdconf rulesd load forward; do
+for install_l in common settings backup auditdconf rulesd load; do
   # shellcheck source=/dev/null
   . "$install_lib/$install_l.sh"
 done
@@ -275,7 +273,6 @@ install_stage=change
 # 6. Deploy
 install_rules=no
 install_auditd=no
-install_rsyslog=no
 set --
 for install_f in "$install_work/rendered"/*.rules; do
   set -- "$@" "$AKIT_RULES_D/${install_f##*/}"
@@ -300,15 +297,6 @@ while read -r install_verb install_path install_key; do
       rm -f "$(akit_path "$install_path")" || install_fail "cannot remove $(akit_path "$install_path")"
       install_rules=yes
       ;;
-    move:"$AKIT_RSYSLOG_DROPIN")
-      rm -f "$(akit_path "$install_path")" || install_fail "cannot remove $(akit_path "$install_path")"
-      install_rsyslog=yes
-      akit_log warning "auditd-kit no longer sends audit events, so the forwarding that an earlier version turned on is off now. Send audit.log with your own agent, see docs/integrations/send-audit-log.md"
-      ;;
-    set:/etc/audit/plugins.d/syslog.conf | set:/etc/audisp/plugins.d/syslog.conf)
-      akit_auditdconf_set "$(akit_path "$install_path")" active no || install_fail "cannot set $install_path"
-      install_auditd=yes
-      ;;
     set:*) install_auditd=yes ;;
   esac
   akit_log info "$install_verb $install_path${install_key:+ $install_key}"
@@ -329,7 +317,7 @@ if [ "$install_skip_load" = yes ]; then
   akit_log info "skipping load and verify"
 else
   # 7. Load
-  akit_load_apply "$install_rules" "$install_auditd" "$install_rsyslog" || install_fail "loading the rules or restarting auditd failed"
+  akit_load_apply "$install_rules" "$install_auditd" || install_fail "loading the rules or restarting auditd failed"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"
   # The load deleted the who-data rules that Wazuh added at its start (ADR 0023).

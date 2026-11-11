@@ -28,8 +28,6 @@ auditd-kit writes these files, and no others:
 | `/var/lib/auditd-kit/backups/original.tgz` | Keeps the first backup on a host with no state file, which is the host before the first install, and never removes it |
 | `/var/log/auditd-kit/install-<time>.log` and `rollback-<time>.log` | Logs each run, including dry runs and refusals |
 | `/run/auditd-kit.lock` | Holds the PID of the running script |
-| `/etc/audit/plugins.d/syslog.conf`, or `/etc/audisp/plugins.d/syslog.conf` on older auditd | Sets `active = no` only on a host where an earlier version turned forwarding on (ADR 0026) |
-| `/etc/rsyslog.d/40-auditd-kit.conf` | Removes the drop-in that an earlier version wrote (ADR 0026) |
 | `/opt/auditd-kit/auditd-kit-<version>/` | `get.sh` unpacks each release here, or under `AKIT_DIR` |
 
 A file in `rules.d` belongs to auditd-kit when its name contains `auditd-kit` or the state file lists
@@ -42,15 +40,15 @@ file in `rules.d` needs a choice in `akit_existing_rules`:
 auditd-kit removes a file only after the backup has saved it. When a profile no longer has one of
 our files, e.g. after a change from `heavy` to `minimal`, install removes that file too.
 
-A backup holds `/etc/audit`, `/etc/audisp` on RHEL 7, our rsyslog drop-in, and the state file. A
-restore puts those files back. It removes the files that auditd-kit added after the backup, and
+A backup holds `/etc/audit`, `/etc/audisp` on RHEL 7, and the state file. A restore puts those
+files back. It removes the files that auditd-kit added after the backup, and
 also the `audit.rules` and `audit.rules.prev` that augenrules writes. It keeps any other file that
 was added after the backup, and logs a warning for it. A restore to a backup from before the first
 install also removes the canary and `/etc/auditd-kit/`.
 
 ## Consequences
 
-A rollback gives back checksum-identical `/etc/audit` and `/etc/rsyslog.d`, and the state file lets
+A rollback gives back a checksum-identical `/etc/audit`, and the state file lets
 the survey and `verify.sh` tell our files from the ones that other tools wrote. A run that exits 1
 changes no file in `/etc` or `/var/lib`, but it still writes its log and briefly holds the lock.
 The render report stays after a rollback, so an operator can see why the rules failed to load.

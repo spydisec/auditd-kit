@@ -34,11 +34,8 @@ akit_settings_bad() {
 akit_settings_set() {
   set_key=$1
   set_val=$2
-  # Settings that ADR 0024 and ADR 0026 removed fail with what replaced them.
+  # A setting that ADR 0024 removed fails with what replaced it.
   case "$set_key" in
-    akit_forward | akit_syslog_facility | akit_remote_host | akit_remote_port | akit_remote_protocol | akit_accept_catchall)
-      akit_settings_bad "$set_key" "removed, auditd-kit no longer sends audit events. Send audit.log with your own agent, see docs/integrations/send-audit-log.md"
-      ;;
     akit_accept_agents) akit_settings_bad "$set_key" "removed, use akit_accept=agent_conflict:<agent>" ;;
   esac
   case " $(printf '%s' "$AKIT_SETTING_KEYS" | tr '\n' ' ' | tr -s ' ') " in
@@ -90,9 +87,6 @@ akit_settings_set() {
       esac
       for set_code in $(printf '%s\n' "$set_val" | tr ',' ' '); do
         case "$set_code" in
-          catchall_forward)
-            akit_settings_bad "$set_key" "catchall_forward was removed, because auditd-kit no longer sends audit events. See docs/integrations/send-audit-log.md"
-            ;;
           agent_conflict:*)
             case "${set_code#agent_conflict:}" in
               '' | *[!a-z0-9_-]*) akit_settings_bad "$set_key" "'$set_code' has no valid agent id" ;;

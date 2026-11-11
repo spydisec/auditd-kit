@@ -4,7 +4,7 @@
 #
 # A backup is /var/lib/auditd-kit/backups/<id>.tgz, where the id is the UTC time as
 # YYYYmmddTHHMMSSZ, with -1, -2, and so on added when that id exists. It holds /etc/audit, the
-# RHEL 7 plugin dir /etc/audisp, our rsyslog drop-in, and the state file, when each exists.
+# RHEL 7 plugin dir /etc/audisp, and the state file, when each exists.
 # Paths in the archive are relative to /, so a restore under AKIT_ROOT works the same way.
 #
 # The first backup on a host that has no state file, which is the host before the first install,
@@ -14,8 +14,8 @@ AKIT_BACKUP_DIR=$(akit_path /var/lib/auditd-kit/backups)
 AKIT_BACKUP_KEEP=5
 
 # The paths a backup holds, and the paths a restore looks at for files added after the backup.
-AKIT_BACKUP_PATHS='etc/audit etc/audisp etc/rsyslog.d/40-auditd-kit.conf etc/auditd-kit/state'
-AKIT_BACKUP_SCAN='etc/audit etc/audisp etc/rsyslog.d/40-auditd-kit.conf etc/auditd-kit'
+AKIT_BACKUP_PATHS='etc/audit etc/audisp etc/auditd-kit/state'
+AKIT_BACKUP_SCAN='etc/audit etc/audisp etc/auditd-kit'
 
 # akit_backup_existing <paths>: print the paths that exist under AKIT_ROOT.
 akit_backup_existing() {
@@ -178,6 +178,6 @@ akit_backup_restore() {
     rmdir "$(akit_path /etc/auditd-kit)" 2>/dev/null || true
   fi
   if [ -z "$AKIT_ROOT" ] && command -v restorecon >/dev/null 2>&1; then
-    restorecon -R /etc/audit /etc/audisp /etc/rsyslog.d/40-auditd-kit.conf /etc/auditd-kit >/dev/null 2>&1 || true
+    restorecon -R /etc/audit /etc/audisp /etc/auditd-kit >/dev/null 2>&1 || true
   fi
 }

@@ -43,3 +43,6 @@ hand, and `docs/integrations/send-audit-log.md` gives the steps. The cleanup cod
 supported upgrade path starts from 0.2.0 or earlier.
 
 ADR 0004 is superseded, and so is the forwarding part of ADR 0024.
+
+Note, 2026-11-11: v0.4.0 removes the cleanup code. A host where 0.2.0 or earlier turned forwarding
+on installs 0.3.1 first, which does the cleanup, and then 0.4.0.
