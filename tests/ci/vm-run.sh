@@ -69,5 +69,7 @@ done
 vm 'cat /etc/os-release; uname -r'
 
 echo "== Run the test in the VM"
-tar -czf - -C "$repo" scripts rules config tests/ci | vm 'mkdir akit && tar -xzf - -C akit'
+# tar writes to a file first, so that a failure here stops the run.
+tar -czf repo.tgz -C "$repo" scripts rules config tests/ci
+vm 'mkdir akit && tar -xzf - -C akit' <repo.tgz
 vm "cd akit && sudo AKIT_CI_OK=yes sh tests/ci/real-kernel.sh $profile"
