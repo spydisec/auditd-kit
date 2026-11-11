@@ -118,9 +118,11 @@ install_by_hand() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"reboot=required"* ]]
   [ "$(akit_sums etc/audit etc/rsyslog.d)" = "$before" ]
+  akit_called "auditctl -s"
   run ! akit_called "auditctl -D"
   run ! akit_called "auditctl -R"
-  run ! akit_called "service auditd"
+  run ! akit_called "service"
+  run ! akit_called augenrules
 }
 
 @test "rollback refuses an unknown backup id and changes nothing" {

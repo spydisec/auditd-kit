@@ -98,6 +98,7 @@ akit_load_locked() {
 # When the rules are locked, it restores only the files, sets akit_reboot_needed=yes, and logs that
 # a reboot loads them, because restarting auditd or loading rules would fail.
 akit_rollback() {
+  # shellcheck disable=SC2034
   akit_reboot_needed=no
   rb_auditd='/etc/audit/auditd.conf /etc/audit/plugins.d /etc/audisp'
   rb_rsyslog=/etc/rsyslog.d/40-auditd-kit.conf
@@ -107,6 +108,7 @@ akit_rollback() {
   akit_backup_restore "$1" || return 1
   [ "$2" = no ] || return 0
   if akit_load_locked; then
+    # shellcheck disable=SC2034
     akit_reboot_needed=yes
     akit_log warning "the audit rules are locked until reboot (-e 2), so backup $1 is restored on disk and takes effect after a reboot"
     return 0
