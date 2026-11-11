@@ -37,20 +37,9 @@ route() {
   done
 }
 
-@test "Ansible changes select lint Molecule and packaging without host tests" {
-  run route ansible/playbooks/templates/stats.csv.j2
-  [[ "$output" == *"lint=true"* ]]
-  [[ "$output" == *"molecule=true"* ]]
-  [[ "$output" == *"packaging=true"* ]]
-  [[ "$output" == *"runtime=false"* ]]
-}
-
 @test "test inputs select their owning groups" {
   run route tests/fixtures/audit-logs/basic/audit.log
   [[ "$output" == *"bats=true"* ]]
-  [[ "$output" == *"runtime=false"* ]]
-  run route tests/molecule/survey/verify.yml
-  [[ "$output" == *"molecule=true"* ]]
   [[ "$output" == *"runtime=false"* ]]
   run route tests/ci/real-kernel.sh
   [[ "$output" == *"runtime=true"* ]]
@@ -69,12 +58,12 @@ route() {
 }
 
 @test "mixed changes include every selected group regardless of order" {
-  run route README.md tests/molecule/survey/verify.yml tests/bats/stats.bats
+  run route README.md tests/ci/real-kernel.sh tests/bats/stats.bats
   first=$output
-  run route tests/bats/stats.bats tests/molecule/survey/verify.yml README.md
+  run route tests/bats/stats.bats tests/ci/real-kernel.sh README.md
   [ "$output" = "$first" ]
   [[ "$output" == *"bats=true"* ]]
-  [[ "$output" == *"molecule=true"* ]]
+  [[ "$output" == *"runtime=true"* ]]
   [[ "$output" == *"packaging=true"* ]]
 }
 

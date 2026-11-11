@@ -1,6 +1,6 @@
 # 0015. The role runs the shared scripts on targets
 
-Status: Accepted
+Status: Superseded by 0027
 Date: 2026-10-20
 
 ## Context

@@ -1,6 +1,6 @@
 # 0016. Supported ansible-core versions
 
-Status: Accepted
+Status: Superseded by 0027
 Date: 2026-10-20
 
 ## Context

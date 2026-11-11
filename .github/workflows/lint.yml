@@ -68,16 +68,6 @@ jobs:
           assert-install: false
           detik-install: false
           file-install: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
-        if: needs.changes.outputs.bats == 'true' || needs.changes.outputs.packaging == 'true'
-        with:
-          python-version: "3.12"
-      - name: Install packaging tools
-        if: needs.changes.outputs.bats == 'true' || needs.changes.outputs.packaging == 'true'
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install 'ansible-core==2.16.*'
-          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Bats
         env:
           RUN_ALL: ${{ needs.changes.outputs.bats }}
@@ -85,13 +75,11 @@ jobs:
           RUN_RULES: ${{ needs.changes.outputs.rules }}
         run: |
           if [ "$RUN_ALL" = true ]; then
-            command -v ansible-galaxy
             bats tests/bats
           else
             set --
             if [ "$RUN_PACKAGING" = true ]; then
-              command -v ansible-galaxy
-              set -- "$@" tests/bats/collection.bats tests/bats/release.bats
+              set -- "$@" tests/bats/release.bats
             fi
             if [ "$RUN_RULES" = true ]; then
               set -- "$@" tests/bats/rules.bats

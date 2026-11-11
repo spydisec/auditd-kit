@@ -1,7 +1,7 @@
 # auditd-kit
 
 auditd-kit turns on Linux audit logging (auditd) across a fleet with safe defaults. It ships plain
-rule and config files, POSIX shell scripts, and an Ansible collection.
+rule and config files and POSIX shell scripts.
 
 ## Public repository rules
 

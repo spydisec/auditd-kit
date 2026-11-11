@@ -1,6 +1,6 @@
 # 0012. Settings, flags, and exit codes
 
-Status: Accepted
+Status: Superseded by 0027
 Date: 2026-10-20
 
 ## Context
