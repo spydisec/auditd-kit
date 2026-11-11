@@ -28,8 +28,8 @@ verify_report() {
   [ "$2" = pass ] || verify_failed=1
 }
 
-# The loaded rules can be more than install loaded, because agents add rules at run time. So the
-# check passes on at least the count that install saved in the state file. A state file from
+# The loaded rules can be more than ours, because other files and agents add rules. So the check
+# passes on at least the count of our own rules that install saved in the state file. A state file from
 # before 0.4.0 has no count, and then the rules in audit.rules are counted.
 verify_rule_count() {
   verify_expected=$(sed -n 's/^loaded_count=//p' "$verify_state" 2>/dev/null | head -n 1)

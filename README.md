@@ -98,7 +98,8 @@ Tested on each change:
   and install rolls back. Install refuses a kept file that sets `-f 2`, because that would panic
   the host when auditing fails, and it warns when a kept file sets `-e 2`.
 - **After a reboot or a kernel update:** run `sh scripts/verify.sh`. The rules load with `-i`, so
-  a rule that stops loading doesn't stop the others, and verify is what reports it.
+  a rule that stops loading doesn't stop the others, and verify is what reports it. It fails when
+  fewer rules are loaded than auditd-kit loaded at the install.
 - **Other agents:** install never restarts or changes another agent. It refuses only when an
   agent has taken the audit system for itself, which is osquery with `disable_audit=false`, or
   Auditbeat with its own audit rules or a unicast socket. With Wazuh who-data on, install warns

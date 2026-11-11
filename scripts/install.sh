@@ -315,11 +315,15 @@ else
   # rule is fine, and so is a bad line in a file that auditd-kit didn't write, which failed
   # before the install too. Any other error is ours.
   install_bad=no
+  install_copies=0
   if [ "$install_rules" = yes ]; then
     printf '%s\n' "$akit_load_output" | akit_load_errors >"$install_work/load-errors"
     while read -r install_class install_src install_rule; do
       case "$install_class" in
-        copy) akit_log info "already loaded, skipped: $install_rule" ;;
+        copy)
+          akit_log info "already loaded, skipped: $install_rule"
+          install_copies=$((install_copies + 1))
+          ;;
         kept) akit_log warning "$install_src has a rule that didn't load: $install_rule" ;;
         *)
           akit_log error "$install_src has a rule that didn't load: $install_rule"
@@ -329,9 +333,13 @@ else
     done <"$install_work/load-errors"
   fi
   [ "$install_bad" = no ] || install_fail "an auditd-kit rule failed to load"
+  # verify.sh later passes on at least our own rule count, less the copies that were skipped. The
+  # rules of other files don't count, so that removing one of them later doesn't fail verify.
+  install_floor=$((install_rule_count - install_copies))
   install_loaded=$(auditctl -l 2>/dev/null | awk '/^-[aw][ \t]/ { n++ } END { print n + 0 }')
-  [ "$install_loaded" -gt 0 ] || install_fail "no rules are loaded after the load"
-  akit_state_set_loaded "$install_loaded" || install_fail "cannot write $AKIT_STATE_FILE"
+  [ "$install_loaded" -ge "$install_floor" ] && [ "$install_loaded" -gt 0 ] \
+    || install_fail "$install_loaded rules are loaded, and at least $install_floor were expected"
+  akit_state_set_loaded "$install_floor" || install_fail "cannot write $AKIT_STATE_FILE"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"
 fi

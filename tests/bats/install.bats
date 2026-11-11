@@ -313,6 +313,9 @@ EOF
   install
   [ "$status" -eq 0 ]
   [[ "$output" == *"already loaded, skipped: -w /etc/auditd-kit/canary"* ]]
+  # The saved count is our own rules less the copy, whatever else is loaded.
+  ours=$(cat "$rules_d"/*auditd-kit*.rules | grep -c -E '^-[aw] ')
+  grep -q -x "loaded_count=$((ours - 1))" "$AKIT_ROOT/etc/auditd-kit/state"
 }
 
 @test "a load error on a kit line rolls back and names the rule" {

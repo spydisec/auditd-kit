@@ -184,8 +184,8 @@ akit_state_write() {
   return 1
 }
 
-# akit_state_set_loaded <count>: record how many rules were loaded after the install, which is
-# what verify.sh compares with later.
+# akit_state_set_loaded <count>: record how many of our rules the install loaded, which is the
+# least that verify.sh accepts later.
 akit_state_set_loaded() {
   state_tmp="$AKIT_STATE_FILE.tmp"
   { grep -v '^loaded_count=' "$AKIT_STATE_FILE" && echo "loaded_count=$1"; } >"$state_tmp" \
