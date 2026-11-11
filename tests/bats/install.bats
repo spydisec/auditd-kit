@@ -422,4 +422,6 @@ cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rul
   [ "$status" -eq 0 ]
   want=$(grep -c -E '^-[aw] ' "$AKIT_ROOT/etc/audit/audit.rules")
   grep -q -x "loaded_count=$want" "$AKIT_ROOT/etc/auditd-kit/state"
+  # The rule that was put back is loaded, so one more rule is loaded than the saved count.
+  [ "$(auditctl -l | grep -c -E '^-[aw] ')" -eq $((want + 1)) ]
 }
