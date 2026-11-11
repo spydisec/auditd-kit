@@ -1,6 +1,6 @@
 # 0021. Select tests from changed files
 
-Status: Superseded by 0027
+Status: Accepted
 Date: 2026-10-21
 
 ## Context
@@ -10,7 +10,9 @@ can leave required checks pending, so they cannot replace the existing required 
 
 ## Decision
 
-This replaces the every-PR test selection in ADR 0007. Its test layers still apply.
+This replaces the every-PR test selection in ADR 0007. Its static, Bats, real kernel, and security
+layers still apply. ADR 0027 removed the Molecule layer, and the VM layer (`tests/vm`) was never
+built, so no RHEL host loads the rules on a real kernel in CI.
 
 PRs select test groups through `scripts/dev/ci-changes.bash`. It reads the complete Git diff
 as NUL-delimited paths, including deleted paths and both sides of renames. Directory rules

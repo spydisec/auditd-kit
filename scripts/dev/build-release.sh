@@ -40,6 +40,9 @@ name=auditd-kit-$version
 mkdir "$tmp/$name"
 cp -R "$repo/rules" "$repo/config" "$repo/scripts" "$repo/README.md" "$repo/LICENSE" "$tmp/$name/"
 rm -rf "$tmp/$name/scripts/dev"
+# Messages from install.sh point to these docs, so the bundle needs them.
+mkdir "$tmp/$name/docs"
+cp -R "$repo/docs/integrations" "$tmp/$name/docs/"
 stamp "$tmp/$name/scripts/lib/common.sh" "s/^AKIT_VERSION=.*/AKIT_VERSION=$version/"
 tar -C "$tmp" -czf "$out/$name.tar.gz" "$name"
 

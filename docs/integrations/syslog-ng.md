@@ -60,8 +60,8 @@ on last, so that no audit event reaches the system log files before the filters 
    ```
 
 5. Turn on the plugin. Its file is `/etc/audit/plugins.d/syslog.conf`, or
-   `/etc/audisp/plugins.d/syslog.conf` on RHEL 7. Set these two lines, then run
-   `service auditd restart`:
+   `/etc/audisp/plugins.d/syslog.conf` on RHEL 7 and Ubuntu 18.04 and 20.04. Set these two
+   lines, then run `service auditd restart`:
 
    ```
    active = yes

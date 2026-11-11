@@ -24,7 +24,8 @@ We ship our own rules in four files that build on each other, and we drop the ve
 `00-base.rules` holds the control lines, the canary rule, and the audit tampering rules, so every
 profile has them. Render writes each file to `/etc/audit/rules.d/` with `auditd-kit` in its name,
 e.g. `10-auditd-kit-minimal.rules`. Overlay files keep their `50-*.rules` names and load after the
-profile files. Immutable mode stays a separate setting (ADR 0006), in `rules/99-finalize.rules`.
+profile files, except the `90-` and `91-` files, which load last (ADR 0017). Immutable mode stays a
+separate setting (ADR 0006), in `rules/99-finalize.rules`.
 
 Every rule has a short comment of our own that says what it catches. Rule keys use MITRE ATT&CK
 technique names where they map cleanly, and plain names elsewhere. We take ideas from other rule

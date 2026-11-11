@@ -36,7 +36,7 @@ sh scripts/install.sh --profile minimal --dry-run    # show each change
 sh scripts/install.sh --profile minimal
 ```
 
-If install exits with 1, it refused and changed nothing. Each refusal prints
+If install exits with 1, it refused and changed nothing. A refusal from the host checks prints
 `refuse=<code> override=<what to do>`. Exit code 2 means a check failed and the backup was
 restored, and 3 means the restore failed too, so the host needs a person. To undo an install, run
 `sh scripts/rollback.sh`.
@@ -60,8 +60,8 @@ with `--config FILE`.
 | `akit_max_log_file`, `akit_num_logs` | from `akit_size` | Your own log file size in MB and number of log files. |
 | `akit_skip_keys` | none | Rule keys to leave out on this host. |
 | `akit_extra_rules_dir` | none | A dir of your own `50-*.rules` files to load with the profile. |
-| `akit_existing_rules` | unset | `keep` or `replace` other files in `/etc/audit/rules.d/`. Install refuses while it's unset and other rule files exist. |
-| `akit_accept` | none | Refusals to accept, as the codes install prints, e.g. `agent_conflict:wazuh`. |
+| `akit_existing_rules` | unset | `keep` or `replace` other files in `/etc/audit/rules.d/`. Install refuses while it's unset and other rule files exist, and `keep` still refuses when one of them has a control line such as `-D` or `-e`. |
+| `akit_accept` | none | Agents to install next to despite a conflict, as `agent_conflict:<agent>`, e.g. `agent_conflict:wazuh`. |
 | `akit_immutable` | `false` | `true` locks the rules until reboot (`-e 2`), so a later change or rollback needs a reboot. |
 
 ## 📡 Send events to your SIEM
@@ -72,7 +72,8 @@ SIEM. [send-audit-log.md](docs/integrations/send-audit-log.md) shows how for com
 
 ## 🐧 Supported systems
 
-- RHEL 7, 8, 9, and 10, tested on CentOS 7 and Rocky Linux 8, 9, and 10
+- RHEL 7, 8, 9, and 10, and CentOS, Rocky Linux, AlmaLinux, and Oracle Linux of the same versions,
+  tested on CentOS 7 and Rocky Linux 8, 9, and 10
 - Ubuntu 18.04, 20.04, 22.04, 24.04, and 26.04 LTS
 
 ## 📝 Notes
@@ -85,6 +86,13 @@ SIEM. [send-audit-log.md](docs/integrations/send-audit-log.md) shows how for com
   keys, programs, and users write the most events.
 - **Without install.sh:** you can render the rules and load them yourself. See
   [rules/README.md](rules/README.md#load-the-rules-without-installsh).
+- **Rollback:** `sh scripts/rollback.sh` restores the newest backup, `--list` prints the backup ids,
+  and `rollback.sh <id>` restores an older one. Install keeps the newest 5 backups. Rollback exits
+  0 when done, 1 when there is no such backup, and 3 when a person must fix the host.
+- **Files on the host:** [ADR 0014](docs/adr/0014-files-auditd-kit-writes.md) lists each file that
+  auditd-kit writes or removes.
+- **Script options:** each script's header lists its flags, e.g. `install.sh --guided`,
+  `survey.sh --json`, and `stats.sh --format csv --top 20`. `verify.sh` exits 2 when a check fails.
 - **Design decisions:** [docs/adr/](docs/adr/).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to propose a change, [SECURITY.md](SECURITY.md) to report a

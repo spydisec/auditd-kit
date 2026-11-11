@@ -10,7 +10,8 @@ repo=$(cd "$BATS_TEST_DIRNAME/../.." && pwd)
   (cd "$out" && sha256sum -c SHA256SUMS)
   list=$(tar -tzf "$out/auditd-kit-1.2.3.tar.gz")
   printf '%s\n' "$list" | grep -qx 'auditd-kit-1.2.3/scripts/install.sh'
-  [ "$(printf '%s\n' "$list" | grep -cE '/(tests|docs|dev)/')" -eq 0 ]
+  printf '%s\n' "$list" | grep -qx 'auditd-kit-1.2.3/docs/integrations/send-audit-log.md'
+  [ "$(printf '%s\n' "$list" | grep -cE '/(tests|dev|adr|design)/')" -eq 0 ]
   tar -xzOf "$out/auditd-kit-1.2.3.tar.gz" auditd-kit-1.2.3/scripts/lib/common.sh | grep -qx 'AKIT_VERSION=1.2.3'
 }
 

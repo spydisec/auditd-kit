@@ -24,3 +24,6 @@ finds a blocking condition, unless the operator passes the override for that spe
 
 Every refusal needs a test fixture, and the survey must keep working on hosts we don't support, so
 it reports them instead of failing.
+
+ADR 0024 replaced the overrides for each condition with `akit_accept`, ADR 0026 removed the
+forwarding checks, and ADR 0027 removed the `survey.yml` playbook.

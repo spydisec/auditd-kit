@@ -1,7 +1,7 @@
 # Medium profile, for critical servers. It adds the commands that users with a login ID run, and
 # network connections, process tricks, and changes to boot, network, and package settings. It
 # adds noticeable log volume (the command and connection rules are the largest sources), so
-# measure it with stats.sh on a few hosts first (see docs/sizing-guide.md).
+# measure it with stats.sh on a few hosts first.
 
 # Commands: 91-medium-last.rules logs every program that a logged-in user starts.
 

@@ -11,9 +11,9 @@ did not plan to touch.
 
 ## Decision
 
-auditd-kit never calls a package manager. Preflight refuses when auditd is missing, and when
-forwarding is on and the syslog plugin is missing (`audispd-plugins` on Ubuntu). The refusal tells
-the operator to install the package from their own repositories and run again.
+auditd-kit never calls a package manager. Preflight refuses when auditd is missing. The refusal
+tells the
+operator to install the package from their own repositories and run again.
 
 ## Consequences
 

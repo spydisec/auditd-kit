@@ -35,9 +35,10 @@ Render also drops these rules, each with its reason in the report:
   missing file when its parent exists.
 - A `-F dir=` rule whose directory is missing (`missing_path`).
 - A `-F path=` or `-F exe=` rule whose file is missing (`missing_binary`).
-- A `-F path=` or `-F exe=` rule whose file is a symlink (`symlink`). The kernel matches the
-  file's inode, and exec and writes reach the link's target, so such a rule never fires. Many
-  tools are links on some distros, e.g. `yum` on RHEL 8 and 9, so the rules list the targets too.
+- A `-F exe=` rule, or a `-F path=` rule with `-F perm=x`, whose file is a symlink (`symlink`).
+  The kernel matches the file's inode, and exec reaches the link's target, so such a rule never
+  fires. Many tools are links on some distros, e.g. `yum` on RHEL 8 and 9, so the rules list the
+  targets too. ADR 0018 explains why other path rules on a link stay.
 - A rule with an SELinux field, such as `-F subj_type=`, when `/sys/fs/selinux/enforce` doesn't
   exist (`no_selinux`). Without a loaded policy these rules can't load.
 
