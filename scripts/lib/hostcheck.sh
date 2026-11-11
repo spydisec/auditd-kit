@@ -207,6 +207,7 @@ hc_check_rules() {
     hc_found=$(awk -v want="$akit_backlog" '
       { sub(/^[ \t]+/, "") }
       /^-f[ \t]*2([ \t]|$)/ { print "panic " NR }
+      /^-e[ \t]*2([ \t]|$)/ { print "lock " NR }
       /^-b[ \t]*[0-9]+/ {
         v = $0
         sub(/^-b[ \t]*/, "", v)
@@ -217,6 +218,7 @@ hc_check_rules() {
     while read -r hc_kind hc_line hc_val; do
       case "$hc_kind" in
         panic) hc_refuse existing_rules_panic "$hc_n:$hc_line sets -f 2, which panics the host when auditing fails. Change it to -f 1, or set akit_existing_rules=replace" ;;
+        lock) hc_warn existing_rules_lock "$hc_n:$hc_line sets -e 2, so the install locks the rules, and every later change or rollback needs a reboot" ;;
         backlog) hc_warn existing_rules_backlog "$hc_n:$hc_line sets the backlog to $hc_val, and the last -b wins by file name, so it can replace auditd-kit's $akit_backlog" ;;
       esac
     done <<HC_EOF

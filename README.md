@@ -93,8 +93,10 @@ Tested on each change:
   go in `/etc/audit/rules.d/` too. The files load in name order, and the kernel gives an event the
   key of the first rule that matches it, so a file that sorts before `10-` wins over our profile
   rules. A rule that is a copy of a loaded rule is skipped. A line of yours that can't load gets
-  a warning, and a line of ours that can't load rolls the install back. Install refuses a kept
-  file that sets `-f 2`, because that would panic the host when auditing fails.
+  a warning, and a line of ours that can't load rolls the install back. A file of yours that
+  sorts before `00-auditd-kit-base.rules` is the exception. A bad line there stops the whole load,
+  and install rolls back. Install refuses a kept file that sets `-f 2`, because that would panic
+  the host when auditing fails, and it warns when a kept file sets `-e 2`.
 - **After a reboot or a kernel update:** run `sh scripts/verify.sh`. The rules load with `-i`, so
   a rule that stops loading doesn't stop the others, and verify is what reports it.
 - **Other agents:** install never restarts or changes another agent. It refuses only when an

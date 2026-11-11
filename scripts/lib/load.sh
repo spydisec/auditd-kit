@@ -71,8 +71,8 @@ akit_load_apply() {
 
 # akit_load_errors: read the output of a load on stdin, and print one line for each rule that
 # auditctl skipped, as "<copy|kit|kept> <rules.d file> <rule text>". A copy is a rule that was
-# already loaded. Any other error is sorted by the file its rule came from, and a rule that no
-# file holds counts as the kit's. Source rulesd.sh before calling it.
+# already loaded. Any other error is sorted by the file its rule came from. A rule that a kit file
+# holds, or that no file holds, counts as the kit's. Source rulesd.sh before calling it.
 akit_load_errors() {
   le_rules=$(akit_path /etc/audit/audit.rules)
   awk '/^There was an error in line [0-9]+/ { print $7 " " prev } { prev = $0 }' \
@@ -82,16 +82,16 @@ akit_load_errors() {
       for le_f in $(akit_rulesd_files); do
         if grep -q -x -F -e "$le_text" "$(akit_path "$AKIT_RULES_D/$le_f")" 2>/dev/null; then
           le_src=$le_f
-          akit_rulesd_is_ours "$le_f" || break
+          ! akit_rulesd_is_ours "$le_f" || break
         fi
       done
       case "$le_msg" in
-        *"Rule exists"*) echo "copy ${le_src:-unknown} $le_text" ;;
+        *"Rule exists"*) printf '%s %s %s\n' copy "${le_src:-unknown}" "$le_text" ;;
         *)
           if [ -n "$le_src" ] && ! akit_rulesd_is_ours "$le_src"; then
-            echo "kept $le_src $le_text"
+            printf '%s %s %s\n' kept "$le_src" "$le_text"
           else
-            echo "kit ${le_src:-unknown} $le_text"
+            printf '%s %s %s\n' kit "${le_src:-unknown}" "$le_text"
           fi
           ;;
       esac

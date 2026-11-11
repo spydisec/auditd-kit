@@ -330,6 +330,7 @@ else
   fi
   [ "$install_bad" = no ] || install_fail "an auditd-kit rule failed to load"
   install_loaded=$(auditctl -l 2>/dev/null | awk '/^-[aw][ \t]/ { n++ } END { print n + 0 }')
+  [ "$install_loaded" -gt 0 ] || install_fail "no rules are loaded after the load"
   akit_state_set_loaded "$install_loaded" || install_fail "cannot write $AKIT_STATE_FILE"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"

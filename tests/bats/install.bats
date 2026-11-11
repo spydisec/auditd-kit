@@ -352,3 +352,10 @@ EOF
   install --existing-rules replace
   [ "$status" -eq 0 ]
 }
+
+@test "a load error on a rule that a kit file and a kept file both hold rolls back" {
+  echo '-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$rules_d/40-my-company.rules"
+  echo 'Invalid argument|-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$stub_state/load_errors"
+  install
+  [ "$status" -eq 2 ]
+}

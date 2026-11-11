@@ -180,6 +180,12 @@ passes() {
   passes
 }
 
+@test "a kept file that locks the rules warns" {
+  echo '-e 2' >"$rules_d/50-site.rules"
+  passes
+  [[ "$output" == *"warn=existing_rules_lock detail=50-site.rules:1 "* ]]
+}
+
 @test "a kept file with a smaller backlog warns" {
   echo '-b 320' >"$rules_d/50-site.rules"
   passes
