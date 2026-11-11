@@ -11,6 +11,8 @@
 # (ADR 0029). To add a check, write an hc_check_<name> function and list it at the end.
 #
 # HOSTCHECK_NEED_TAR and HOSTCHECK_NEED_SERVICE are yes when the caller will use tar or service.
+# HOSTCHECK_NEED_KERNEL is no when the caller won't load rules, as in a container, where the
+# kernel audit system can't be used.
 # shellcheck disable=SC2154
 set -eu
 
@@ -121,7 +123,7 @@ hc_check_auditd() {
           for (i = 1; i < NF; i++) if ($i == "enabled") { print $(i + 1); exit }
         }')
         hc_ae=${hc_en:-unknown}
-      else
+      elif [ "${HOSTCHECK_NEED_KERNEL:-yes}" = yes ]; then
         hc_refuse audit_off "auditctl -s failed, so boot the kernel with audit on (no audit=0)"
       fi
     fi

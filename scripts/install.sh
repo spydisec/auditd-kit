@@ -129,7 +129,10 @@ install_hostcheck() {
   install_need_service=yes
   [ "$install_dry_run" = no ] || install_need_tar=no
   { [ "$install_dry_run" = no ] && [ "$install_skip_load" = no ]; } || install_need_service=no
+  install_need_kernel=yes
+  [ "$install_skip_load" = no ] || install_need_kernel=no
   HOSTCHECK_NEED_TAR=$install_need_tar HOSTCHECK_NEED_SERVICE=$install_need_service \
+    HOSTCHECK_NEED_KERNEL=$install_need_kernel \
     sh "$install_lib/hostcheck.sh" --config "$install_work/settings.conf" >"$install_work/hostcheck" 2>&1
 }
 

@@ -85,12 +85,17 @@ passes() {
   refuses low_disk
 }
 
-@test "tar and service are needed only when the caller says so" {
-  path=$(akit_path_without tar service)
-  rm -f "$path/service" "$path/tar"
+@test "a kernel with audit off passes when the caller won't load rules" {
+  akit_stub auditctl 'case "$1" in -v) echo "auditctl version 3.1.2" ;; -s) exit 1 ;; esac'
+  HOSTCHECK_NEED_KERNEL=no passes
+  [[ "$output" == *"audit_enabled=unknown"* ]]
+}
+
+# The check adds the sbin dirs to PATH, where a real service may be, so only tar is tested.
+@test "tar is needed only when the caller says so" {
+  path=$(akit_path_without tar)
   PATH=$path passes
   PATH=$path HOSTCHECK_NEED_TAR=yes refuses tar_missing
-  PATH=$path HOSTCHECK_NEED_SERVICE=yes refuses service_missing
 }
 
 @test "an OS that CI doesn't test warns and passes" {
