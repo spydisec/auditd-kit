@@ -73,8 +73,9 @@ To stop recording a key on a host at all, set `akit_skip_keys` and run install a
 ## Notes
 
 - `node=<hostname>` at the start of each line is fine, because Wazuh's audit decoder accepts it.
-- Wazuh who-data adds its own audit rules, and loading the auditd-kit rules deletes them. Install
-  warns about it and goes ahead. After the install, restart wazuh-agent so that it adds its rules
-  again. See ADR 0029.
+- Wazuh who-data adds its own audit rules when the agent starts, and loading the auditd-kit rules
+  deletes them. Install puts them back after the load and logs each one. Restart wazuh-agent only
+  if its who-data events stop, e.g. after a rollback or when `akit_immutable` is true. See
+  ADR 0029.
 - `tests/bats/rules.bats` fails when a rule key has no Wazuh rule, so the file stays in step with
   the profiles.

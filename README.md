@@ -102,8 +102,11 @@ Tested on each change:
   fewer rules are loaded than auditd-kit loaded at the install.
 - **Other agents:** install never restarts or changes another agent. It refuses only when an
   agent has taken the audit system for itself, which is osquery with `disable_audit=false`, or
-  Auditbeat with its own audit rules or a unicast socket. With Wazuh who-data on, install warns
-  that wazuh-agent may need a restart.
+  Auditbeat with its own audit rules or a unicast socket. Some agents, e.g. Wazuh with who-data,
+  add audit rules with `auditctl` when they start. A load deletes those, so install puts them
+  back after it. It finds them by a key that no file in `rules.d` uses, and logs each one. It
+  can't put them back when the new rules lock the audit system (`-e 2`), and rollback doesn't
+  restore them, so restart the agent in those two cases.
 - **Rollback:** `sh scripts/rollback.sh` restores the newest backup, `--list` prints the backup ids,
   and `rollback.sh <id>` restores an older one. Install keeps the newest 5 backups. On a host with
   no auditd-kit state file, it also keeps the first one as `original`, so

@@ -362,3 +362,66 @@ EOF
   install
   [ "$status" -eq 2 ]
 }
+
+# loaded_before <rule>...: the rules that are loaded when install starts. The augenrules stub
+# drops them, as a real load does.
+loaded_before() {
+  printf '%s\n' "$@" >"$stub_state/loaded"
+}
+
+@test "a rule that an agent added at run time is put back after the load" {
+  loaded_before '-w /var/www -p wa -k wazuh_fim' \
+    '-a always,exit -F arch=b64 -S openat -F path=/etc/hosts -F key=agent_a -F key=agent_b'
+  install
+  [ "$status" -eq 0 ]
+  akit_called "auditctl -w /var/www -p wa -k wazuh_fim"
+  akit_called "auditctl -a always,exit -F arch=b64 -S openat -F path=/etc/hosts -F key=agent_a -F key=agent_b"
+  [[ "$output" == *"put back: -w /var/www -p wa -k wazuh_fim"* ]]
+}
+
+@test "a rule whose key is in a rules file, or that has no key, is not put back" {
+  echo '-w /etc/hosts -p wa -k org_hosts' >"$rules_d/40-my-company.rules"
+  loaded_before '-w /etc/old -p wa -k org_hosts' '-a always,exit -F arch=b64 -S mount'
+  install --existing-rules replace
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"put back"* ]]
+  run ! akit_called "auditctl -w /etc/old"
+  run ! akit_called "auditctl -a always,exit -F arch=b64 -S mount"
+}
+
+@test "a rule that can't be split into arguments is skipped with a warning" {
+  loaded_before '-w /var/my dir -p wa -k agent_x'
+  install
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"warning"*"could not put back: -w /var/my dir -p wa -k agent_x"* ]]
+  run ! akit_called "auditctl -w /var/my"
+}
+
+@test "a failed put-back warns and the install succeeds" {
+  loaded_before '-w /var/www -p wa -k wazuh_fim'
+  : >"$stub_state/add_fails"
+  install
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"warning"*"could not put back: -w /var/www -p wa -k wazuh_fim"* ]]
+}
+
+@test "the put-back is skipped when the load locks the rules" {
+  loaded_before '-w /var/www -p wa -k wazuh_fim'
+  # The rules are open when install starts, and locked after the load.
+  akit_stub augenrules "echo 2 >$stub_state/enabled; rm -f $stub_state/loaded
+cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rules\""
+  install --immutable true
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"warning"*"locked"*"wazuh_fim"* ]]
+  run ! akit_called "auditctl -w /var/www"
+}
+
+@test "the saved rule count leaves out the rules that were put back" {
+  loaded_before '-w /var/www -p wa -k wazuh_fim'
+  install
+  [ "$status" -eq 0 ]
+  want=$(grep -c -E '^-[aw] ' "$AKIT_ROOT/etc/audit/audit.rules")
+  grep -q -x "loaded_count=$want" "$AKIT_ROOT/etc/auditd-kit/state"
+  # The rule that was put back is loaded, so one more rule is loaded than the saved count.
+  [ "$(auditctl -l | grep -c -E '^-[aw] ')" -eq $((want + 1)) ]
+}

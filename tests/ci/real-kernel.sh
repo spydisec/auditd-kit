@@ -138,7 +138,11 @@ cat >/etc/audit/rules.d/40-ci-other.rules <<'RULES'
 -w /srv -p wa -k ci_other
 RULES
 other_sum=$(sha256sum </etc/audit/rules.d/40-ci-other.rules)
+# A rule that an agent added with auditctl, which is in no file. Install must put it back.
+auditctl -w /opt -p wa -k ci_agent
 run_install "$work/install-keep" --profile "$profile"
+auditctl -l | grep -q 'ci_agent' || fail "the rule that was added at run time is gone"
+grep -q 'put back: -w /opt -p wa -k ci_agent' "$work/install-keep" || fail "install didn't log the put-back"
 [ "$(sha256sum </etc/audit/rules.d/40-ci-other.rules)" = "$other_sum" ] || fail "install changed the other file"
 auditctl -l | grep -q 'ci_other' || fail "the other tool's rule is not loaded"
 auditctl -l | grep -q 'akit_canary' || fail "the kit's rules are not loaded"

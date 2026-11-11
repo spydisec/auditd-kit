@@ -258,6 +258,9 @@ if [ "$install_changes" -eq 0 ]; then
   exit "$AKIT_EXIT_OK"
 fi
 
+# The rules that are loaded now, some of which an agent may have added at run time.
+[ "$install_skip_load" = yes ] || akit_load_runtime_save "$install_work"
+
 # 5. Backup
 install_backup=$(akit_backup_create) || akit_die "$AKIT_EXIT_REFUSED" "backup failed, and nothing changed"
 akit_log info "backup $install_backup written"
@@ -340,6 +343,9 @@ else
   [ "$install_loaded" -ge "$install_floor" ] && [ "$install_loaded" -gt 0 ] \
     || install_fail "$install_loaded rules are loaded, and at least $install_floor were expected"
   akit_state_set_loaded "$install_floor" || install_fail "cannot write $AKIT_STATE_FILE"
+  # The rules are counted before the put-back, so a rule that is put back never makes up for a
+  # rule of ours that didn't load.
+  [ "$install_rules" = no ] || akit_load_runtime_restore "$install_work"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"
 fi
