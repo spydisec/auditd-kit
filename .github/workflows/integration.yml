@@ -71,6 +71,8 @@ jobs:
           - "ubuntu:22.04"
           - "ubuntu:24.04"
           - "ubuntu:26.04"
+          # Not in the tested list of hostcheck.sh, so install must warn and go ahead.
+          - "debian:12"
     steps:
       - name: Require change detection
         env:
