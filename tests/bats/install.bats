@@ -301,7 +301,6 @@ EOF
   [ "$status" -eq 0 ]
   [ "$(sha256sum <"$rules_d/40-my-company.rules")" = "$before" ]
   grep -q -x -e '-i' "$rules_d/00-auditd-kit-base.rules"
-  grep -q '^loaded_count=[1-9]' "$AKIT_ROOT/etc/auditd-kit/state"
 }
 
 @test "a copy of a loaded rule is logged and the install succeeds" {
@@ -310,9 +309,8 @@ EOF
   install
   [ "$status" -eq 0 ]
   [[ "$output" == *"already loaded, skipped: -w /etc/auditd-kit/canary"* ]]
-  # The saved count is our own rules less the copy, whatever else is loaded.
-  ours=$(cat "$rules_d"/*auditd-kit*.rules | grep -c -E '^-[aw] ')
-  grep -q -x "loaded_count=$((ours - 1))" "$AKIT_ROOT/etc/auditd-kit/state"
+  # verify.sh reads the skipped rule from the state file.
+  grep -q -x 'skip=copy akit_canary' "$AKIT_ROOT/etc/auditd-kit/state"
 }
 
 @test "a load error on a kit line rolls back and names the rule" {
@@ -413,16 +411,6 @@ cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rul
   run ! akit_called "auditctl -w /var/www"
 }
 
-@test "the saved rule count leaves out the rules that were put back" {
-  loaded_before '-w /var/www -p wa -k wazuh_fim'
-  install
-  [ "$status" -eq 0 ]
-  want=$(grep -c -E '^-[aw] ' "$AKIT_ROOT/etc/audit/audit.rules")
-  grep -q -x "loaded_count=$want" "$AKIT_ROOT/etc/auditd-kit/state"
-  # The rule that was put back is loaded, so one more rule is loaded than the saved count.
-  [ "$(auditctl -l | grep -c -E '^-[aw] ')" -eq $((want + 1)) ]
-}
-
 @test "install on locked rules writes the files and asks for a reboot" {
   echo 2 >"$stub_state/enabled"
   echo '-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$rules_d/40-my-company.rules"
@@ -433,9 +421,8 @@ cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rul
   [ -f "$rules_d/00-auditd-kit-base.rules" ]
   set -- "$AKIT_ROOT"/var/lib/auditd-kit/backups/*Z*.tgz
   [ -f "$1" ]
-  # The saved count is our rules less the one that a kept file also holds.
-  ours=$(cat "$rules_d"/*auditd-kit*.rules | grep -c -E '^-[aw] ')
-  grep -q -x "loaded_count=$((ours - 1))" "$AKIT_ROOT/etc/auditd-kit/state"
+  # The reboot will skip the rule that a kept file also holds, so verify must not expect it.
+  grep -q -x 'skip=copy akit_canary' "$AKIT_ROOT/etc/auditd-kit/state"
   run ! akit_called "augenrules"
   run ! akit_called "service auditd"
   run ! akit_called "ausearch"

@@ -9,18 +9,33 @@ verify="$repo/scripts/verify.sh"
 
 setup() {
   akit_fixture_root
-  mkdir -p "$AKIT_ROOT/etc/audit" "$AKIT_ROOT/etc/auditd-kit"
-  printf '%s\n' '## header' '-D' '-b 8192' '' '-w /etc/passwd -p wa -k id' \
-    '-a always,exit -F arch=b64 -S execve -k exec' >"$AKIT_ROOT/etc/audit/audit.rules"
+  rules_d="$AKIT_ROOT/etc/audit/rules.d"
+  mkdir -p "$rules_d" "$AKIT_ROOT/etc/auditd-kit"
+  printf '%s\n' '## header' '-D' '-w /etc/passwd -p wa -k id' \
+    '-a always,exit -F arch=b64 -S execve -k exec' >"$rules_d/30-auditd-kit-test.rules"
   export AKIT_VERIFY_POLL=0
-  stub_auditctl 2
+  stub_auditctl
+  loaded '-w /etc/passwd -p wa -k id' '-a always,exit -F arch=b64 -S execve -F key=exec'
   stub_ausearch found
 }
 
-# stub_auditctl <n> [<status line>]: auditctl -l prints n rule lines, or "No rules" when n is 0.
-# auditctl -s prints the status line, "lost 0" by default.
+# stub_auditctl [<status text>]: auditctl -s prints the status text, and auditctl -l prints the
+# lines that loaded saved.
 stub_auditctl() {
-  akit_stub auditctl "if [ \"\$1\" = -s ]; then echo '${2:-lost 0}'; elif [ $1 -eq 0 ]; then echo 'No rules'; else i=0; while [ \$i -lt $1 ]; do echo '-w /x -p wa -k k'; i=\$((i + 1)); done; fi"
+  printf '%s\n' "${1:-enabled 1
+failure 1
+pid 321
+lost 0}" >"$AKIT_ROOT/status"
+  akit_stub auditctl 'if [ "$1" = -s ]; then cat "$AKIT_ROOT/status"; else cat "$AKIT_ROOT/loaded"; fi'
+}
+
+# loaded [<rule> ...]: the rules that auditctl -l prints, or "No rules" with no arguments.
+loaded() {
+  if [ $# -eq 0 ]; then
+    echo 'No rules' >"$AKIT_ROOT/loaded"
+  else
+    printf '%s\n' "$@" >"$AKIT_ROOT/loaded"
+  fi
 }
 
 # stub_ausearch <found|none>: record the arguments in $AKIT_ROOT/ausearch.args.
@@ -47,7 +62,8 @@ write_state() {
   write_state /etc/audit/auditd.conf "a=1"
   run sh "$verify"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"check=rule_count result=pass"* ]]
+  [[ "$output" == *"check=status result=pass"* ]]
+  [[ "$output" == *"check=rules result=pass detail=2 rules loaded"* ]]
   [[ "$output" == *"check=files result=pass"* ]]
   [[ "$output" == *"check=canary result=pass"* ]]
   [ -s "$AKIT_ROOT/etc/auditd-kit/canary" ]
@@ -75,15 +91,6 @@ write_state() {
   [[ "$output" == *"check=files result=fail detail=cannot read"* ]]
 }
 
-@test "rule count fails when fewer rules are loaded than audit.rules holds" {
-  for n in 1 0; do
-    stub_auditctl "$n"
-    run sh "$verify"
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"check=rule_count result=fail detail=loaded $n, expected at least 2"* ]]
-  done
-}
-
 @test "canary not found in 10 s fails" {
   write_state
   stub_ausearch none
@@ -104,24 +111,26 @@ write_state() {
   [[ "$output" == *"check=files result=fail"* ]]
 }
 
-@test "no state file runs only rule_count" {
+@test "no state file runs only the status and rules checks" {
   run sh "$verify"
   [ "$status" -eq 0 ]
-  [ "$output" = "check=rule_count result=pass detail=2 rules loaded" ]
+  [ "${#lines[@]}" -eq 2 ]
+  [[ "$output" == *"check=rules result=pass detail=2 rules loaded"* ]]
   [ ! -e "$AKIT_ROOT/etc/auditd-kit/canary" ]
 }
 
-@test "auditctl failing fails rule_count" {
+@test "auditctl failing fails the status and rules checks" {
   akit_stub auditctl 'exit 1'
   run sh "$verify"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"check=rule_count result=fail"* ]]
+  [[ "$output" == *"check=status result=fail"* ]]
+  [[ "$output" == *"check=rules result=fail"* ]]
 }
 
 @test "lost events during the canary check fail the lost check" {
   write_state
   # Each auditctl -s call reports one more lost event.
-  akit_stub auditctl 'if [ "$1" = -s ]; then n=$(cat "$AKIT_ROOT/lost" 2>/dev/null || echo 0); echo "lost $n"; echo $((n + 1)) >"$AKIT_ROOT/lost"; else echo "-w /x -p wa -k k"; echo "-w /y -p wa -k k"; fi'
+  akit_stub auditctl 'if [ "$1" = -s ]; then n=$(cat "$AKIT_ROOT/lost" 2>/dev/null || echo 0); echo "enabled 1"; echo "pid 321"; echo "lost $n"; echo $((n + 1)) >"$AKIT_ROOT/lost"; else echo "-w /x -p wa -k k"; echo "-w /y -p wa -k k"; fi'
   run sh "$verify"
   [ "$status" -eq 2 ]
   [[ "$output" == *"check=lost result=fail detail=the lost count rose by 1 during"* ]]
@@ -129,42 +138,78 @@ write_state() {
 
 @test "the lost check reads the older AUDIT_STATUS format" {
   write_state
-  stub_auditctl 2 'AUDIT_STATUS: enabled=1 flag=1 pid=1 rate_limit=0 backlog_limit=320 lost=0 backlog=0'
+  stub_auditctl 'AUDIT_STATUS: enabled=1 flag=1 pid=1 rate_limit=0 backlog_limit=320 lost=0 backlog=0'
   run sh "$verify"
   [ "$status" -eq 0 ]
   [[ "$output" == *"check=lost result=pass"* ]]
 }
 
-# state_count <n>: a state file that says install saw n rules loaded.
-state_count() {
-  write_state
-  echo "loaded_count=$1" >>"$AKIT_ROOT/etc/auditd-kit/state"
-}
-
-@test "rule_count passes when more rules are loaded than install saw" {
-  state_count 3
-  stub_auditctl 5
-  run sh "$verify"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"check=rule_count result=pass detail=5 rules loaded"* ]]
-}
-
-@test "rule_count fails when fewer rules are loaded than install saw" {
-  state_count 5
-  stub_auditctl 3
+@test "a missing auditd-kit rule fails and names its key" {
+  loaded '-w /etc/passwd -p wa -k id'
   run sh "$verify"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"check=rule_count result=fail detail=loaded 3, expected at least 5"* ]]
+  [[ "$output" == *"check=rules result=fail detail=auditd-kit rules are not loaded, by key: exec (0 of 1)"* ]]
 }
 
-@test "with no loaded_count, rule_count compares with audit.rules" {
-  write_state
-  stub_auditctl 3
-  run sh "$verify"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"check=rule_count result=pass detail=3 rules loaded"* ]]
-  stub_auditctl 1
+@test "rules that an agent added don't hide a missing auditd-kit rule" {
+  loaded '-w /etc/passwd -p wa -k id' '-w /var/www -p wa -k wazuh_fim' '-w /srv -p wa -k wazuh_fim'
   run sh "$verify"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"check=rule_count result=fail detail=loaded 1, expected at least 2"* ]]
+  [[ "$output" == *"by key: exec (0 of 1)"* ]]
+}
+
+@test "a missing rule of another file is a warning, and verify passes" {
+  printf '%s\n' '-w /opt/app -p wa -k org_app' '-w /opt/db -p wa' >"$rules_d/40-org.rules"
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"check=rules result=pass"* ]]
+  [[ "$output" == *"check=other_rules result=warn detail="*"org_app (0 of 1)"* ]]
+  [[ "$output" == *"rules with no key (0 of 1)"* ]]
+}
+
+@test "a rule of another file under one of our keys is a warning, and a saved copy is not expected" {
+  write_state
+  echo '-w /etc/passwd -p wa -k id' >"$rules_d/40-org.rules"
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"check=other_rules result=warn detail="*"id (1 of 2)"* ]]
+  echo 'skip=copy id' >>"$AKIT_ROOT/etc/auditd-kit/state"
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"other_rules"* ]]
+}
+
+@test "no rules loaded on a host with only other files is a warning" {
+  rm "$rules_d/30-auditd-kit-test.rules"
+  echo '-w /opt/app -p wa -k org_app' >"$rules_d/40-org.rules"
+  loaded
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"check=rules result=pass detail=0 rules loaded"* ]]
+  [[ "$output" == *"check=other_rules result=warn detail="*"org_app (0 of 1)"* ]]
+}
+
+@test "auditing turned off, or auditd not running, fails the status check" {
+  stub_auditctl 'enabled 0
+pid 321
+lost 0'
+  run sh "$verify"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"check=status result=fail detail=auditing is turned off"* ]]
+  stub_auditctl 'enabled 1
+pid 0
+lost 0'
+  run sh "$verify"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"check=status result=fail detail=auditd is not running"* ]]
+}
+
+@test "failure mode 2 is a warning" {
+  stub_auditctl 'enabled 1
+failure 2
+pid 321
+lost 0'
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"check=failure_mode result=warn"* ]]
 }
