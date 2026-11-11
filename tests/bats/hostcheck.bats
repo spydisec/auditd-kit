@@ -159,18 +159,40 @@ passes() {
   [[ "$output" == *"audit_enabled=2"* ]]
 }
 
-@test "a foreign rules file needs a choice" {
+@test "a foreign rules file is kept and reported" {
   echo '-w /etc/hosts -p wa -k hosts' >"$rules_d/50-site.rules"
-  refuses existing_rules
+  passes
   [[ "$output" == *"rules_d_foreign=50-site.rules"* ]]
-  passes --existing-rules keep
   passes --existing-rules replace
 }
 
-@test "a kept file with control lines refuses" {
-  echo '-e 2' >"$rules_d/50-site.rules"
-  refuses existing_rules_control --existing-rules keep
+@test "a kept file with panic mode refuses" {
+  printf '%s\n' '# our rules' '-w /etc/hosts -p wa -k hosts' '-f 2' >"$rules_d/50-site.rules"
+  refuses existing_rules_panic
+  [[ "$output" == *"detail=50-site.rules:3 "* ]]
+  echo ' -f2' >"$rules_d/50-site.rules"
+  refuses existing_rules_panic
   passes --existing-rules replace
+}
+
+@test "panic mode in a comment, or -f 1, passes" {
+  printf '%s\n' '# -f 2' '-f 1' '-e 2' '-D' >"$rules_d/50-site.rules"
+  passes
+}
+
+@test "a kept file that locks the rules warns" {
+  echo '-e 2' >"$rules_d/50-site.rules"
+  passes
+  [[ "$output" == *"warn=existing_rules_lock detail=50-site.rules:1 "* ]]
+}
+
+@test "a kept file with a smaller backlog warns" {
+  echo '-b 320' >"$rules_d/50-site.rules"
+  passes
+  [[ "$output" == *"warn=existing_rules_backlog detail=50-site.rules:1 "* ]]
+  echo '-b 65536' >"$rules_d/50-site.rules"
+  passes
+  [[ "$output" != *"warn=existing_rules_backlog"* ]]
 }
 
 @test "a bad setting exits 1" {

@@ -55,14 +55,47 @@ akit_load_run() {
 
 # akit_load_apply <rules yes|no> <auditd yes|no>: load the rules with augenrules when they
 # changed, then restart auditd when auditd.conf changed. Loading first means a rule that the
-# kernel rejects fails here, with its error, and not later in auditd's start hook.
+# kernel rejects fails here, with its error, and not later in auditd's start hook. The output of
+# augenrules is left in akit_load_output.
 akit_load_apply() {
+  akit_load_output=
   if [ "$1" = yes ]; then
     akit_load_run augenrules --load || return 1
+    # shellcheck disable=SC2034
+    akit_load_output=$load_out
   fi
   if [ "$2" = yes ]; then
     akit_load_restart_auditd || return 1
   fi
+}
+
+# akit_load_errors: read the output of a load on stdin, and print one line for each rule that
+# auditctl skipped, as "<copy|kit|kept> <rules.d file> <rule text>". A copy is a rule that was
+# already loaded. Any other error is sorted by the file its rule came from. A rule that a kit file
+# holds, or that no file holds, counts as the kit's. Source rulesd.sh before calling it.
+akit_load_errors() {
+  le_rules=$(akit_path /etc/audit/audit.rules)
+  awk '/^There was an error in line [0-9]+/ { print $7 " " prev } { prev = $0 }' \
+    | while read -r le_n le_msg; do
+      le_text=$(sed -n "${le_n}p" "$le_rules")
+      le_src=
+      for le_f in $(akit_rulesd_files); do
+        if grep -q -x -F -e "$le_text" "$(akit_path "$AKIT_RULES_D/$le_f")" 2>/dev/null; then
+          le_src=$le_f
+          ! akit_rulesd_is_ours "$le_f" || break
+        fi
+      done
+      case "$le_msg" in
+        *"Rule exists"*) printf '%s %s %s\n' copy "${le_src:-unknown}" "$le_text" ;;
+        *)
+          if [ -n "$le_src" ] && ! akit_rulesd_is_ours "$le_src"; then
+            printf '%s %s %s\n' kept "$le_src" "$le_text"
+          else
+            printf '%s %s %s\n' kit "${le_src:-unknown}" "$le_text"
+          fi
+          ;;
+      esac
+    done
 }
 
 # akit_load_sums <paths>: print a checksum line for each file in the paths, which may be dirs.

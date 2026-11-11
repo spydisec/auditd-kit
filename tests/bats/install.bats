@@ -171,8 +171,7 @@ refuse=not_root||echo 1000 >"$stub_state/uid"
 refuse=immutable||echo 2 >"$stub_state/enabled"
 refuse=low_disk||echo 1000 >"$stub_state/free"
 refuse=agent_needs_audit:osquery||mkdir -p "$AKIT_ROOT/etc/osquery" && echo '--disable_audit=false' >"$AKIT_ROOT/etc/osquery/osquery.flags"
-refuse=existing_rules||echo '-w /etc/hosts -p wa -k hosts' >"$rules_d/50-site.rules"
-refuse=existing_rules_control|--existing-rules keep|echo '-e 2' >"$rules_d/50-site.rules"
+refuse=existing_rules_panic||echo '-f2' >"$rules_d/50-site.rules"
 invalid setting akit_size|--size huge|:
 another auditd-kit run holds the lock|--dry-run|echo $$ >"$AKIT_ROOT/run/auditd-kit.lock"
 unknown argument: extra|extra|:
@@ -296,4 +295,70 @@ EOF
   install --dry-run
   [ "$status" -eq 0 ]
   [[ "$output" == *"render left out or trimmed "*" rules that this host can't load"* ]]
+}
+
+@test "install keeps a foreign rules file with no setting, and loads with -i" {
+  echo '-w /opt/app -p wa -k org_app' >"$rules_d/40-my-company.rules"
+  before=$(sha256sum <"$rules_d/40-my-company.rules")
+  install
+  [ "$status" -eq 0 ]
+  [ "$(sha256sum <"$rules_d/40-my-company.rules")" = "$before" ]
+  grep -q -x -e '-i' "$rules_d/00-auditd-kit-base.rules"
+  grep -q '^loaded_count=[1-9]' "$AKIT_ROOT/etc/auditd-kit/state"
+}
+
+@test "a copy of a loaded rule is logged and the install succeeds" {
+  echo '-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$rules_d/40-my-company.rules"
+  echo 'Rule exists|-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$stub_state/load_errors"
+  install
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"already loaded, skipped: -w /etc/auditd-kit/canary"* ]]
+  # The saved count is our own rules less the copy, whatever else is loaded.
+  ours=$(cat "$rules_d"/*auditd-kit*.rules | grep -c -E '^-[aw] ')
+  grep -q -x "loaded_count=$((ours - 1))" "$AKIT_ROOT/etc/auditd-kit/state"
+}
+
+@test "a load error on a kit line rolls back and names the rule" {
+  echo 'Invalid argument|-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$stub_state/load_errors"
+  before=$(akit_sums etc/audit)
+  install
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"00-auditd-kit-base.rules"*"-w /etc/auditd-kit/canary"* ]]
+  [ "$(akit_sums etc/audit)" = "$before" ]
+}
+
+@test "a load error on a kept line is a warning that names the file" {
+  echo '-w /no/such/dir -p wa -k org_gone' >"$rules_d/40-my-company.rules"
+  echo 'No such file or directory|-w /no/such/dir -p wa -k org_gone' >"$stub_state/load_errors"
+  install
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"warning"*"40-my-company.rules"*"-w /no/such/dir"* ]]
+}
+
+@test "a failed load rolls back and shows the line that failed" {
+  echo '-w /no/such/dir -p wa -k org_gone' >"$rules_d/00-aaa.rules"
+  echo 'echo "There was an error in line 4 of /etc/audit/audit.rules"' >"$stub_state/augenrules_fails"
+  before=$(akit_sums etc/audit)
+  install
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"error in line 4"* ]]
+  [ "$(akit_sums etc/audit)" = "$before" ]
+}
+
+@test "a kept file with panic mode refuses and changes nothing" {
+  echo '-f 2' >"$rules_d/40-my-company.rules"
+  before=$(config_sums)
+  install
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"refuse=existing_rules_panic detail="*"40-my-company.rules:1"* ]]
+  [ "$(config_sums)" = "$before" ]
+  install --existing-rules replace
+  [ "$status" -eq 0 ]
+}
+
+@test "a load error on a rule that a kit file and a kept file both hold rolls back" {
+  echo '-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$rules_d/40-my-company.rules"
+  echo 'Invalid argument|-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$stub_state/load_errors"
+  install
+  [ "$status" -eq 2 ]
 }

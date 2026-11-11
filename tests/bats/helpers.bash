@@ -69,6 +69,10 @@ akit_sums() {
 #   uid, enabled, free   the value for id -u, the auditctl -s enabled field, and df free KB
 #   lost                 the auditctl -s lost field, which grows by one on each call
 #   augenrules_fails     augenrules runs this file as a script and exits 1
+#   load_errors          lines of <message>|<rule text>. augenrules prints the message and the
+#                        line number of that rule in audit.rules, as auditctl -i does, and exits 0
+#   loaded               auditctl -l prints this file in place of the rules in audit.rules.
+#                        augenrules removes it, as a load replaces the loaded rules
 #   ausearch_fails       ausearch finds no event
 # augenrules joins the rules.d files into audit.rules, and auditctl -l lists that file's rules.
 akit_host_stubs() {
@@ -91,12 +95,22 @@ case \"\$1\" in
     echo \"lost \$l\"
     [ ! -e $akit_s/lost ] || echo \$((l + 1)) >$akit_s/lost
     ;;
-  -l) grep -E '^-[aw] ' \"\$AKIT_ROOT/etc/audit/audit.rules\" || echo 'No rules' ;;
+  -l)
+    if [ -e $akit_s/loaded ]; then cat $akit_s/loaded
+    else grep -E '^-[aw] ' \"\$AKIT_ROOT/etc/audit/audit.rules\" || echo 'No rules'; fi
+    ;;
 esac"
   akit_stub augenrules "echo \"augenrules \$*\" >>$akit_c
 if [ -e $akit_s/augenrules_fails ]; then sh $akit_s/augenrules_fails; exit 1; fi
 cp \"\$AKIT_ROOT/etc/audit/audit.rules\" \"\$AKIT_ROOT/etc/audit/audit.rules.prev\"
-cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rules\""
+cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rules\"
+rm -f $akit_s/loaded
+[ -e $akit_s/load_errors ] || exit 0
+while IFS='|' read -r m t; do
+  n=\$(grep -n -x -F -e \"\$t\" \"\$AKIT_ROOT/etc/audit/audit.rules\" | head -n 1 | cut -d: -f1)
+  echo \"Error sending add rule data request (\$m)\"
+  echo \"There was an error in line \$n of /etc/audit/audit.rules\"
+done <$akit_s/load_errors"
   akit_stub service "echo \"service \$*\" >>$akit_c"
   akit_stub systemctl "echo \"systemctl \$*\" >>$akit_c"
   akit_stub ausearch "echo \"ausearch \$*\" >>$akit_c; [ ! -e $akit_s/ausearch_fails ]"

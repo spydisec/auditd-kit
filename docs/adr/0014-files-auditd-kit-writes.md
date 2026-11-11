@@ -22,7 +22,7 @@ auditd-kit writes these files, and no others:
 | `/etc/audit/rules.d/50-*.rules` | Copies the overlay files from `akit_extra_rules_dir` |
 | `/etc/audit/auditd.conf` | Sets the keys in `config/auditd/<size>.conf` and leaves every other line alone |
 | `/etc/auditd-kit/canary` | Creates it once, for `verify.sh` |
-| `/etc/auditd-kit/state` | Records the version, profile, size, install time, rule count, and a checksum line for each file above, except the canary |
+| `/etc/auditd-kit/state` | Records the version, profile, size, install time, rule count, loaded rule count, and a checksum line for each file above, except the canary |
 | `/var/lib/auditd-kit/render-report.txt` | Lists each rule that render dropped and why |
 | `/var/lib/auditd-kit/backups/<id>.tgz` | Keeps the newest 5 backups |
 | `/var/lib/auditd-kit/backups/original.tgz` | Keeps the first backup on a host with no state file, which is the host before the first install, and never removes it |
@@ -31,10 +31,11 @@ auditd-kit writes these files, and no others:
 | `/opt/auditd-kit/auditd-kit-<version>/` | `get.sh` unpacks each release here, or under `AKIT_DIR` |
 
 A file in `rules.d` belongs to auditd-kit when its name contains `auditd-kit` or the state file lists
-it. auditd-kit always removes a distro `audit.rules` that holds only control lines. Every other
-file in `rules.d` needs a choice in `akit_existing_rules`:
+it. auditd-kit always removes a distro `audit.rules` that holds only control lines. What happens
+to every other file in `rules.d` depends on `akit_existing_rules`:
 
-- `keep` leaves the files in place, and the host check refuses when any of them has a control line.
+- `keep`, the default, leaves the files in place, and the host check refuses only when one of
+  them sets `-f 2` (ADR 0029).
 - `replace` removes them.
 
 auditd-kit removes a file only after the backup has saved it. When a profile no longer has one of

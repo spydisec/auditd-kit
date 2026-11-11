@@ -191,26 +191,40 @@ hc_check_agents() {
   echo "agents_audit=${hc_agents:-none}"
 }
 
-# Foreign files in rules.d need an explicit choice until akit_existing_rules has a default.
+# Files in rules.d that auditd-kit didn't write are kept. augenrules uses the last -f and -b it
+# reads, so a kept -f 2 would replace our -f 1 and panic the host when auditing fails (ADR 0006).
 hc_check_rules() {
   hc_foreign=
-  hc_control=
   if hc_sorted=$(akit_rulesd_sort); then
-    for hc_n in $(printf '%s\n' "$hc_sorted" | sed -n 's/^foreign //p'); do
-      hc_foreign="${hc_foreign:+$hc_foreign,}$hc_n"
-      hc_cl=$(akit_rulesd_control "$hc_n" | sed -n 2p)
-      [ -z "$hc_cl" ] || hc_control="${hc_control:+$hc_control,}$hc_cl"
-    done
+    hc_foreign=$(printf '%s\n' "$hc_sorted" | sed -n 's/^foreign //p' | tr '\n' ',' | sed 's/,$//')
   else
     hc_foreign=unknown
   fi
   echo "rules_d_foreign=${hc_foreign:-none}"
-  [ -n "$hc_foreign" ] || return 0
-  if [ "$akit_existing_rules" = unset ]; then
-    hc_refuse existing_rules "other files are in $AKIT_RULES_D ($hc_foreign), so set akit_existing_rules=keep or replace"
-  elif [ "$akit_existing_rules" = keep ] && [ -n "$hc_control" ]; then
-    hc_refuse existing_rules_control "a kept file has control lines ($hc_control), so set akit_existing_rules=replace"
-  fi
+  [ "$akit_existing_rules" = keep ] || return 0
+  for hc_n in $(printf '%s\n' "$hc_foreign" | tr ',' ' '); do
+    [ -r "$(akit_path "$AKIT_RULES_D/$hc_n")" ] || continue
+    hc_found=$(awk -v want="$akit_backlog" '
+      { sub(/^[ \t]+/, "") }
+      /^-f[ \t]*2([ \t]|$)/ { print "panic " NR }
+      /^-e[ \t]*2([ \t]|$)/ { print "lock " NR }
+      /^-b[ \t]*[0-9]+/ {
+        v = $0
+        sub(/^-b[ \t]*/, "", v)
+        if (v + 0 < want + 0) print "backlog " NR " " v + 0
+      }
+    ' "$(akit_path "$AKIT_RULES_D/$hc_n")")
+    [ -n "$hc_found" ] || continue
+    while read -r hc_kind hc_line hc_val; do
+      case "$hc_kind" in
+        panic) hc_refuse existing_rules_panic "$hc_n:$hc_line sets -f 2, which panics the host when auditing fails. Change it to -f 1, or set akit_existing_rules=replace" ;;
+        lock) hc_warn existing_rules_lock "$hc_n:$hc_line sets -e 2, so the install locks the rules, and every later change or rollback needs a reboot" ;;
+        backlog) hc_warn existing_rules_backlog "$hc_n:$hc_line sets the backlog to $hc_val, and the last -b wins by file name, so it can replace auditd-kit's $akit_backlog" ;;
+      esac
+    done <<HC_EOF
+$hc_found
+HC_EOF
+  done
 }
 
 akit_settings_load "$@"

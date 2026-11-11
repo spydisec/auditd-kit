@@ -11,7 +11,7 @@
 #   move <path>        a rules.d file that install removes, after the backup has saved it
 #   set <file> <key>   an auditd.conf key whose value changes
 # Only our own files and a distro audit.rules with only control lines are moved, plus every other
-# rules.d file when akit_existing_rules is replace.
+# rules.d file when akit_existing_rules is replace. With keep, the default, those stay.
 # shellcheck disable=SC2154
 set -eu
 

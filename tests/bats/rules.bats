@@ -163,7 +163,7 @@ time_change' ]
     [ -n "$line" ] || continue
     count=$((count + 1))
     case "$line" in
-      -D | -b* | -f* | --backlog_wait_time* | '-a always,exclude '*) continue ;;
+      -D | -b* | -f* | -i | --backlog_wait_time* | '-a always,exclude '*) continue ;;
       *' /etc/auditd-kit/canary '*)
         want=akit_canary ;;
       *path=/usr/sbin/useradd' '* | *path=/usr/sbin/groupadd' '* | *path=/usr/sbin/newusers' '*)

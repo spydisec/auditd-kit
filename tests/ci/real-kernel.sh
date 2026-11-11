@@ -129,6 +129,26 @@ step "Rollback gives back the files from before the install"
 sh "$repo/scripts/rollback.sh" || fail "rollback.sh exited $?"
 same_sums "$work/before" "rollback did not restore /etc/audit and /etc/rsyslog.d"
 
+step "Install keeps another tool's rules and loads next to them"
+# The file holds a copy of a kit rule written another way, a watch on a path that doesn't exist,
+# and a rule of its own. Without -i in the base file, the first two would stop the load.
+cat >/etc/audit/rules.d/40-ci-other.rules <<'RULES'
+-a exit,always -F path=/usr/sbin/auditctl -F perm=x -F key=T1562_Impair_Defenses
+-w /no/such/dir/ci -p wa -k ci_gone
+-w /srv -p wa -k ci_other
+RULES
+other_sum=$(sha256sum </etc/audit/rules.d/40-ci-other.rules)
+run_install "$work/install-keep" --profile "$profile"
+[ "$(sha256sum </etc/audit/rules.d/40-ci-other.rules)" = "$other_sum" ] || fail "install changed the other file"
+auditctl -l | grep -q 'ci_other' || fail "the other tool's rule is not loaded"
+auditctl -l | grep -q 'akit_canary' || fail "the kit's rules are not loaded"
+grep -q "40-ci-other.rules has a rule that didn't load" "$work/install-keep" \
+  || fail "install didn't warn about the rule that can't load"
+sh "$repo/scripts/verify.sh" || fail "verify.sh exited $? next to the other file"
+rm -f /etc/audit/rules.d/40-ci-other.rules
+sh "$repo/scripts/rollback.sh" --original || fail "rollback.sh --original exited $?"
+same_sums "$work/before" "the keep step left a changed file"
+
 step "A full audit disk doesn't halt the host"
 start=$(date +%s)
 img=/var/tmp/auditd-kit-test.img
