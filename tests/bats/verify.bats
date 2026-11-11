@@ -213,3 +213,14 @@ lost 0'
   [ "$status" -eq 0 ]
   [[ "$output" == *"check=failure_mode result=warn"* ]]
 }
+
+@test "verify waits a second after it takes the start time, before it writes the canary" {
+  write_state
+  # The kernel's event clock runs a few ms behind date, so an event written right after the
+  # start time can carry the second before it, and ausearch -ts would then skip it.
+  export AKIT_VERIFY_POLL=1
+  akit_stub sleep '{ [ -e "$AKIT_ROOT/etc/auditd-kit/canary" ] && echo after || echo before; } >>"$AKIT_ROOT/sleeps"'
+  run sh "$verify"
+  [ "$status" -eq 0 ]
+  [ "$(sed -n 1p "$AKIT_ROOT/sleeps")" = before ]
+}

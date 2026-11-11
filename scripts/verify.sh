@@ -150,10 +150,15 @@ verify_canary_check() {
   esac
   # ausearch reads stdin when it isn't a terminal, so --input-logs makes it read the audit logs.
   # ausearch -ts takes the date and the time as two arguments. It parses the date with the C
-  # locale's %x, which has a two-digit year. The event time is never before this second.
-  verify_date=$(date '+%m/%d/%y')
-  verify_time=$(date '+%H:%M:%S')
-  verify_start="$verify_date $verify_time"
+  # locale's %x, which has a two-digit year. One date call gives both, so they are from the same
+  # moment.
+  verify_start=$(date '+%m/%d/%y %H:%M:%S')
+  verify_date=${verify_start% *}
+  verify_time=${verify_start#* }
+  # The kernel stamps an event with a clock that runs a few ms behind the one date reads. So an
+  # event written right after the start time can carry the second before it, and ausearch -ts
+  # would skip it. Waiting one second puts the event after the start time.
+  [ "$verify_poll" -eq 0 ] || sleep 1
   if ! printf 'canary %s\n' "$verify_start" >"$verify_canary" 2>/dev/null; then
     verify_report canary fail "cannot write $verify_canary"
     return
