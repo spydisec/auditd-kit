@@ -55,8 +55,9 @@ sh scripts/render.sh --profile minimal --size standard \
   --out-dir /tmp/akit-rules --report /tmp/akit-report.txt
 ```
 
-Then copy the rendered files into `/etc/audit/rules.d/` and run `augenrules --load`. `install.sh` does all of this for you. It also backs up the files it changes,
-checks the result, and rolls back if a check fails.
+Then copy the rendered files into `/etc/audit/rules.d/` and run `augenrules --load`. `install.sh`
+does all of this for you. It also backs up the files it changes, checks the result, and rolls
+back if a check fails.
 
 Write each rule on one line. Rule files have no line continuation, so a rule split with `\` fails
 to load.
