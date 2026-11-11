@@ -55,3 +55,4 @@ What becomes easier, what becomes harder, and what we have to do next.
 | [0026](0026-write-audit-log-dont-send-it.md) | Write audit.log, and don't send it | Accepted |
 | [0027](0027-remove-the-ansible-collection.md) | Remove the Ansible collection | Accepted |
 | [0028](0028-get-sh-bootstrap.md) | Install a release with get.sh | Accepted |
+| [0029](0029-keep-what-is-on-the-host.md) | Keep what is on the host, and refuse only when auditd can't work | Proposed |
