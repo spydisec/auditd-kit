@@ -144,11 +144,22 @@ original" ]
     [ "$status" -eq 0 ]
   done
   [ "$(cd "$backups" && ls -- *Z*.tgz | wc -l)" -eq 5 ]
+  run sh "$repo/scripts/rollback.sh" --list
+  [ "${#lines[@]}" -eq 6 ]
+  [ "${lines[5]}" = original ]
   run sh "$repo/scripts/rollback.sh" --original
   [ "$status" -eq 0 ]
   [[ "$output" == *"restored=original"* ]]
   [ "$(akit_sums etc/audit etc/rsyslog.d)" = "$before" ]
   [ ! -e "$AKIT_ROOT/etc/auditd-kit" ]
+}
+
+@test "rollback with no id never picks original" {
+  backup akit_backup_create
+  rm "$backups/$output.tgz"
+  run sh "$repo/scripts/rollback.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no backups"* ]]
 }
 
 @test "rollback refuses an unknown backup id and changes nothing" {

@@ -25,7 +25,7 @@ auditd-kit writes these files, and no others:
 | `/etc/auditd-kit/state` | Records the version, profile, size, install time, rule count, and a checksum line for each file above, except the canary |
 | `/var/lib/auditd-kit/render-report.txt` | Lists each rule that render dropped and why |
 | `/var/lib/auditd-kit/backups/<id>.tgz` | Keeps the newest 5 backups |
-| `/var/lib/auditd-kit/backups/original.tgz` | Keeps the backup from before the first install, and never removes it |
+| `/var/lib/auditd-kit/backups/original.tgz` | Keeps the first backup on a host with no state file, which is the host before the first install, and never removes it |
 | `/var/log/auditd-kit/install-<time>.log` and `rollback-<time>.log` | Logs each run, including dry runs and refusals |
 | `/run/auditd-kit.lock` | Holds the PID of the running script |
 | `/etc/audit/plugins.d/syslog.conf`, or `/etc/audisp/plugins.d/syslog.conf` on older auditd | Sets `active = no` only on a host where an earlier version turned forwarding on (ADR 0026) |

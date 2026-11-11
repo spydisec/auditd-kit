@@ -88,7 +88,7 @@ akit_backup_create() {
     akit_log error "cannot write backup $AKIT_BACKUP_DIR/$backup_id.tgz"
     return 1
   fi
-  if [ ! -e "$(akit_path /etc/auditd-kit/state)" ] && [ ! -e "$AKIT_BACKUP_DIR/original.tgz" ]; then
+  if [ ! -e "$(akit_path /etc/auditd-kit/state)" ] && [ ! -f "$AKIT_BACKUP_DIR/original.tgz" ]; then
     if ! cp "$AKIT_BACKUP_DIR/$backup_id.tgz" "$AKIT_BACKUP_DIR/.original.tmp" \
       || ! mv -f "$AKIT_BACKUP_DIR/.original.tmp" "$AKIT_BACKUP_DIR/original.tgz"; then
       rm -f "$AKIT_BACKUP_DIR/.original.tmp"
