@@ -71,6 +71,7 @@ akit_sums() {
 #   augenrules_fails     augenrules runs this file as a script and exits 1
 #   load_errors          lines of <message>|<rule text>. augenrules prints the message and the
 #                        line number of that rule in audit.rules, as auditctl -i does, and exits 0
+#   add_fails            auditctl fails to add a rule (-w or -a)
 #   loaded               auditctl -l prints this file in place of the rules in audit.rules.
 #                        augenrules removes it, as a load replaces the loaded rules
 #   ausearch_fails       ausearch finds no event
@@ -99,6 +100,7 @@ case \"\$1\" in
     if [ -e $akit_s/loaded ]; then cat $akit_s/loaded
     else grep -E '^-[aw] ' \"\$AKIT_ROOT/etc/audit/audit.rules\" || echo 'No rules'; fi
     ;;
+  -w | -a) [ ! -e $akit_s/add_fails ] ;;
 esac"
   akit_stub augenrules "echo \"augenrules \$*\" >>$akit_c
 if [ -e $akit_s/augenrules_fails ]; then sh $akit_s/augenrules_fails; exit 1; fi

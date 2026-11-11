@@ -98,6 +98,70 @@ akit_load_errors() {
     done
 }
 
+# akit_load_rule_keys: print the key names of the audit rules on stdin, one per line. A key is
+# written as "-k name" or as "-F key=name".
+akit_load_rule_keys() {
+  awk '/^[ \t]*-[aAw]/ {
+    for (i = 1; i <= NF; i++) {
+      if ($i == "-k" && i < NF) print $(i + 1)
+      else if ($i ~ /^key=/) print substr($i, 5)
+    }
+  }'
+}
+
+# akit_load_runtime_save <dir>: before a load, save the loaded rules and the keys that the
+# rules.d files use. An agent such as Wazuh adds rules with auditctl when it starts, and the -D
+# in our base file deletes them, so akit_load_runtime_restore puts them back. Call it before
+# any rules.d file is written or removed. Source rulesd.sh first.
+akit_load_runtime_save() {
+  auditctl -l >"$1/loaded-before" 2>/dev/null || : >"$1/loaded-before"
+  for rt_f in $(akit_rulesd_files); do
+    akit_load_rule_keys <"$(akit_path "$AKIT_RULES_D/$rt_f")" 2>/dev/null || true
+  done | sort -u >"$1/file-keys"
+}
+
+# akit_load_runtime_restore <dir>: after a load, add each rule that was loaded before, is gone
+# now, and has a key that no rules.d file used. A rule with no key isn't put back, because it
+# can't be told from a rule of a file that install changed or removed. A rule that doesn't split
+# into flag and value pairs, e.g. a path with a space, and a rule that auditctl rejects get a
+# warning. When the load locked the rules (-e 2), nothing can be added, so the rules are only
+# named. Always succeeds.
+akit_load_runtime_restore() {
+  rt_dir=$1
+  auditctl -l >"$rt_dir/loaded-after" 2>/dev/null || return 0
+  grep -v -x -F -f "$rt_dir/loaded-after" "$rt_dir/loaded-before" >"$rt_dir/missing" 2>/dev/null || true
+  rt_locked=no
+  ! akit_load_locked || rt_locked=yes
+  while IFS= read -r rt_line; do
+    rt_keys=$(printf '%s\n' "$rt_line" | akit_load_rule_keys)
+    [ -n "$rt_keys" ] || continue
+    # An empty pattern file matches every line in some greps, so it is skipped.
+    if [ -s "$rt_dir/file-keys" ] \
+      && printf '%s\n' "$rt_keys" | grep -q -x -F -f "$rt_dir/file-keys" 2>/dev/null; then
+      continue
+    fi
+    if [ "$rt_locked" = yes ]; then
+      akit_log warning "the rules are locked until reboot (-e 2), so this rule that was loaded before the install is gone: $rt_line"
+      continue
+    fi
+    if ! printf '%s\n' "$rt_line" \
+      | awk '{ if (NF % 2) exit 1; for (i = 1; i <= NF; i += 2) if ($i !~ /^-/) exit 1 }'; then
+      akit_log warning "could not put back: $rt_line"
+      continue
+    fi
+    set -f
+    # shellcheck disable=SC2086
+    set -- $rt_line
+    set +f
+    if auditctl "$@" >/dev/null 2>&1; then
+      akit_log info "put back: $rt_line"
+    else
+      akit_log warning "could not put back: $rt_line"
+    fi
+  done <"$rt_dir/missing"
+  return 0
+}
+
 # akit_load_sums <paths>: print a checksum line for each file in the paths, which may be dirs.
 akit_load_sums() {
   for load_p in $1; do
