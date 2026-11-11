@@ -15,14 +15,15 @@ auditd can't work:                                        a check fails:
 refuse, change nothing                                    restore the backup
 ```
 
-- **Three rule profiles**, `minimal`, `medium`, and `heavy`, built from public rule sets and keyed
-  with MITRE ATT&CK names. See [rules/README.md](rules/README.md).
+- **Three rule profiles**, `minimal`, `medium`, and `heavy`, with rule keys named after MITRE
+  ATT&CK techniques. See [rules/README.md](rules/README.md).
 - **Rules that fit the host.** Install leaves out a rule that the host can't load, e.g. a syscall
   its kernel doesn't know or a program that isn't installed.
 - **A fixed log size**, from 250 MB to 2 GB in total, and auditd never halts the host when the
   disk fills.
 - **A backup before every change**, and a rollback when the load or a check fails.
-- **Plain POSIX shell.** Nothing stays running, and nothing is installed besides the rule files.
+- **Plain POSIX shell.** Install adds no packages and leaves nothing running. It writes the rule
+  files, a few `auditd.conf` keys, and its own state and backups.
 
 auditd-kit is at `0.x`, so settings can still change between releases.
 
@@ -64,7 +65,7 @@ sh scripts/rollback.sh                               # undo the last install
   rejects gets a warning, and the rest still load.
 - **Other agents are left alone.** Install never restarts or changes another agent. Some agents,
   e.g. Wazuh with who-data, add audit rules when they start, and a load deletes those. Install
-  puts them back after the load.
+  puts them back after the load, when they have a key that no rule file uses.
 - **Locked rules need a reboot.** When the rules are locked until reboot (`-e 2`), install writes
   the files and prints `reboot=required`. Run `sh scripts/verify.sh` after the reboot.
 
