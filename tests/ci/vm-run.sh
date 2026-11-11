@@ -25,7 +25,7 @@ image=${image_url##*/}
 curl -fsSL --retry 3 -o "$image" "$image_url"
 curl -fsSL --retry 3 -o sums "$sums_url"
 # The checksum file may list other images, in either the GNU or the BSD format.
-grep -F -e "  $image" -e "($image)" sums >sum
+awk -v n="$image" '$2 == n || $2 == "(" n ")"' sums >sum
 [ "$(wc -l <sum)" -eq 1 ] || {
   echo "FAIL: no single checksum for $image" >&2
   exit 1

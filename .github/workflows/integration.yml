@@ -49,6 +49,7 @@ jobs:
   # The same test in a RHEL-family VM, which the runner boots with KVM, so the rules load into
   # that system's own kernel.
   real-kernel-vm:
+    name: real-kernel-vm (${{ matrix.system }})
     needs: changes
     if: always()
     env:
