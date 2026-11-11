@@ -87,8 +87,10 @@ SIEM. [send-audit-log.md](docs/integrations/send-audit-log.md) shows how for com
 - **Without install.sh:** you can render the rules and load them yourself. See
   [rules/README.md](rules/README.md#load-the-rules-without-installsh).
 - **Rollback:** `sh scripts/rollback.sh` restores the newest backup, `--list` prints the backup ids,
-  and `rollback.sh <id>` restores an older one. Install keeps the newest 5 backups. Rollback exits
-  0 when done, 1 when there is no such backup, and 3 when a person must fix the host.
+  and `rollback.sh <id>` restores an older one. Install keeps the newest 5 backups. On a host with
+  no auditd-kit state file, it also keeps the first one as `original`, so `rollback.sh --original` puts the host back as it was before the
+  first install. Rollback exits 0 when done, 1 when there is no such backup, and 3 when a person
+  must fix the host.
 - **Files on the host:** [ADR 0014](docs/adr/0014-files-auditd-kit-writes.md) lists each file that
   auditd-kit writes or removes.
 - **Script options:** each script's header lists its flags, e.g. `install.sh --guided`,
