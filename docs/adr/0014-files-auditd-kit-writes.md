@@ -41,9 +41,9 @@ auditd-kit removes a file only after the backup has saved it. When a profile no 
 our files, e.g. after a change from `heavy` to `minimal`, install removes that file too.
 
 A backup holds `/etc/audit`, `/etc/audisp` on RHEL 7, and the state file. A restore puts those
-files back. It removes the files that auditd-kit added after the backup, and
-also the `audit.rules` and `audit.rules.prev` that augenrules writes. It keeps any other file that
-was added after the backup, and logs a warning for it. A restore to a backup from before the first
+files back. It removes the files that auditd-kit added after the backup, and also the
+`audit.rules` and `audit.rules.prev` that augenrules writes. It keeps any other file that was
+added after the backup, and logs a warning for it. A restore to a backup from before the first
 install also removes the canary and `/etc/auditd-kit/`.
 
 ## Consequences
