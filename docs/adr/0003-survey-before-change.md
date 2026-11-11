@@ -1,6 +1,6 @@
 # 0003. Run a read-only survey before any change
 
-Status: Accepted
+Status: Superseded by 0029
 Date: 2026-10-19
 
 ## Context

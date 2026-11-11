@@ -11,7 +11,7 @@
 # in AKIT_EXTRA_FLAGS (space separated). Those go to AKIT_ARGS as they are, and no value is read.
 
 AKIT_SETTING_KEYS='akit_profile akit_size akit_max_log_file akit_num_logs akit_immutable
-  akit_existing_rules akit_extra_rules_dir akit_accept akit_skip_keys'
+  akit_existing_rules akit_extra_rules_dir akit_skip_keys'
 
 akit_settings_defaults() {
   akit_profile=minimal
@@ -21,7 +21,6 @@ akit_settings_defaults() {
   akit_immutable=false
   akit_existing_rules="unset"
   akit_extra_rules_dir=
-  akit_accept=
   akit_skip_keys=
 }
 
@@ -34,9 +33,11 @@ akit_settings_bad() {
 akit_settings_set() {
   set_key=$1
   set_val=$2
-  # A setting that ADR 0024 removed fails with what replaced it.
+  # A setting that ADR 0029 removed fails with what to do now.
   case "$set_key" in
-    akit_accept_agents) akit_settings_bad "$set_key" "removed, use akit_accept=agent_conflict:<agent>" ;;
+    akit_accept | akit_accept_agents)
+      akit_settings_bad "$set_key" "removed, install no longer needs it. Install goes ahead next to other agents (ADR 0029)"
+      ;;
   esac
   case " $(printf '%s' "$AKIT_SETTING_KEYS" | tr '\n' ' ' | tr -s ' ') " in
     *" $set_key "*) ;;
@@ -78,23 +79,6 @@ akit_settings_set() {
       case "$set_val" in
         *[!A-Za-z0-9/._@+-]*) akit_settings_bad "$set_key" "path has characters other than A-Z a-z 0-9 / . _ @ + -" ;;
       esac
-      ;;
-    akit_accept)
-      # Only refusals that can't be fixed on the host can be accepted. preflight matches the list
-      # as it is, so spaces and empty entries are refused.
-      case "$set_val" in
-        *[!a-z0-9_,:-]* | ,* | *, | *,,*) akit_settings_bad "$set_key" "'$set_val' is not a comma list of codes without spaces" ;;
-      esac
-      for set_code in $(printf '%s\n' "$set_val" | tr ',' ' '); do
-        case "$set_code" in
-          agent_conflict:*)
-            case "${set_code#agent_conflict:}" in
-              '' | *[!a-z0-9_-]*) akit_settings_bad "$set_key" "'$set_code' has no valid agent id" ;;
-            esac
-            ;;
-          *) akit_settings_bad "$set_key" "'$set_code' is not agent_conflict:<agent>" ;;
-        esac
-      done
       ;;
     akit_skip_keys)
       case "$set_val" in

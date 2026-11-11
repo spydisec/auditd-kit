@@ -1,6 +1,6 @@
 # 0023. Refuse only agents that use the audit system
 
-Status: Accepted
+Status: Superseded by 0029
 Date: 2026-10-26
 
 ## Context

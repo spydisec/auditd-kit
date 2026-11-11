@@ -57,4 +57,5 @@ The forwarding URL needs its own parser and tests, including IPv6 brackets and a
 Guided mode still asks for the server, port, and protocol, and builds the URL from the answers.
 
 ADR 0026 later removed `akit_forward` and `akit_syslog_facility`, and the guided questions for
-forwarding, which leaves 9 settings.
+forwarding, which leaves 9 settings. ADR 0029 removed `akit_accept`, because no refusal has an
+override any more.

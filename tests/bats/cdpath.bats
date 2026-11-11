@@ -14,9 +14,9 @@ fixtures="$repo/tests/fixtures/syscalls"
   export CDPATH
   cd "$repo"
 
-  run sh scripts/survey.sh
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"survey_version=1"* ]]
+  run sh scripts/lib/hostcheck.sh
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"refuse=not_root"* ]]
 
   run sh scripts/stats.sh --dir "$BATS_TEST_TMPDIR/nothere"
   [ "$status" -eq 0 ]

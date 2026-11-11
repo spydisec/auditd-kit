@@ -20,7 +20,7 @@ akit_stub() {
   chmod +x "${AKIT_STUB_BIN}/$1"
 }
 
-# akit_path_without <cmd>...: print a PATH dir that holds the stubs and the tools the survey and
+# akit_path_without <cmd>...: print a PATH dir that holds the stubs and the tools the host check and
 # its libs call, minus the named commands, so a test can hide one real command. The list is fixed,
 # so the dir takes about 30 symlinks, not one for every executable on PATH.
 akit_path_without() {

@@ -18,7 +18,7 @@ checks the bundle, unpacks it into `/opt/auditd-kit` (or `AKIT_DIR`), and runs t
 
 - On a terminal it runs install in guided mode, which asks for the main settings and asks again
   before it changes anything.
-- With no terminal it runs only the survey and the plan, and changes nothing.
+- With no terminal it runs only the host check and the plan, and changes nothing.
 - With `--yes` it installs with the given settings and asks no questions.
 
 The last line is `result=<outcome> version=X.Y.Z host=<name>`, followed by `codes=<codes>` when
