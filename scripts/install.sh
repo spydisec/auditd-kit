@@ -3,11 +3,11 @@
 #
 # Usage: install.sh [--config FILE] [setting flags] [--dry-run] [--skip-load] [--guided]
 #
-# --guided shows a survey summary, asks for the main settings on the terminal, and asks again
+# --guided shows a summary of the host, asks for the main settings on the terminal, and asks again
 # before it changes anything. Settings given as flags or in the config file are the defaults.
 #
 # The stages run in this order. Nothing on the host changes before the backup.
-#   1. preflight  survey.sh | preflight.sh, which refuses an unsafe host
+#   1. host check hostcheck.sh, which refuses a host where auditd-kit can't work
 #   2. render     render.sh builds this host's rules in a temp dir
 #   3. validate   validate.sh checks the rule syntax in that dir
 #   4. plan       plan.sh lists each change. --dry-run prints the plan and stops here
@@ -105,7 +105,7 @@ akit_log info "install $AKIT_VERSION started: $*"
 
 install_work=$(mktemp -d) || akit_die "$AKIT_EXIT_REFUSED" "cannot create a temp dir"
 
-# install_write_settings: write the current settings to the config file that preflight.sh and
+# install_write_settings: write the current settings to the config file that hostcheck.sh and
 # plan.sh read, so that they get the same settings.
 install_write_settings() {
   for install_k in $AKIT_SETTING_KEYS; do
@@ -122,42 +122,61 @@ install_ask() {
   [ -n "$install_ans" ] || install_ans=$2
 }
 
-# install_survey_get <key>: print a value from the survey in the work dir.
-install_survey_get() {
-  sed -n "s/^$1=//p" "$install_work/survey" | head -n 1
+# install_hostcheck: run the host check with the current settings, and keep its output.
+install_hostcheck() {
+  install_write_settings
+  install_need_tar=yes
+  install_need_service=yes
+  [ "$install_dry_run" = no ] || install_need_tar=no
+  { [ "$install_dry_run" = no ] && [ "$install_skip_load" = no ]; } || install_need_service=no
+  install_need_kernel=yes
+  [ "$install_skip_load" = no ] || install_need_kernel=no
+  HOSTCHECK_NEED_TAR=$install_need_tar HOSTCHECK_NEED_SERVICE=$install_need_service \
+    HOSTCHECK_NEED_KERNEL=$install_need_kernel \
+    sh "$install_lib/hostcheck.sh" --config "$install_work/settings.conf" >"$install_work/hostcheck" 2>&1
+}
+
+# install_host_get <key>: print a fact from the host check.
+install_host_get() {
+  sed -n "s/^$1=//p" "$install_work/hostcheck" | head -n 1
+}
+
+# install_refused <pattern>: print the refusals that don't match the grep pattern, and stop when
+# there are any.
+install_refused() {
+  install_hard=$(grep '^refuse=' "$install_work/hostcheck" | { grep -v -e "$1" || true; })
+  [ -n "$install_hard" ] || return 0
+  printf '%s\n' "$install_hard"
+  akit_die "$AKIT_EXIT_REFUSED" "the host check refused this host, and nothing changed"
+}
+
+# install_locked_refuse: until install can write the files and ask for a reboot, a host with
+# locked rules is refused.
+install_locked_refuse() {
+  [ "$(install_host_get audit_enabled)" = 2 ] || return 0
+  echo "refuse=immutable detail=the rules are locked until reboot (-e 2), so reboot without -e 2"
+  akit_die "$AKIT_EXIT_REFUSED" "the host check refused this host, and nothing changed"
+}
+
+# install_warnings: log the warnings of the host check.
+install_warnings() {
+  sed -n 's/^warn=[^ ]* detail=//p' "$install_work/hostcheck" | while IFS= read -r install_w; do
+    akit_log warning "$install_w"
+  done
 }
 
 # Guided mode: show the host, then ask only what applies to it.
 if [ "$install_guided" = yes ]; then
   (: </dev/tty) 2>/dev/null || akit_die "$AKIT_EXIT_REFUSED" "--guided needs a terminal"
-  sh "$install_root/survey.sh" >"$install_work/survey"
+  install_hostcheck || true
   {
-    echo "auditd-kit $AKIT_VERSION on $(install_survey_get os_id) $(install_survey_get os_version): $(install_survey_get support_tier)"
-    echo "  auditd $(install_survey_get auditd_version), $(install_survey_get audit_log_free_mb) MB free for logs, other agents: $(install_survey_get agents)"
+    echo "auditd-kit $AKIT_VERSION on $(install_host_get os_id) $(install_host_get os_version)"
+    echo "  auditd $(install_host_get auditd_version), $(install_host_get audit_log_free_mb) MB free for logs"
   } >/dev/tty
-  # Stop on a refusal that no question can fix before asking anything. Other agents get a
-  # question instead of a refusal, and the rules.d question below fixes existing_rules.
-  install_write_settings
-  install_out=$(sh "$install_lib/preflight.sh" --config "$install_work/settings.conf" \
-    <"$install_work/survey" 2>&1) || true
-  install_hard=$(printf '%s\n' "$install_out" \
-    | { grep -v -e '^$' -e '^refuse=agent_conflict:' -e '^refuse=existing_rules ' || true; })
-  if [ -n "$install_hard" ]; then
-    printf '%s\n' "$install_hard"
-    akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
-  fi
-  install_agents=$(printf '%s\n' "$install_out" | sed -n 's/^refuse=agent_conflict:\([^ ]*\) .*/\1/p' \
-    | tr '\n' ' ' | sed 's/ $//; s/ /, /g')
-  if [ -n "$install_agents" ]; then
-    install_ask "Other agents use the audit system on this host: $install_agents. auditd-kit replaces every loaded audit rule, including rules these agents add. Install anyway? [y/N]:" n
-    case "$install_ans" in
-      [yY]*)
-        akit_settings_set akit_accept \
-          "$(printf '%s\n' "$install_out" | sed -n 's/^refuse=agent_conflict:[^ ]* override=akit_accept=\([^ ]*\) .*/\1/p' | head -n 1)"
-        ;;
-      *) akit_die "$AKIT_EXIT_REFUSED" "other agents are installed, and nothing changed" ;;
-    esac
-  fi
+  # Stop on a refusal that no question can fix before asking anything. The rules.d question
+  # below fixes existing_rules.
+  install_refused '^refuse=existing_rules '
+  install_locked_refuse
   case "$akit_profile" in minimal) install_d=1 ;; medium) install_d=2 ;; *) install_d=3 ;; esac
   install_ask "Profile? 1) minimal, for every server  2) medium, for critical servers  3) heavy, for CIS or STIG [$install_d]:" "$install_d"
   case "$install_ans" in
@@ -173,8 +192,8 @@ if [ "$install_guided" = yes ]; then
     esac
   fi
   # A file with only control lines, such as the distro's audit.rules, is moved either way.
-  install_other=$(install_survey_get rules_d_files | tr ',' '\n' \
-    | { grep -v -e auditd-kit -e '^none$' -e ':control$' || true; } | tr '\n' ' ')
+  install_other=$(install_host_get rules_d_foreign | tr ',' ' ')
+  [ "$install_other" != none ] || install_other=
   if [ "$akit_existing_rules" = unset ] && [ -n "$install_other" ]; then
     install_ask "Other files in /etc/audit/rules.d: $install_other k) keep them  r) replace them, with a backup [r]:" r
     case "$install_ans" in
@@ -185,29 +204,15 @@ if [ "$install_guided" = yes ]; then
   fi
 fi
 
-install_write_settings
-
-# 1. Preflight
-sh "$install_root/survey.sh" >"$install_work/survey"
-if ! install_out=$(sh "$install_lib/preflight.sh" --config "$install_work/settings.conf" \
-  <"$install_work/survey" 2>&1); then
-  printf '%s\n' "$install_out"
-  akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
+# 1. Host check
+if ! install_hostcheck; then
+  install_warnings
+  install_refused '^$'
+  cat "$install_work/hostcheck"
+  akit_die "$AKIT_EXIT_REFUSED" "the host check failed, and nothing changed"
 fi
-# The backup needs tar, and the load step restarts auditd with service. A minimal RHEL 10 host
-# has neither, and RHEL 9 and later ship service in initscripts-service.
-install_missing=
-if [ "$install_dry_run" = no ] && ! command -v tar >/dev/null 2>&1; then
-  install_missing="refuse=tar_missing override=install tar"
-fi
-if [ "$install_dry_run" = no ] && [ "$install_skip_load" = no ] && ! command -v service >/dev/null 2>&1; then
-  install_missing="${install_missing:+$install_missing
-}refuse=service_missing override=install initscripts-service"
-fi
-if [ -n "$install_missing" ]; then
-  printf '%s\n' "$install_missing"
-  akit_die "$AKIT_EXIT_REFUSED" "preflight refused this host, and nothing changed"
-fi
+install_warnings
+install_locked_refuse
 
 # 2. Render, into a temp dir with its report next to it.
 set -- --profile "$akit_profile" --size "$akit_size" --immutable "$akit_immutable" \
@@ -320,10 +325,6 @@ else
   akit_load_apply "$install_rules" "$install_auditd" || install_fail "loading the rules or restarting auditd failed"
   # 8. Verify
   sh "$install_root/verify.sh" || install_fail "verify failed"
-  # The load deleted the who-data rules that Wazuh added at its start (ADR 0023).
-  case ",$(install_survey_get agents_audit)," in
-    *,wazuh,*) akit_log info "restart wazuh-agent so that it adds its who-data audit rules again" ;;
-  esac
 fi
 
 install_stage=finished

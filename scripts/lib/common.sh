@@ -157,7 +157,7 @@ akit_lock_release() {
 }
 
 # State file: /etc/auditd-kit/state, as key=value lines. akit_state_write needs settings.sh.
-# Each file=<sha256> <path> line names a file that auditd-kit wrote, so the survey counts it as
+# Each file=<sha256> <path> line names a file that auditd-kit wrote, so the host check counts it as
 # ours and verify can check that it is unchanged. The canary is never listed, because verify
 # writes to it.
 

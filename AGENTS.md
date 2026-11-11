@@ -28,7 +28,7 @@ Update `AI-DECLARATION.md` when the way AI tools are used on the project changes
 ## Workflow
 
 - Work on a short-lived branch named `feat/`, `fix/`, `docs/`, `ci/`, or `chore/`.
-- Open a PR into `main`, and give it a Conventional Commits title, e.g. `feat: add survey script`.
+- Open a PR into `main`, and give it a Conventional Commits title, e.g. `feat: add a host check`.
 - `main` takes squash merges only, after the required checks pass.
 - Never push to `main` directly.
 

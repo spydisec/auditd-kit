@@ -152,7 +152,7 @@ move /etc/audit/rules.d/91-auditd-kit-medium-last.rules" ]
   [ $# -eq 1 ]
 }
 
-@test "each preflight refusal exits 1 and changes nothing" {
+@test "each refusal exits 1 and changes nothing" {
   # The table rows use fx.
   # shellcheck disable=SC2034
   fx="$BATS_TEST_DIRNAME/../fixtures"
@@ -168,10 +168,9 @@ move /etc/audit/rules.d/91-auditd-kit-medium-last.rules" ]
     rm -f "$stub_state"/*
   done <<'EOF'
 refuse=not_root||echo 1000 >"$stub_state/uid"
-refuse=unsupported_os||cp "$fx/hosts/debian12/etc/os-release" "$AKIT_ROOT/etc/os-release"
 refuse=immutable||echo 2 >"$stub_state/enabled"
 refuse=low_disk||echo 1000 >"$stub_state/free"
-refuse=agent_conflict:wazuh||mkdir -p "$AKIT_ROOT/var/ossec/etc" && echo '<directories whodata="yes">/etc</directories>' >"$AKIT_ROOT/var/ossec/etc/ossec.conf"
+refuse=agent_needs_audit:osquery||mkdir -p "$AKIT_ROOT/etc/osquery" && echo '--disable_audit=false' >"$AKIT_ROOT/etc/osquery/osquery.flags"
 refuse=existing_rules||echo '-w /etc/hosts -p wa -k hosts' >"$rules_d/50-site.rules"
 refuse=existing_rules_control|--existing-rules keep|echo '-e 2' >"$rules_d/50-site.rules"
 invalid setting akit_size|--size huge|:

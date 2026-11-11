@@ -34,7 +34,6 @@ akit_num_logs=8
 akit_immutable=false
 akit_existing_rules=unset
 akit_extra_rules_dir=
-akit_accept=
 akit_skip_keys=
 akit_backlog=16384
 akit_preset_total_mb=800
@@ -67,7 +66,7 @@ args="
 @test "a bad key, flag, or value exits 1 and names the setting" {
   for row in 'akit_profle=minimal:akit_profle' 'akit_size=huge:akit_size' \
     'akit_max_log_file=0:akit_max_log_file' 'akit_immutable=yes:akit_immutable' \
-    'akit_accept=low_disk:akit_accept' 'akit_skip_keys=a;b:akit_skip_keys' \
+    'akit_skip_keys=a;b:akit_skip_keys' \
     'not a pair:not a pair'; do
     config "${row%:*}"
     run load_settings --config "$cfg"
@@ -94,21 +93,13 @@ args="
   echo "$output" | grep -qx 'akit_preset_total_mb=400'
 }
 
-@test "akit_accept takes agent_conflict codes only" {
-  run load_settings --accept agent_conflict:wazuh,agent_conflict:mde
-  [ "$status" -eq 0 ]
-  for bad in low_disk catchall_forward agent_conflict: 'agent_conflict:a b' 'agent_conflict:a, agent_conflict:b' 'agent_conflict:a,'; do
-    run load_settings --accept "$bad"
-    [ "$status" -eq 1 ] || { echo "$bad: $output"; false; }
-  done
-}
-
 @test "removed settings exit 1 and name the replacement" {
   while IFS='|' read -r flag want; do
     run load_settings "$flag" x
     [ "$status" -eq 1 ] && [[ "$output" == *"$want"* ]] || { echo "$flag: $output"; false; }
   done <<'EOT'
---accept-agents|use akit_accept=agent_conflict:<agent>
+--accept-agents|removed, install no longer needs it
+--accept|removed, install no longer needs it
 EOT
 }
 

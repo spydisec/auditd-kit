@@ -9,13 +9,13 @@ auditd-kit sets up Linux audit logging (auditd rules and log settings) on your s
 each host before it changes anything, keeps the logs at a fixed size, and can undo the change.
 
 ```text
-survey ──> preflight ──> render ──> plan ──> backup ──> install ──> verify
-           unsafe host:                                            a check fails:
-           refuse, change nothing                                  restore the backup
+host check ──> render ──> plan ──> backup ──> install ──> verify
+auditd can't work:                                        a check fails:
+refuse, change nothing                                    restore the backup
 ```
 
-- 🔍 Checks the OS, disk space, other agents, and existing rules first, and changes nothing if the
-  host isn't safe
+- 🔍 Checks auditd, disk space, other agents, and existing rules first, and changes nothing if
+  auditd-kit can't work on the host
 - 📐 Keeps one set of rules, and on each host leaves out the rules that host can't load, e.g. a
   syscall its kernel doesn't know or a program that isn't installed
 - 📦 Has three rule profiles, `minimal`, `medium`, and `heavy`, and three log sizes, from 250 MB
@@ -31,13 +31,12 @@ auditd-kit is at `0.x`, so settings can still change between releases.
 Run these as root on a host that has auditd. RHEL 10 also needs `tar` and `initscripts-service`.
 
 ```sh
-sh scripts/survey.sh                                 # report the host, change nothing
 sh scripts/install.sh --profile minimal --dry-run    # show each change
 sh scripts/install.sh --profile minimal
 ```
 
-If install exits with 1, it refused and changed nothing. A refusal from the host checks prints
-`refuse=<code> override=<what to do>`. Exit code 2 means a check failed and the backup was
+If install exits with 1, it refused and changed nothing. A refusal from the host check prints
+`refuse=<code> detail=<what to do>`. Exit code 2 means a check failed and the backup was
 restored, and 3 means the restore failed too, so the host needs a person. To undo an install, run
 `sh scripts/rollback.sh`.
 
@@ -61,7 +60,6 @@ with `--config FILE`.
 | `akit_skip_keys` | none | Rule keys to leave out on this host. |
 | `akit_extra_rules_dir` | none | A dir of your own `50-*.rules` files to load with the profile. |
 | `akit_existing_rules` | unset | `keep` or `replace` other files in `/etc/audit/rules.d/`. Install refuses while it's unset and other rule files exist, and `keep` still refuses when one of them has a control line such as `-D` or `-e`. |
-| `akit_accept` | none | Agents to install next to despite a conflict, as `agent_conflict:<agent>`, e.g. `agent_conflict:wazuh`. |
 | `akit_immutable` | `false` | `true` locks the rules until reboot (`-e 2`), so a later change or rollback needs a reboot. |
 
 ## 📡 Send events to your SIEM
@@ -70,11 +68,16 @@ auditd-kit writes events to `/var/log/audit/audit.log`, and your own agent sends
 SIEM. [send-audit-log.md](docs/integrations/send-audit-log.md) shows how for common agents, and
 [wazuh.md](docs/integrations/wazuh.md) adds Wazuh alert rules for each auditd-kit key.
 
-## 🐧 Supported systems
+## 🐧 Systems
 
-- RHEL 7, 8, 9, and 10, and CentOS, Rocky Linux, AlmaLinux, and Oracle Linux of the same versions,
-  tested on CentOS 7 and Rocky Linux 8, 9, and 10
-- Ubuntu 18.04, 20.04, 22.04, 24.04, and 26.04 LTS
+auditd-kit runs on any Linux host that has auditd 2.8 or later with `augenrules`. Install prints a
+warning on a system that isn't in the tested list, and goes ahead.
+
+Tested on each change:
+
+- Ubuntu 22.04, 24.04, and 26.04, with the rules loaded into a real kernel
+- CentOS 7, Rocky Linux 8, 9, and 10, and Ubuntu 18.04 and 20.04, in containers, which check the
+  files but can't load rules
 
 ## 📝 Notes
 
@@ -86,15 +89,19 @@ SIEM. [send-audit-log.md](docs/integrations/send-audit-log.md) shows how for com
   keys, programs, and users write the most events.
 - **Without install.sh:** you can render the rules and load them yourself. See
   [rules/README.md](rules/README.md#load-the-rules-without-installsh).
+- **Other agents:** install never restarts or changes another agent. It refuses only when an
+  agent has taken the audit system for itself, which is osquery with `disable_audit=false`, or
+  Auditbeat with its own audit rules or a unicast socket. With Wazuh who-data on, install warns
+  that wazuh-agent may need a restart.
 - **Rollback:** `sh scripts/rollback.sh` restores the newest backup, `--list` prints the backup ids,
   and `rollback.sh <id>` restores an older one. Install keeps the newest 5 backups. On a host with
-  no auditd-kit state file, it also keeps the first one as `original`, so `rollback.sh --original` puts the host back as it was before the
-  first install. Rollback exits 0 when done, 1 when there is no such backup, and 3 when a person
-  must fix the host.
+  no auditd-kit state file, it also keeps the first one as `original`, so
+  `rollback.sh --original` puts the host back as it was before the first install. Rollback exits
+  0 when done, 1 when there is no such backup, and 3 when a person must fix the host.
 - **Files on the host:** [ADR 0014](docs/adr/0014-files-auditd-kit-writes.md) lists each file that
   auditd-kit writes or removes.
 - **Script options:** each script's header lists its flags, e.g. `install.sh --guided`,
-  `survey.sh --json`, and `stats.sh --format csv --top 20`. `verify.sh` exits 2 when a check fails.
+  and `stats.sh --format csv --top 20`. `verify.sh` exits 2 when a check fails.
 - **Design decisions:** [docs/adr/](docs/adr/).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to propose a change, [SECURITY.md](SECURITY.md) to report a

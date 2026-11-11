@@ -7,7 +7,7 @@
 # auditd-kit, and it mounts a small loop file at /var/log/audit and fills it. Run it only on a
 # runner or VM that is thrown away after the run, which is why it needs AKIT_CI_OK=yes.
 #
-# It checks that the survey changes nothing, that an install loads and verifies, that a second
+# It checks that the host check changes nothing, that an install loads and verifies, that a second
 # install has nothing to change, that a rollback gives back checksum-identical /etc/audit and
 # /etc/rsyslog.d, and that a full audit disk doesn't halt the host.
 set -eu
@@ -109,9 +109,9 @@ step "Record checksums of /etc/audit and /etc/rsyslog.d"
 sums >"$work/before"
 cat "$work/before"
 
-step "The survey changes nothing"
-sh "$repo/scripts/survey.sh"
-same_sums "$work/before" "survey.sh changed a file"
+step "The host check changes nothing"
+sh "$repo/scripts/lib/hostcheck.sh" --existing-rules replace
+same_sums "$work/before" "hostcheck.sh changed a file"
 
 step "Install the $profile profile"
 run_install "$work/install1" --profile "$profile" --existing-rules replace

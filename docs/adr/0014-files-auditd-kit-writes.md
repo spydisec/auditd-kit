@@ -34,7 +34,7 @@ A file in `rules.d` belongs to auditd-kit when its name contains `auditd-kit` or
 it. auditd-kit always removes a distro `audit.rules` that holds only control lines. Every other
 file in `rules.d` needs a choice in `akit_existing_rules`:
 
-- `keep` leaves the files in place, and preflight refuses when any of them has a control line.
+- `keep` leaves the files in place, and the host check refuses when any of them has a control line.
 - `replace` removes them.
 
 auditd-kit removes a file only after the backup has saved it. When a profile no longer has one of
@@ -49,7 +49,7 @@ install also removes the canary and `/etc/auditd-kit/`.
 ## Consequences
 
 A rollback gives back a checksum-identical `/etc/audit`, and the state file lets
-the survey and `verify.sh` tell our files from the ones that other tools wrote. A run that exits 1
+the host check and `verify.sh` tell our files from the ones that other tools wrote. A run that exits 1
 changes no file in `/etc` or `/var/lib`, but it still writes its log and briefly holds the lock.
 The render report stays after a rollback, so an operator can see why the rules failed to load.
 A new file that auditd-kit writes must be added to this list, to the backup, and to the restore.

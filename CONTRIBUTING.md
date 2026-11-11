@@ -6,7 +6,7 @@ Thank you for helping with auditd-kit. This page explains how changes are made a
 
 Work on a short-lived branch whose name starts with `feat/`, `fix/`, `docs/`, `ci/`, or `chore/`, and open a
 pull request into `main`. Never push to `main` directly. Give the pull request a Conventional Commits title,
-e.g. `feat: add survey script`, because the title becomes the commit message when the pull request is squash
+e.g. `feat: add a host check`, because the title becomes the commit message when the pull request is squash
 merged. The `main` branch takes squash merges only, after the required checks pass. The ruleset that enforces
 this is stored in `.github/rulesets/main.json`, and it is active on `main`.
 

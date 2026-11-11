@@ -5,7 +5,7 @@
 #        ... | sudo sh -s -- [--yes] [install.sh arguments]
 #
 # On a terminal, install runs in guided mode and asks before it changes anything. With no
-# terminal, as from ssh or a config tool, it only prints the survey and the plan. --yes runs
+# terminal, as from ssh or a config tool, it only prints the host check and the plan. --yes runs
 # install with the given settings and no questions. The last line is a result line for the host:
 #   result=<installed|unchanged|planned|cancelled|refused|rolled_back|rollback_failed> version=X.Y.Z host=<name>
 #

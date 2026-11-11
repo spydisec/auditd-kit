@@ -38,4 +38,5 @@ Anything that wraps the scripts can rely on code 1 meaning that the host is unto
 
 `render.sh` exits 1 for any failure, because it only writes to a temp dir. `verify.sh` exits 2 when
 a check fails, and it doesn't roll back, because install does that. ADR 0027 removed the Ansible
-role, so only the scripts read these settings.
+role, so only the scripts read these settings. ADR 0029 removed `akit_accept`, and a refusal now
+prints `refuse=<code> detail=<text>`.

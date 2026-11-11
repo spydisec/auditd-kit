@@ -14,19 +14,9 @@ AMA can also collect `audit.log` as a custom text log into a custom table. The s
 
 ## Steps
 
-1. Check that the host can reach Azure:
+1. Install auditd-kit, e.g. `sh scripts/install.sh --profile medium`.
 
-   ```sh
-   sh scripts/survey.sh --check azure
-   ```
-
-   It reports whether AMA or the legacy Log Analytics agent is installed, the proxy, and the DNS
-   and TCP 443 results for the AMA control endpoint. The region and workspace endpoints show as
-   `unknown` until AMA is installed and a DCR is associated, so run it again after step 4.
-
-2. Install auditd-kit, e.g. `sh scripts/install.sh --profile medium`.
-
-3. Turn on the auditd syslog plugin with the steps in
+2. Turn on the auditd syslog plugin with the steps in
    [send-audit-log.md](send-audit-log.md#syslog-with-rsyslog-set-up-by-hand), with one change.
    AMA sends the events, so the rsyslog file only keeps them out of the local log files:
 
@@ -37,11 +27,11 @@ AMA can also collect `audit.log` as a custom text log into a custom table. The s
    Name it `/etc/rsyslog.d/40-audit-local.conf`, so that it sorts after AMA's own file (see the
    gotchas).
 
-4. Add a Syslog data source to a data collection rule (DCR) that sends to your Sentinel workspace.
+3. Add a Syslog data source to a data collection rule (DCR) that sends to your Sentinel workspace.
    Set `LOG_LOCAL6` to minimum level `LOG_INFO`, which is the level the plugin writes at. Associate
    the DCR with the hosts.
 
-5. Check that events arrive:
+4. Check that events arrive:
 
    ```kusto
    Syslog

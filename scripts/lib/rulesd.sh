@@ -1,5 +1,5 @@
 # Sort the files in /etc/audit/rules.d by who wrote them. Source this file after common.sh,
-# don't run it. The survey and plan.sh both use it, so they always agree.
+# don't run it. The host check and plan.sh both use it, so they always agree.
 # shellcheck shell=sh
 #
 # A file is "ours" when its name contains auditd-kit or a file=<sha256> <path> line in the state

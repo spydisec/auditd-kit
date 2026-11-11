@@ -1,6 +1,6 @@
 # 0029. Keep what is on the host, and refuse only when auditd can't work
 
-Status: Proposed
+Status: Accepted
 Date: 2026-11-11
 
 ## Context
@@ -77,5 +77,5 @@ are skipped and agents add rules at run time.
 On a host with locked rules, a problem in the new rule set shows only after the reboot, when
 install can't roll back by itself. The install summary says so.
 
-The statuses of ADRs 0003, 0022, and 0023 change, and this ADR becomes Accepted, in the PRs that
-change the code.
+The changes land over several releases of `main`. The existing-rules default, the put-back of
+agent rules, and the install on locked rules follow the host check.
