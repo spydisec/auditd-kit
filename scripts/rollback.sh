@@ -76,6 +76,7 @@ if akit_rollback "$rollback_id" "$rollback_skip_load"; then
   akit_log info "backup $rollback_id restored"
   echo "restored=$rollback_id"
   [ "$akit_reboot_needed" = no ] || echo "reboot=required"
+  akit_log info "rules that an agent added with auditctl are not restored, so restart that agent if its events stop"
   exit "$AKIT_EXIT_OK"
 fi
 akit_log error "rollback to backup $rollback_id failed, and the host needs a person to fix it"

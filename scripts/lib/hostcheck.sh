@@ -186,7 +186,7 @@ hc_check_agents() {
   if hc_file_has 'whodata[[:space:]]*=[[:space:]]*.yes' \
     /var/ossec/etc/ossec.conf /var/ossec/etc/shared/agent.conf; then
     hc_agents="${hc_agents:+$hc_agents,}wazuh"
-    hc_warn agent_restart:wazuh "Wazuh who-data adds audit rules when the agent starts. If its events stop after the install, restart wazuh-agent. auditd-kit doesn't restart it"
+    hc_warn agent_restart:wazuh "Wazuh who-data adds audit rules when the agent starts. Install puts them back after the load. If who-data events stop, restart wazuh-agent, because auditd-kit doesn't restart it"
   fi
   echo "agents_audit=${hc_agents:-none}"
 }
