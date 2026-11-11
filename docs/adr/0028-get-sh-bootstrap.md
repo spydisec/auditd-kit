@@ -22,8 +22,9 @@ checks the bundle, unpacks it into `/opt/auditd-kit` (or `AKIT_DIR`), and runs t
 - With `--yes` it installs with the given settings and asks no questions.
 
 The last line is `result=<outcome> version=X.Y.Z host=<name>`, followed by `codes=<codes>` when
-install refused, so a script that runs it on many hosts can collect one line per host. `AKIT_VERSION` pins a release, and `AKIT_MIRROR` downloads from a server that the
-operator runs, for hosts without internet access.
+install refused and by `reboot=required` when the rules were locked, so a script that runs it on
+many hosts can collect one line per host. `AKIT_VERSION` pins a release, and `AKIT_MIRROR`
+downloads from a server that the operator runs, for hosts without internet access.
 
 ## Consequences
 

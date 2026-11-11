@@ -168,7 +168,6 @@ move /etc/audit/rules.d/91-auditd-kit-medium-last.rules" ]
     rm -f "$stub_state"/*
   done <<'EOF'
 refuse=not_root||echo 1000 >"$stub_state/uid"
-refuse=immutable||echo 2 >"$stub_state/enabled"
 refuse=low_disk||echo 1000 >"$stub_state/free"
 refuse=agent_needs_audit:osquery||mkdir -p "$AKIT_ROOT/etc/osquery" && echo '--disable_audit=false' >"$AKIT_ROOT/etc/osquery/osquery.flags"
 refuse=existing_rules_panic||echo '-f2' >"$rules_d/50-site.rules"
@@ -422,4 +421,52 @@ cat \"\$AKIT_ROOT\"/etc/audit/rules.d/*.rules >\"\$AKIT_ROOT/etc/audit/audit.rul
   grep -q -x "loaded_count=$want" "$AKIT_ROOT/etc/auditd-kit/state"
   # The rule that was put back is loaded, so one more rule is loaded than the saved count.
   [ "$(auditctl -l | grep -c -E '^-[aw] ')" -eq $((want + 1)) ]
+}
+
+@test "install on locked rules writes the files and asks for a reboot" {
+  echo 2 >"$stub_state/enabled"
+  echo '-w /etc/auditd-kit/canary -p wa -k akit_canary' >"$rules_d/40-my-company.rules"
+  install
+  [ "$status" -eq 0 ]
+  [ "${lines[${#lines[@]} - 1]}" = reboot=required ]
+  [[ "$output" == *"warning"*"locked until reboot"*"verify.sh"* ]]
+  [ -f "$rules_d/00-auditd-kit-base.rules" ]
+  set -- "$AKIT_ROOT"/var/lib/auditd-kit/backups/*Z*.tgz
+  [ -f "$1" ]
+  # The saved count is our rules less the one that a kept file also holds.
+  ours=$(cat "$rules_d"/*auditd-kit*.rules | grep -c -E '^-[aw] ')
+  grep -q -x "loaded_count=$((ours - 1))" "$AKIT_ROOT/etc/auditd-kit/state"
+  run ! akit_called "augenrules"
+  run ! akit_called "service auditd"
+  run ! akit_called "ausearch"
+  run ! akit_called "auditctl -w"
+}
+
+@test "install on locked rules still refuses rules that fail the syntax check" {
+  echo 2 >"$stub_state/enabled"
+  before=$(config_sums)
+  install --size huge
+  [ "$status" -eq 1 ]
+  [ "$(config_sums)" = "$before" ]
+}
+
+@test "with --skip-load, locked rules change nothing about the run" {
+  echo 2 >"$stub_state/enabled"
+  install --skip-load
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"reboot=required"* ]]
+  [[ "$output" == *"skipping load and verify"* ]]
+}
+
+@test "a deploy failure on locked rules restores the files and asks for a reboot" {
+  echo 2 >"$stub_state/enabled"
+  before=$(akit_sums etc/audit)
+  # The state file can't be written, so deploy fails after it wrote the rules.
+  mkdir -p "$AKIT_ROOT/etc/auditd-kit/state.tmp"
+  install
+  [ "$status" -eq 2 ]
+  [ "$(akit_sums etc/audit)" = "$before" ]
+  [[ "$output" == *"locked until reboot"* ]]
+  run ! akit_called "augenrules"
+  run ! akit_called "auditctl -R"
 }
