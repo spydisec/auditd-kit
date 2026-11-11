@@ -72,6 +72,7 @@ install_on_exit() {
     akit_log error "install failed, restoring backup $install_backup"
     if akit_rollback "$install_backup" "$install_skip_load"; then
       akit_log error "install failed, and backup $install_backup was restored"
+      [ "$akit_reboot_needed" = no ] || akit_log error "the rules are locked until reboot, so reboot to load the restored files"
       install_rc=$AKIT_EXIT_FAILED
     else
       akit_log error "rollback failed. Restore backup $install_backup by hand with rollback.sh, or fix the host."

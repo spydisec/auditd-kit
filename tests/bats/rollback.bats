@@ -108,6 +108,23 @@ install_by_hand() {
   run ! akit_called augenrules
 }
 
+@test "rollback with locked rules restores the files and asks for a reboot" {
+  before=$(akit_sums etc/audit etc/rsyslog.d)
+  run sh "$repo/scripts/install.sh" </dev/null
+  [ "$status" -eq 0 ]
+  echo 2 >"$stub_state/enabled"
+  : >"$calls"
+  run sh "$repo/scripts/rollback.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"reboot=required"* ]]
+  [ "$(akit_sums etc/audit etc/rsyslog.d)" = "$before" ]
+  akit_called "auditctl -s"
+  run ! akit_called "auditctl -D"
+  run ! akit_called "auditctl -R"
+  run ! akit_called "service"
+  run ! akit_called augenrules
+}
+
 @test "rollback refuses an unknown backup id and changes nothing" {
   backup akit_backup_create
   before=$(akit_sums etc var/lib)
