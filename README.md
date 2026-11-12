@@ -13,8 +13,11 @@ change. It is plain POSIX shell, and it adds no packages and leaves nothing runn
 Run the command as root on a host that has auditd.
 
 ```sh
-curl -fsSL https://github.com/spydisec/auditd-kit/releases/latest/download/get.sh | sudo sh
+sudo sh -c "$(curl -fsSL https://github.com/spydisec/auditd-kit/releases/latest/download/get.sh)"
 ```
+
+Use this form, and don't pipe `curl` into `sudo sh`. The newer sudo on Ubuntu 25.10 and later
+(sudo-rs) keeps the keyboard from a script that is piped in, so the questions can't be answered.
 
 `get.sh` downloads the latest release into `/opt/auditd-kit`, checks it against `SHA256SUMS`, asks
 which profile you want, and shows each change before it makes any. RHEL 10 also needs the `tar`
