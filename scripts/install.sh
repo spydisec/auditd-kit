@@ -117,10 +117,16 @@ install_write_settings() {
 }
 
 # install_ask <question> <default>: ask on the terminal, and set install_ans to the answer or
-# to the default when the answer is empty.
+# to the default when the answer is empty. A read that fails is not an answer. It happens when
+# the script is piped into a sudo that keeps the keyboard from it, e.g. sudo-rs on Ubuntu 25.10,
+# and taking it as "no" would cancel the install before the user could type.
 install_ask() {
   printf '%s ' "$1" >/dev/tty
-  IFS= read -r install_ans </dev/tty || install_ans=
+  if ! IFS= read -r install_ans </dev/tty; then
+    echo >/dev/tty
+    echo "refuse=terminal_read detail=can't read your answer from the terminal, so nothing changed. Don't pipe the script into sudo. Run it from a file, or pass the settings as flags without --guided"
+    exit "$AKIT_EXIT_REFUSED"
+  fi
   [ -n "$install_ans" ] || install_ans=$2
 }
 

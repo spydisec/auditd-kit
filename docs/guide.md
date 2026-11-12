@@ -53,7 +53,9 @@ a copy of a loaded rule, prints as `result=warn` and doesn't change the exit cod
 auditd-kit has no fleet tool of its own. Your own tool, e.g. Ansible or an SSH loop, runs the same
 command on each host and copies your own rule files to `/etc/audit/rules.d/`.
 
-- With no terminal, `get.sh` only prints the plan, and `--yes` makes it install.
+- From a script, pipe `get.sh` into the shell and pass `--yes` with your settings, e.g.
+  `curl -fsSL <url>/get.sh | sudo sh -s -- --yes --profile medium`. With no terminal and no
+  `--yes`, `get.sh` only prints the plan.
 - The last line of `get.sh` is one result line for the host, e.g.
   `result=installed version=0.4.0 host=web1`. A refusal adds `codes=`, and locked rules add
   `reboot=required`.

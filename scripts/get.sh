@@ -1,8 +1,12 @@
 #!/bin/sh
 # Download an auditd-kit release, check it, and run its install.sh.
 #
-# Usage: curl -fsSL https://github.com/spydisec/auditd-kit/releases/latest/download/get.sh | sudo sh
-#        ... | sudo sh -s -- [--yes] [install.sh arguments]
+# Usage: sudo sh -c "$(curl -fsSL https://github.com/spydisec/auditd-kit/releases/latest/download/get.sh)"
+#        curl -fsSL <the same URL> | sudo sh -s -- [--yes] [install.sh arguments]
+#
+# The first form is for a person at a terminal. Use it for the guided questions, because some
+# sudo versions, e.g. sudo-rs on Ubuntu 25.10, keep the keyboard from a script that is piped in.
+# The second form is for scripts and takes arguments.
 #
 # On a terminal, install runs in guided mode and asks before it changes anything. With no
 # terminal, as from ssh or a config tool, it only prints the host check and the plan. --yes runs
@@ -128,6 +132,12 @@ case "$get_rc" in
 esac
 get_codes=$(sed -n 's/^refuse=\([^ ]*\).*/\1/p' "$get_tmp/out" | paste -sd, -)
 get_reboot=
+case ",$get_codes," in
+  *,terminal_read,*)
+    # shellcheck disable=SC2016
+    printf 'auditd-kit get: for the guided questions, run: sudo sh -c "$(curl -fsSL %s/get.sh)"\n' "$get_base" >&2
+    ;;
+esac
 ! grep -qx reboot=required "$get_tmp/out" || get_reboot=' reboot=required'
 printf 'result=%s version=%s host=%s%s%s\n' "$get_result" "$get_version" "$(uname -n)" \
   "${get_codes:+ codes=$get_codes}" "$get_reboot"
