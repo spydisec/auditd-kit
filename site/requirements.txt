@@ -1,0 +1,2 @@
+# Exact version pin for the docs site. Dependabot updates it.
+mkdocs-material==9.8.1

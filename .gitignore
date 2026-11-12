@@ -15,3 +15,6 @@ dist/
 
 # yamllint settings are in tests/lint.sh.
 .yamllint.yml
+
+# Pages that site/build.sh copies before it runs mkdocs.
+site/.build/

@@ -78,6 +78,15 @@ route() {
   [[ "$output" == *"runtime=false"* ]]
 }
 
+@test "docs site files select lint only" {
+  run route site/build.sh site/mkdocs.yml site/requirements.txt
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"lint=true"* ]]
+  [[ "$output" == *"bats=false"* ]]
+  [[ "$output" == *"runtime=false"* ]]
+  [[ "$output" == *"packaging=false"* ]]
+}
+
 @test "YAML extensions select lint outside known directories" {
   run route new/settings.yaml .github/ISSUE_TEMPLATE/bug.yml
   [[ "$output" == *"lint=true"* ]]

@@ -29,6 +29,8 @@ else
         ;;
       tests/lint.sh)
         lint=true ;;
+      site/*)
+        lint=true ;;
       tests/ci/real-kernel.sh | tests/ci/container-install.sh | tests/ci/vm-run.sh)
         lint=true; runtime=true ;;
       tests/bats/* | tests/fixtures/*)
