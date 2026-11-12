@@ -1,6 +1,7 @@
 ---
 # Settings for the docs site. site/build.sh copies the pages into .build/ and runs mkdocs.
 site_name: auditd-kit
+site_url: https://auditdkit.com/
 site_description: Install a tested set of Linux audit rules (auditd) with one command.
 repo_url: https://github.com/spydisec/auditd-kit
 repo_name: spydisec/auditd-kit
