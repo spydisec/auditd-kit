@@ -1,0 +1,49 @@
+---
+# Settings for the docs site. site/build.sh copies the pages into .build/ and runs mkdocs.
+site_name: auditd-kit
+site_description: Install a tested set of Linux audit rules (auditd) with one command.
+repo_url: https://github.com/spydisec/auditd-kit
+repo_name: spydisec/auditd-kit
+edit_uri: ""
+docs_dir: .build
+copyright: Apache-2.0
+
+theme:
+  name: material
+  font: false
+  features:
+    - content.code.copy
+    - navigation.sections
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Install: index.md
+  - Guide: guide.md
+  - Rules: rules.md
+  - Send events to a SIEM:
+      - Overview: integrations/send-audit-log.md
+      - Wazuh: integrations/wazuh.md
+      - Microsoft Sentinel: integrations/azure-ama.md
+      - syslog-ng: integrations/syslog-ng.md

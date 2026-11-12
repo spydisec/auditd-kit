@@ -1,0 +1,78 @@
+---
+name: pages
+
+# Builds the docs site from the Markdown files and publishes it to GitHub Pages. A pull request
+# only builds it. The release workflow starts a run, so the site serves the new get.sh.
+on:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - docs/guide.md
+      - docs/integrations/**
+      - rules/README.md
+      - site/**
+      - .github/workflows/pages.yml
+  pull_request:
+    paths:
+      - README.md
+      - docs/guide.md
+      - docs/integrations/**
+      - rules/README.md
+      - site/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r site/requirements.txt
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      # The site serves the get.sh of the latest release, not the one on main.
+      - name: Download the released get.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir release
+          gh release download --dir release --pattern get.sh --pattern SHA256SUMS
+          (cd release && grep ' get\.sh$' SHA256SUMS | sha256sum -c -)
+      - name: Build
+        run: sh site/build.sh _site release/get.sh
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
+        if: github.event_name != 'pull_request'
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1
+        id: deploy
