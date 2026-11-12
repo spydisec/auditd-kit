@@ -122,6 +122,13 @@ install_write_settings() {
 # and taking it as "no" would cancel the install before the user could type.
 install_ask() {
   printf '%s ' "$1" >/dev/tty
+  # sudo-rs, e.g. on Ubuntu 26.04, runs a piped script in the background of the terminal, and
+  # the kernel then stops a process that reads the keyboard, so the install would hang. With
+  # the stop signal ignored the read fails, and the script can say why. The classic sudo moves
+  # the script to the foreground when it is stopped, so the signal is left alone there.
+  case "$(sudo -V 2>/dev/null | sed -n 1p)" in
+    *sudo-rs*) trap '' TTIN ;;
+  esac
   if ! IFS= read -r install_ans </dev/tty; then
     echo >/dev/tty
     echo "refuse=terminal_read detail=can't read your answer from the terminal, so nothing changed. Don't pipe the script into sudo. Run it from a file, or pass the settings as flags without --guided"
